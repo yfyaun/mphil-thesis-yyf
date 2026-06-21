@@ -1,0 +1,162 @@
+\chapter{Conclusion and Future Work}
+\label{ch:conclusion}
+
+\section{Conclusion}
+\label{sec:conclusion-summary}
+
+This thesis studied multimodal sensing-assisted user association and tracking
+for beam management in vehicular networks. The motivating problem is that
+vehicle users in road-side communication scenarios experience rapidly changing
+geometry, blockage, and beam quality, while repeated beam sweeping and channel
+measurement can consume non-negligible radio resources. To address this
+setting, the thesis considered a BS-centric sensing infrastructure in which the
+serving base station (BS) and nearby sensing nodes (SNs) provide multiview
+camera observations, and the BS also provides an ISAC point cloud. These
+observations are organized through a bird's-eye-view (BEV) representation so
+that vehicle detection, per-target beam prediction, and communication-oriented
+evaluation can be studied within a common spatial frame.
+
+The first part of the work formulated a multimodal distributed
+sensing-assisted beam management framework. In this framework, camera modality
+and ISAC modality are fused in BEV space to detect vehicle targets and estimate
+their per-beam power distributions. The resulting Top-K candidate beams provide
+a sensing-driven interface between the perception system and the subsequent
+communication evaluation. The objective of this design is not to replace
+communication measurements entirely, but to use sensing observations to reduce
+the frequency and scope of expensive beam measurements when the sensing output
+is sufficiently reliable.
+
+The second part of the work addressed the identity mismatch between sensing
+targets and communication users. Since a detected vehicle target is not
+automatically associated with a communication user identity, the proposed
+workflow uses the initial SSB beam sweep power spectrum to establish
+target-user association. After this initial binding, an interacting multiple
+model (IMM) tracking process maintains the temporal continuity of vehicle
+states and supports beam maintenance in subsequent frames. This association and
+tracking layer is central to the thesis scope because it connects per-frame
+sensing predictions with a persistent communication service process.
+
+The third part of the work specified a multimodal simulation and system-level
+evaluation methodology. The planned evaluation connects road traffic
+simulation, multiview sensing data generation, ISAC-like point clouds,
+ray-tracing-based beam labels, and simplified communication metrics. Within
+this abstraction, beam prediction accuracy, target-user association, tracking
+quality, beam training overhead, beam mismatch, zero-forcing (ZF) precoding
+SINR, spectral efficiency, and overhead-adjusted throughput can be considered
+together. This evaluation pipeline is intended to make explicit how errors in
+sensing and identity maintenance may propagate into communication-level
+performance.
+
+Because the experimental results are not yet available, this conclusion does
+not claim demonstrated throughput improvement, beam prediction superiority, or
+robustness under specific operating conditions. TODO[needs-evidence]: After
+Chapter~\ref{ch:experiments} is finalized, summarize only the findings directly
+supported by the completed experiments, including the relevant baselines,
+metrics, figures, and statistical evidence.
+
+\section{Limitations}
+\label{sec:conclusion-limitations}
+
+Several limitations follow from the current scope of the thesis. First, the
+evaluation is expected to rely on a simulated or generated multimodal
+environment. Such a setting is necessary for controlled access to camera
+observations, ISAC-like point clouds, vehicle trajectories, beam labels, and
+channel data, but it may introduce a domain gap relative to real road-side
+deployments. The appearance of vehicles, sensing noise, calibration quality,
+traffic behavior, occlusion patterns, and propagation conditions in real
+networks may differ from those represented by the simulation pipeline.
+
+Second, the communication evaluation is a simplified and interpretable
+abstraction rather than a complete 5G NR protocol stack. The thesis models
+beam management, beam mismatch, ZF precoding SINR, spectral efficiency, and
+overhead-adjusted throughput at a system level, but it does not fully model
+protocol-level details such as SSB and CSI-RS scheduling, feedback latency,
+control signaling, HARQ behavior, scheduler interaction, or mobility management
+procedures. As a result, throughput-related quantities should be interpreted as
+evaluation indicators under the stated abstraction, not as direct predictions
+of deployment-level 5G NR performance.
+
+Third, the proposed sensing-assisted workflow depends on the reliability of
+multimodal sensing and cross-modal alignment. Camera calibration errors,
+time-synchronization errors, sparse or noisy ISAC point clouds, missing
+modalities, and severe occlusion can degrade BEV detection, beam prediction,
+target-user association, and tracking. The framework includes partial beam
+measurement and re-association as possible recovery mechanisms, but the precise
+robustness limits and failure thresholds still require experimental study.
+
+Fourth, the thesis focuses primarily on a BS-centric local service region.
+This choice keeps the problem tractable and allows the relationship between
+multimodal sensing, target-user association, tracking, and beam management to
+be studied clearly. However, it leaves broader network-level questions only
+partially addressed, including cooperative multi-BS beam management,
+inter-cell interference, load-aware service selection, and handover decisions
+for vehicles moving across BS coverage regions.
+
+TODO[needs-evidence]: After the ablation and robustness experiments in
+Chapter~\ref{ch:experiments} are completed, refine this section so that each
+limitation is tied to the observed failure cases, sensitivity trends, or
+unvalidated assumptions.
+
+\section{Future Work}
+\label{sec:conclusion-future-work}
+
+Future work should extend the thesis in directions that directly correspond to
+the limitations above.
+
+\subsection{Real-World Deployment and Domain Gap}
+\label{subsec:future-domain-gap}
+
+A natural next step is to evaluate the framework with real road-side sensing
+and communication data. This may include collecting synchronized multiview
+camera observations, ISAC or radar-like point clouds, vehicle trajectories, and
+communication beam measurements from instrumented road-side infrastructure.
+Such data would make it possible to quantify the domain gap between simulation
+and deployment, validate the assumptions used in the BEV fusion pipeline, and
+study whether synthetic-to-real adaptation is necessary for reliable beam
+prediction and target-user association.
+
+\subsection{Protocol-Level 5G NR Simulation}
+\label{subsec:future-5g-nr}
+
+The communication abstraction can be extended toward a fuller 5G NR
+protocol-level simulation. Future work may incorporate more detailed modeling
+of SSB and CSI-RS timing, beam reporting, feedback delay, scheduling, control
+overhead, retransmission behavior, and mobility procedures. This would allow
+sensing-assisted beam management to be evaluated not only through simplified
+SINR and throughput indicators, but also through protocol-aware latency,
+resource utilization, and service continuity metrics.
+
+\subsection{Robustness to Missing or Degraded Modalities}
+\label{subsec:future-modality-robustness}
+
+Another important direction is robustness under missing, degraded, or
+conflicting sensing modalities. In realistic deployments, some cameras may be
+blocked, calibration may drift, weather and illumination may reduce visual
+quality, and ISAC point clouds may become sparse or noisy. Future models could
+therefore include confidence-aware multimodal fusion, modality dropout during
+training, explicit uncertainty estimation, and fallback strategies that
+increase communication measurements when sensing reliability decreases.
+
+\subsection{Online and Domain Adaptation}
+\label{subsec:future-online-adaptation}
+
+The present framework is primarily described as an offline trained and
+evaluated system. Future work can investigate online adaptation so that the
+beam prediction, association, and tracking modules can adjust to new roads,
+sensor placements, vehicle distributions, and propagation conditions. Possible
+directions include continual calibration, self-supervised adaptation from
+communication measurements, and domain adaptation between simulated and real
+scenarios. These extensions should be designed carefully to avoid reinforcing
+incorrect associations or unstable beam predictions during deployment.
+
+\subsection{Cooperative Multi-BS Beam Management and Handover}
+\label{subsec:future-multi-bs-handover}
+
+Finally, the BS-centric design can be extended to cooperative multi-BS beam
+management and handover. In a multi-BS network, sensing and tracking states may
+be shared across neighboring BSs to support service-BS selection, handover
+preparation, and coordinated beam decisions for fast-moving vehicles. This
+extension would require new association variables linking vehicles, sensing
+tracks, serving BSs, and candidate beams, as well as evaluation metrics that
+capture handover reliability, inter-cell coordination overhead, and service
+continuity.

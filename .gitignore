@@ -1,0 +1,28 @@
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.glg
+*.glo
+*.gls
+*.idx
+*.ilg
+*.ind
+*.ist
+*.loa
+*.lof
+*.log
+*.lol
+*.lot
+*.out
+*.run.xml
+*.toc
+*.xdv
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+

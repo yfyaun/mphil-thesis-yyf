@@ -1,0 +1,518 @@
+\chapter{Proposed Multimodal Sensing-Assisted Beam Management Framework}
+\label{ch:methodology}
+
+This chapter presents the proposed BS-centric multimodal sensing-assisted beam
+management framework. The objective of the framework is to use distributed
+sensing observations, initial communication measurements, and temporal tracking
+to support vehicle detection, per-target beam prediction, target-user
+association, and beam maintenance in vehicular networks. The chapter focuses on
+the algorithmic data flow and system interface. It does not claim measured
+performance improvement, because the experimental evidence and the final
+simulation settings are not yet fixed.
+
+\section{Framework Overview}
+\label{sec:method-framework}
+
+For each serving base station (BS), the proposed framework constructs a local
+cooperative sensing region consisting of the BS itself and \(K_{\mathrm{SN}}\) neighbouring
+sensing nodes (SNs). At decision epoch \(t\), the BS receives multiview camera
+observations from its own cameras and the selected SN cameras, together with a
+BS-side ISAC point cloud. During initial access or explicit calibration periods,
+the BS also obtains communication-side beam measurements, such as an SSB beam
+sweep power spectrum. The framework converts these heterogeneous observations
+into a unified bird's-eye-view (BEV) representation and then performs four
+coupled tasks:
+\begin{enumerate}
+  \item vehicle target detection in the BEV coordinate system;
+  \item per-target beam power distribution prediction and Top-\(K\) candidate
+        beam selection;
+  \item initial target-user association using SSB-spectrum information; and
+  \item tracking-assisted beam maintenance using an interacting multiple model
+        (IMM) filter.
+\end{enumerate}
+
+Let \(\mathcal{C}_{b,t}\) denote the set of camera images available to BS
+\(b\) at epoch \(t\), including the BS cameras and the cameras of the selected
+SNs. Let \(\mathcal{P}_{b,t}\) denote the BS-side ISAC point cloud, and let
+\(\mathcal{Y}_{b,t}\) denote the available communication measurements. The
+overall mapping can be written abstractly as
+\begin{equation}
+  \left(
+  \mathcal{D}_{b,t},
+  \widehat{\mathcal{K}}_{b,t},
+  \mathcal{A}_{b,t},
+  \mathcal{X}_{b,t}
+  \right)
+  =
+  \mathcal{G}_{\Theta}
+  \left(
+  \mathcal{C}_{b,t},
+  \mathcal{P}_{b,t},
+  \mathcal{Y}_{b,t},
+  \mathcal{X}_{b,t-1}
+  \right),
+  \label{eq:method-overall-mapping}
+\end{equation}
+where \(\mathcal{D}_{b,t}\) is the set of detected BEV targets,
+\(\widehat{\mathcal{K}}_{b,t}\) is the set of predicted Top-\(K\) beam
+candidates for the detected or tracked targets, \(\mathcal{A}_{b,t}\) is the
+target-user association state, and \(\mathcal{X}_{b,t}\) is the set of tracking
+states. The parameter set \(\Theta\) represents the sensing network, detection
+head, beam prediction head, and tracking-related parameters. A final framework
+figure should show this data flow from multimodal input construction to the
+communication evaluation interface.
+
+The framework distinguishes between sensing target identity and communication
+user identity. A detected vehicle in the BEV space is first a sensing target.
+It becomes a communication user only after the system establishes a mapping
+between the detection or track and a user identity observed by communication
+measurements. This distinction is important in multi-vehicle scenes, where the
+strongest predicted beam for a target does not by itself identify the user that
+generated a communication-side beam spectrum.
+
+\section{BEV-Based Multimodal Fusion}
+\label{sec:method-multimodal-processing}
+
+The sensing front end maps multiview camera observations and the BS-side ISAC
+point cloud into a common BEV coordinate frame. The purpose of this BEV
+representation is to align observations from different viewpoints, station
+locations, and modalities before target detection and beam prediction are
+performed. For BS \(b\), the camera feature extractor first transforms each
+image \(I_{v,t} \in \mathcal{C}_{b,t}\) into an image-plane feature map. These
+features are then projected or lifted into BEV coordinates using the available
+calibration information:
+\begin{equation}
+  \mathbf{F}^{\mathrm{cam}}_{b,t}
+  =
+  \Phi_{\mathrm{cam}}
+  \left(
+  \{ I_{v,t}, \mathbf{T}_{v \rightarrow b} \}_{v \in \mathcal{V}_{b}}
+  \right),
+  \label{eq:method-camera-bev}
+\end{equation}
+where \(\mathcal{V}_{b}\) is the set of camera views used by BS \(b\), and
+\(\mathbf{T}_{v \rightarrow b}\) denotes the calibration transform from camera
+view \(v\) to the BS-centered BEV frame.
+
+The ISAC point cloud is encoded into the same BEV frame through a point-cloud
+encoder:
+\begin{equation}
+  \mathbf{F}^{\mathrm{isac}}_{b,t}
+  =
+  \Phi_{\mathrm{isac}}
+  \left(
+  \mathcal{P}_{b,t};
+  \mathbf{T}_{\mathrm{isac} \rightarrow b}
+  \right).
+  \label{eq:method-isac-bev}
+\end{equation}
+The camera and ISAC BEV features are subsequently fused into a joint BEV feature
+map,
+\begin{equation}
+  \mathbf{F}_{b,t}
+  =
+  \Phi_{\mathrm{fuse}}
+  \left(
+  \mathbf{F}^{\mathrm{cam}}_{b,t},
+  \mathbf{F}^{\mathrm{isac}}_{b,t},
+  \mathbf{M}_{b,t}
+  \right),
+  \label{eq:method-bev-fusion}
+\end{equation}
+where \(\mathbf{M}_{b,t}\) denotes optional modality-availability or confidence
+masks. Such masks are useful because distributed sensing observations may be
+missing, delayed, partially occluded, or noisy.
+
+The current design assumes that temporal synchronization and spatial
+calibration are handled before BEV fusion. In practice, calibration and
+synchronization errors can affect both detection and beam prediction. Therefore,
+the implementation should keep explicit records of sensor timestamps, camera
+extrinsics, point-cloud coordinate transforms, and missing-modality indicators.
+TODO[unstable-method]: Finalize the BEV grid resolution, coordinate range,
+camera-to-BEV projection method, ISAC point-cloud encoding, feature fusion
+strategy, and the treatment of missing or noisy sensing observations.
+
+\section{Vehicle Detection and Per-Target Beam Prediction}
+\label{sec:method-detection-beam}
+
+The joint BEV feature map \(\mathbf{F}_{b,t}\) is processed by a CenterNet-like
+detection head. Instead of proposing a large set of anchor boxes, the detection
+head predicts a BEV heatmap whose local maxima correspond to vehicle centers.
+For each BEV grid cell, the head may also predict center offsets, target size,
+orientation-related attributes, and a detection confidence score. The detection
+output is written as
+\begin{equation}
+  \mathcal{D}_{b,t}
+  =
+  \left\{
+  d_{i,t}
+  =
+  \left(
+  \widehat{\mathbf{p}}_{i,t},
+  \widehat{\mathbf{s}}_{i,t},
+  q_{i,t},
+  \mathbf{e}_{i,t}
+  \right)
+  \right\}_{i=1}^{N_{b,t}},
+  \label{eq:method-detection-output}
+\end{equation}
+where \(\widehat{\mathbf{p}}_{i,t}\) is the BEV center position,
+\(\widehat{\mathbf{s}}_{i,t}\) denotes target attributes such as size, \(q_{i,t}\)
+is the detection confidence, \(\mathbf{e}_{i,t}\) is the target-level feature
+embedding, and \(N_{b,t}\) is the number of detected targets.
+
+For each detected target, the beam prediction head estimates a distribution over
+the BS beam codebook
+\(\mathcal{F}_{b}=\{\mathbf{f}_{b,1},\ldots,\mathbf{f}_{b,M_b^{\mathrm{beam}}}\}\). The output
+for target \(i\) is
+\begin{equation}
+  \widehat{\mathbf{g}}_{i,t}
+  =
+  \left[
+  \widehat{g}_{i,t,1},
+  \widehat{g}_{i,t,2},
+  \ldots,
+  \widehat{g}_{i,t,M_b^{\mathrm{beam}}}
+  \right],
+  \label{eq:method-beam-distribution}
+\end{equation}
+where \(\widehat{g}_{i,t,m}\) represents the predicted quality, normalized
+power, or score of beam \(m\) for the detected target. The Top-\(K\) candidate
+beam set is then defined as
+\begin{equation}
+  \widehat{\mathcal{K}}_{i,t}^{(K)}
+  =
+  \underset{
+  \mathcal{S} \subseteq \{1,\ldots,M_b^{\mathrm{beam}}\},\ |\mathcal{S}|=K_{\mathrm{beam}}
+  }{\operatorname{arg\,max}}
+  \sum_{m \in \mathcal{S}} \widehat{g}_{i,t,m}.
+  \label{eq:method-topk-beams}
+\end{equation}
+This distributional output is more informative than a single hard beam index:
+it supports Top-\(K\) beam selection, uncertainty-aware association, and
+communication-side mismatch modelling.
+
+The training objective is expected to combine detection and beam-prediction
+terms,
+\begin{equation}
+  \mathcal{L}
+  =
+  \lambda_{\mathrm{det}}\mathcal{L}_{\mathrm{det}}
+  +
+  \lambda_{\mathrm{beam}}\mathcal{L}_{\mathrm{beam}}
+  +
+  \lambda_{\mathrm{aux}}\mathcal{L}_{\mathrm{aux}},
+  \label{eq:method-training-loss}
+\end{equation}
+where \(\mathcal{L}_{\mathrm{det}}\) may include heatmap, offset, and attribute
+losses, \(\mathcal{L}_{\mathrm{beam}}\) supervises the predicted per-beam
+distribution, and \(\mathcal{L}_{\mathrm{aux}}\) denotes optional auxiliary
+terms. TODO[unstable-method]: Finalize the exact detection loss, beam
+distribution loss, target-to-label assignment, positive and negative sample
+definition, beam-label generation process, and beam power normalization.
+
+\section{Initial Target-User Association}
+\label{sec:method-association}
+
+Initial target-user association is performed when communication-side beam
+measurements are available. During initial access, the BS conducts an SSB beam
+sweep and obtains a beam power spectrum for each communication user. Let
+\(\mathbf{y}_{u,t_0}\) denote the observed spectrum for user \(u\) at the
+initial association epoch \(t_0\):
+\begin{equation}
+  \mathbf{y}_{u,t_0}
+  =
+  \left[
+  y_{u,t_0,1},
+  y_{u,t_0,2},
+  \ldots,
+  y_{u,t_0,M_b^{\mathrm{beam}}}
+  \right].
+  \label{eq:method-ssb-spectrum}
+\end{equation}
+The sensing network simultaneously predicts
+\(\widehat{\mathbf{g}}_{i,t_0}\) for each detected target \(i\). Association is
+then formulated as a matching problem between detected sensing targets and
+communication user identities.
+
+A generic association cost can be expressed as
+\begin{equation}
+  c_{i,u}
+  =
+  \alpha_{\mathrm{beam}}
+  d_{\mathrm{beam}}
+  \left(
+  \widehat{\mathbf{g}}_{i,t_0},
+  \widetilde{\mathbf{y}}_{u,t_0}
+  \right)
+  +
+  \alpha_{\mathrm{geo}}
+  d_{\mathrm{geo}}(i,u)
+  -
+  \alpha_{\mathrm{conf}} q_{i,t_0},
+  \label{eq:method-association-cost}
+\end{equation}
+where \(\widetilde{\mathbf{y}}_{u,t_0}\) is a normalized SSB spectrum,
+\(d_{\mathrm{beam}}\) measures distributional disagreement,
+\(d_{\mathrm{geo}}\) represents any available geometric prior, and \(q_{i,t_0}\)
+is the detection confidence. The association variable is
+\(a_{i,u,t_0} \in \{0,1\}\), where \(a_{i,u,t_0}=1\) means that sensing target
+\(i\) is assigned to communication user \(u\). A one-to-one assignment can be
+written as
+\begin{equation}
+  \begin{aligned}
+  \min_{\{a_{i,u,t_0}\}} \quad
+  & \sum_{i=1}^{N_{b,t_0}}\sum_{u=1}^{U_{b,t_0}}
+    a_{i,u,t_0} c_{i,u} \\
+  \mathrm{s.t.}\quad
+  & \sum_{u=1}^{U_{b,t_0}} a_{i,u,t_0} \leq 1,\quad
+    \sum_{i=1}^{N_{b,t_0}} a_{i,u,t_0} \leq 1, \\
+  & a_{i,u,t_0} \in \{0,1\}.
+  \end{aligned}
+  \label{eq:method-initial-assignment}
+\end{equation}
+This formulation gives the intended interface without fixing the final cost
+terms. TODO[unstable-method]: Finalize the association cost, spectrum
+normalization, geometric prior, matching algorithm, conflict handling, rejection
+thresholds, and recovery behaviour when no reliable one-to-one match exists.
+
+Once a match is accepted, the framework creates a unified track containing a
+sensing track identity, a communication user identity, a BEV state estimate, and
+the current Top-\(K\) beam candidates. These associations are then maintained by
+the tracking module rather than by repeated full beam sweeps at every epoch.
+
+\section{IMM Tracking and Beam Maintenance}
+\label{sec:method-tracking}
+
+After initial association, the framework maintains each associated user through
+an IMM tracking module. The tracking state for track \(\ell\) at epoch \(t\) is
+represented as
+\begin{equation}
+  \mathbf{x}_{\ell,t}
+  =
+  \left[
+  x_{\ell,t},
+  y_{\ell,t},
+  \dot{x}_{\ell,t},
+  \dot{y}_{\ell,t}
+  \right]^{\mathrm{T}},
+  \label{eq:method-track-state}
+\end{equation}
+where \((x_{\ell,t},y_{\ell,t})\) is the BEV position and
+\((\dot{x}_{\ell,t},\dot{y}_{\ell,t})\) is the BEV velocity. Additional
+components, such as acceleration, heading, or lane-related state variables, can
+be introduced if the final simulator and tracking design require them.
+
+The IMM filter maintains a set of candidate motion models
+\(\mathcal{Q}=\{1,\ldots,Q\}\). For each mode \(q \in \mathcal{Q}\), the predicted state is
+abstractly written as
+\begin{equation}
+  \mathbf{x}^{(q)}_{\ell,t|t-1}
+  =
+  \mathbf{F}^{(q)}
+  \mathbf{x}^{(q)}_{\ell,t-1|t-1},
+  \qquad
+  \mathbf{P}^{(q)}_{\ell,t|t-1}
+  =
+  \mathbf{F}^{(q)}
+  \mathbf{P}^{(q)}_{\ell,t-1|t-1}
+  \left(\mathbf{F}^{(q)}\right)^{\mathrm{T}}
+  +
+  \mathbf{Q}^{(q)}.
+  \label{eq:method-imm-prediction}
+\end{equation}
+The mode-conditioned predictions are mixed according to the mode probabilities,
+and the resulting predicted track is associated with the next-frame BEV
+detections. If detection \(i\) provides measurement
+\(\mathbf{z}_{i,t}=\widehat{\mathbf{p}}_{i,t}\), a generic tracking-association
+score can include innovation distance, motion consistency, detection confidence,
+and beam-distribution consistency:
+\begin{equation}
+  g_{\ell,i,t}
+  =
+  \beta_{\mathrm{pos}}
+  d_{\mathrm{pos}}
+  \left(
+  \mathbf{z}_{i,t},
+  \widehat{\mathbf{x}}_{\ell,t|t-1}
+  \right)
+  +
+  \beta_{\mathrm{beam}}
+  d_{\mathrm{beam}}
+  \left(
+  \widehat{\mathbf{g}}_{i,t},
+  \widehat{\mathbf{g}}_{\ell,t-1}
+  \right)
+  -
+  \beta_{\mathrm{conf}} q_{i,t}.
+  \label{eq:method-track-detection-cost}
+\end{equation}
+The accepted detection updates the track state, refreshes the predicted beam
+distribution, and propagates the communication user identity. If no reliable
+detection is matched, the framework may keep a prediction-only track for a
+limited duration and trigger a partial beam measurement or re-association
+procedure.
+
+Beam maintenance uses both the current beam prediction and the temporal
+continuity encoded by the track. For a matched track \(\ell\), the communication
+module receives the candidate set
+\(\widehat{\mathcal{K}}_{\ell,t}^{(K)}\) from the associated detection. For a
+temporarily unmatched track, the framework may use the predicted state and the
+previous beam distribution as a short-term fallback, subject to confidence and
+age limits. TODO[unstable-method]: Finalize the IMM motion-model set, mode
+transition matrix, process and observation noise parameters, gating thresholds,
+track birth and deletion rules, prediction-only lifetime, and the exact trigger
+for partial beam measurement or re-association.
+
+\section{Communication Interface and System-Level Evaluation}
+\label{sec:method-communication-interface}
+
+The communication interface receives, for each associated user \(u\), a user
+identity, a tracking state, and a Top-\(K\) candidate beam set. These outputs can
+be used in two ways. First, they can reduce the candidate set over which CSI
+acquisition or PMI selection is performed. Second, they provide a structured
+input to the system-level evaluation model that estimates effective SINR,
+spectral efficiency, and throughput under sensing-assisted beam management.
+
+Let \(m_{u,t}^{\star}\) denote the best beam index under the generated channel
+or beam-label model, and let
+\(\widehat{\mathcal{K}}_{u,t}^{(K)}\) denote the Top-\(K\) candidate set
+provided by the sensing and tracking pipeline. The coverage indicator is
+\begin{equation}
+  \delta_{u,t}^{(K)}
+  =
+  \begin{cases}
+  1, & m_{u,t}^{\star} \in \widehat{\mathcal{K}}_{u,t}^{(K)},\\
+  0, & \text{otherwise}.
+  \end{cases}
+  \label{eq:method-topk-coverage}
+\end{equation}
+If \(\delta_{u,t}^{(K)}=1\), the evaluation can assume that subsequent
+communication measurements are concentrated on the candidate set rather than on
+the full codebook. If \(\delta_{u,t}^{(K)}=0\), the evaluation introduces a
+beam-mismatch penalty to model imperfect CSI or PMI selection.
+
+For a multi-user ZF abstraction, let \(\widetilde{\mathbf{h}}_{u,t}\) be the
+effective channel used for precoding after the candidate-beam decision. The
+stacked channel matrix is
+\begin{equation}
+  \widetilde{\mathbf{H}}_{t}
+  =
+  \left[
+  \widetilde{\mathbf{h}}_{1,t}^{\mathrm{T}};
+  \widetilde{\mathbf{h}}_{2,t}^{\mathrm{T}};
+  \ldots;
+  \widetilde{\mathbf{h}}_{U_t,t}^{\mathrm{T}}
+  \right],
+  \label{eq:method-effective-channel}
+\end{equation}
+and the ZF precoder can be represented abstractly by the pseudo-inverse of
+\(\widetilde{\mathbf{H}}_{t}\), followed by the chosen power normalization. The
+effective SINR for user \(u\) can then be expressed as
+\begin{equation}
+  \gamma_{u,t}
+  =
+  \frac{
+  P_u
+  \left|
+  \mathbf{h}_{u,t}^{\mathrm{H}}\mathbf{w}_{u,t}
+  \right|^2
+  }{
+  \sum_{v \neq u}
+  P_v
+  \left|
+  \mathbf{h}_{u,t}^{\mathrm{H}}\mathbf{w}_{v,t}
+  \right|^2
+  +
+  \sigma^2
+  },
+  \label{eq:method-zf-sinr}
+\end{equation}
+where \(\mathbf{w}_{u,t}\) is the precoding vector assigned to user \(u\),
+\(P_u\) is the allocated transmit power, and \(\sigma^2\) is the noise power.
+The spectral efficiency is
+\begin{equation}
+  R_{u,t}
+  =
+  \log_2(1+\gamma_{u,t}),
+  \label{eq:method-spectral-efficiency}
+\end{equation}
+and an overhead-adjusted sum throughput can be written as
+\begin{equation}
+  R^{\mathrm{adj}}_{t}
+  =
+  (1-\rho_t)
+  \sum_{u=1}^{U_t} R_{u,t},
+  \label{eq:method-overhead-adjusted-throughput}
+\end{equation}
+where \(\rho_t\) denotes the fraction of time-frequency resources consumed by
+beam training, calibration, or recovery measurements at epoch \(t\).
+
+These equations define an evaluation interface rather than a finalized
+communication protocol. TODO[unstable-method]: Finalize the beam mismatch
+penalty, how mismatch modifies CSI or PMI abstraction, ZF normalization,
+overhead accounting, and the exact mapping from Top-\(K\) coverage to SINR
+degradation.
+
+\section{Algorithm Summary and Complexity}
+\label{sec:method-algorithm-complexity}
+
+Algorithm~\ref{alg:method-framework} summarizes the online operation of the
+proposed framework. The procedure separates the initial access stage, where SSB
+spectra are used to bind sensing targets to communication users, from the
+subsequent maintenance stage, where IMM tracking and BEV detections preserve
+identity continuity and reduce the need for full beam sweeps.
+
+\begin{algorithm}[t]
+\caption{Multimodal sensing-assisted beam management at BS \(b\)}
+\label{alg:method-framework}
+\begin{algorithmic}[1]
+\REQUIRE Multiview camera inputs \(\mathcal{C}_{b,t}\), ISAC point cloud
+\(\mathcal{P}_{b,t}\), beam measurements \(\mathcal{Y}_{b,t}\) when available,
+previous tracks \(\mathcal{X}_{b,t-1}\), beam codebook \(\mathcal{F}_{b}\)
+\ENSURE Detections \(\mathcal{D}_{b,t}\), Top-\(K\) beam sets
+\(\widehat{\mathcal{K}}_{b,t}\), associations \(\mathcal{A}_{b,t}\), updated
+tracks \(\mathcal{X}_{b,t}\)
+\STATE Construct camera BEV features using calibrated BS/SN camera views.
+\STATE Encode the BS-side ISAC point cloud in the same BEV coordinate frame.
+\STATE Fuse camera and ISAC BEV features to obtain \(\mathbf{F}_{b,t}\).
+\STATE Detect vehicle targets and extract target-level features from
+\(\mathbf{F}_{b,t}\).
+\STATE Predict a per-beam distribution and Top-\(K\) candidate beams for each
+detected target.
+\IF{epoch \(t\) is an initial access or re-association epoch}
+  \STATE Obtain SSB beam power spectra from communication users.
+  \STATE Match detected targets to communication user identities using the
+  association cost.
+  \STATE Initialize or repair tracks with matched target-user pairs.
+\ELSE
+  \STATE Predict existing tracks using the IMM filter.
+  \STATE Associate new BEV detections with predicted tracks.
+  \STATE Update matched tracks and refresh their Top-\(K\) beam sets.
+  \STATE Mark unmatched tracks for prediction-only maintenance, partial beam
+  measurement, or re-association according to confidence rules.
+\ENDIF
+\STATE Pass user identities, track states, and Top-\(K\) beam sets to the
+communication evaluation interface.
+\STATE Compute beam-training overhead, effective SINR, spectral efficiency, and
+overhead-adjusted throughput when channel labels are available.
+\end{algorithmic}
+\end{algorithm}
+
+The main online cost consists of five parts. First, BEV feature construction and
+fusion dominate the sensing front end and depend on the number of camera views,
+the point-cloud size, and the BEV grid resolution. Second, the detection and
+beam heads add target-level inference cost; the beam head scales with the number
+of detected targets and the codebook size \(M_b^{\mathrm{beam}}\). Third, initial target-user
+association requires matching \(N_{b,t}\) detected targets to \(U_{b,t}\)
+communication users. If a standard bipartite assignment solver is used after
+the association cost is fixed, this step scales cubically in the larger side of
+the matching problem. Fourth, IMM tracking scales with the number of active
+tracks and the number of motion modes. Finally, the communication evaluation
+cost depends on the number of associated users and the matrix operations used by
+the ZF abstraction.
+
+This complexity discussion is intentionally qualitative at the current stage.
+TODO[needs-evidence]: Add measured runtime, memory usage, and implementation
+details after the model architecture, simulator, and evaluation scripts are
+fixed.

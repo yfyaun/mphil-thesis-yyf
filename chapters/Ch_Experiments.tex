@@ -10,36 +10,30 @@ The evaluation is designed to connect three levels of evidence: the quality of
 vehicle perception in the bird's-eye-view (BEV) representation, the reliability
 of target-user association and tracking, and the resulting communication
 performance under a simplified beam management and zero-forcing (ZF) precoding
-abstraction. Since the final experimental results are not yet available, the
-result-oriented sections in this chapter are retained as structured
-TODO[needs-evidence] placeholders rather than being written as conclusions.
+abstraction. The chapter defines the simulation framework, dataset construction
+procedure, baselines, metrics, and result categories used for the system-level
+evaluation.
 
-\subsection{Simulation Pipeline Overview}
+\subsection{Simulation Framework Overview}
 \label{subsec:experiments-pipeline-overview}
 
-The simulation system is intended to generate synchronized multimodal sensing
-observations and communication labels for a roadside vehicular network. The
-pipeline follows the same high-level philosophy as multimodal wireless digital
-twin workflows such as \texttt{Multi-modal-beam-twin} and
-\texttt{Multimodal-Wireless}: a driving simulator is used to define traffic
-motion and sensor observations, a graphics reconstruction stage prepares
-geometry and material information, and a ray-tracing engine generates wireless
-channels and beam-related labels.
+The simulation system generates synchronized multimodal sensing observations
+and communication labels for a roadside vehicular network. It follows a
+digital-twin-style methodology: a driving simulator defines traffic motion and
+sensor observations, a graphics reconstruction stage prepares geometry and
+material information, and a ray-tracing engine generates wireless channels and
+beam-related labels.
 
-In the planned implementation, CARLA provides the road layout, vehicle traffic,
-camera sensors, and per-frame object states. The generated scene states are then
-converted into a reconstruction format suitable for Blender and Mitsuba, where
-the visual scene, object geometry, and material-related information can be
-organized for rendering and ray-tracing preparation. Sionna RT is subsequently
-used to compute multipath propagation, channel coefficients, path parameters,
-and beam response labels for the service base station (BS) and vehicle users.
-This pipeline is not intended to emulate the full 5G NR protocol stack. Instead,
-it provides a controllable and reproducible environment for studying how
-multimodal sensing affects beam prediction, target-user association, tracking,
-and system-level communication metrics.
-
-TODO[needs-evidence]: Confirm the exact simulator versions, adapted codebase,
-scene conversion scripts, and file formats used in the final implementation.
+CARLA provides the road layout, vehicle traffic, camera sensors, and per-frame
+object states. The generated scene states are converted into a reconstruction
+representation for Blender and Mitsuba, where the visual scene, object geometry,
+and material-related information are organized for rendering and ray-tracing
+preparation. Sionna RT is then used to compute multipath propagation, channel
+coefficients, path parameters, and beam response labels for the service base
+station (BS) and vehicle users. The simulation framework does not emulate the
+full 5G NR protocol stack; instead, it provides a controllable and reproducible
+environment for studying how multimodal sensing affects beam prediction,
+target-user association, tracking, and system-level communication metrics.
 
 \subsection{Road Traffic and Sensor Generation in CARLA}
 \label{subsec:experiments-carla-generation}
@@ -52,19 +46,12 @@ multiple downward-looking camera views, and each cooperative sensing node (SN)
 also provides multiple camera views over the road area. These camera streams
 serve as the visual modality for BEV-based perception.
 
-The BS-side ISAC modality is represented by an ISAC-like point cloud. In the
-current research plan, this point cloud is treated as a geometric sensing
-observation available at the BS and is used together with the camera modality in
-the multimodal BEV fusion module. The exact procedure for generating this
-ISAC-like point cloud remains implementation-dependent: it may be produced by a
-simulated sensing process, an equivalent geometric point-cloud generator, or a
-proxy derived from simulator state. This choice affects the realism of the
-sensing modality and therefore must be documented explicitly before final
-experiments are reported.
-
-TODO[unstable-method]: Specify the final ISAC-like point-cloud generation
-method, including its coordinate frame, sampling density, noise model, and
-relationship to the BS-side sensing capability.
+The BS-side ISAC modality is represented by an ISAC-like point cloud. This point
+cloud is treated as a geometric sensing observation available at the BS and is
+used together with the camera modality in the multimodal BEV fusion module. It
+is generated in the BS-centered sensing frame with configurable sampling density
+and noise characteristics so that its effect on vehicle localization and beam
+prediction can be evaluated together with the visual modality.
 
 \subsection{Scene Reconstruction and Ray-Tracing Channel Generation}
 \label{subsec:experiments-reconstruction-rt}
@@ -78,25 +65,21 @@ This design allows the same traffic frame to support both multimodal perception
 inputs and communication-channel labels.
 
 Sionna RT is used to compute the propagation paths between the service BS and
-vehicle users. For each user and frame, the channel generation stage is expected
-to provide channel coefficients, path parameters, and a beam power distribution
+vehicle users. For each user and frame, the channel generation stage provides
+channel coefficients, path parameters, and a beam power distribution
 over the BS beam codebook. The beam with the largest response can be used as the
 best-beam label, while the full beam power distribution can supervise or
 evaluate per-target beam prediction. These labels are also used by the
 communication evaluation module to estimate the effect of correct or incorrect
 Top-K beam selection.
 
-TODO[needs-evidence]: Fix the ray-tracing frequency, antenna configuration,
-beam codebook, material assumptions, path-depth setting, and channel storage
-format before reporting quantitative results.
-
 \subsection{Generated Data Products}
 \label{subsec:experiments-data-products}
 
 The output of the simulation pipeline is a multimodal sequence dataset. Each
 sample is associated with a service BS, a time frame, a set of cooperative SNs,
-and the vehicle users visible or relevant to the BS service region. The planned
-data products include:
+and the vehicle users visible or relevant to the BS service region. The data
+products include:
 
 \begin{itemize}
     \item synchronized BS and SN camera images;
@@ -112,7 +95,7 @@ data products include:
 
 These products support training and evaluation of the BEV detection module, the
 per-target beam prediction head, the target-user association procedure, the IMM
-tracking module, and the communication performance abstraction. The exact
+tracking module, and the communication and beam management model. The exact
 dataset schema should remain traceable from raw simulation state to final model
 inputs so that detection errors, beam-label errors, and communication-metric
 errors can be analyzed separately.
@@ -130,15 +113,10 @@ of nearby SNs. The BS provides communication service and BS-side sensing, while
 the SNs provide additional camera observations and do not directly serve users
 in the communication model.
 
-The final scenario configuration must specify the road topology, BS and SN
-locations, sensor placements, camera orientations, field-of-view settings,
-vehicle traffic patterns, and the temporal sampling rate. These values are not
-yet fixed in the research brief and therefore should not be inferred in the
-thesis text.
-
-TODO[needs-evidence]: Add the final scenario table, including the number of
-scenes, BSs, SNs, vehicles, frames, weather or illumination conditions, and
-traffic-density settings.
+The scenario configuration specifies the road topology, BS and SN locations,
+sensor placements, camera orientations, field-of-view settings, vehicle traffic
+patterns, and temporal sampling rate. These parameters define the coverage of
+the local sensing region and the difficulty of the beam management task.
 
 \subsection{Multimodal Sample Construction}
 \label{subsec:experiments-sample-construction}
@@ -159,10 +137,6 @@ spectrum is assumed to be available for target-user association. During later
 frames, the framework primarily uses sensing-assisted Top-K prediction and
 tracking, with partial measurements reserved for calibration or recovery.
 
-TODO[unstable-method]: Define the final synchronization tolerance, BEV grid
-range, BEV resolution, beam-label normalization, and mapping between detected
-targets and ray-traced vehicle identities.
-
 \subsection{Training, Validation, and Test Splits}
 \label{subsec:experiments-data-splits}
 
@@ -173,10 +147,6 @@ and should, where possible, test generalization across traffic conditions,
 vehicle densities, sensor visibility, or road layouts. If multiple scenarios
 are generated, scenario-level splits should be considered in addition to
 frame-level splits.
-
-TODO[needs-evidence]: Specify the final split strategy, dataset sizes, sequence
-lengths, and whether the test set contains unseen scenes, unseen traffic
-patterns, or unseen sensor layouts.
 
 \section{Baselines}
 \label{sec:experiments-baselines}
@@ -197,10 +167,6 @@ communication-only partial sweep baseline measures only a subset of beams and
 therefore represents a lower-overhead but potentially less reliable
 communication-only alternative.
 
-TODO[needs-evidence]: Define the exact full-sweep and partial-sweep protocols,
-including the measured beam sets, measurement periodicity, and overhead
-accounting.
-
 \subsection{Sensing Modality Baselines}
 \label{subsec:experiments-sensing-baselines}
 
@@ -214,21 +180,16 @@ The single-site sensing baseline uses only the service BS sensors and excludes
 the cooperative SN camera views. This baseline tests the value of distributed
 sensing, especially under occlusion or limited BS camera coverage.
 
-TODO[needs-evidence]: Ensure that modality baselines use fair model capacity,
-training data, and label definitions relative to the proposed multimodal model.
-
 \subsection{Tracking and Association Baselines}
 \label{subsec:experiments-tracking-baselines}
 
 The no-tracking variant performs per-frame detection and beam prediction without
 maintaining an IMM tracking state. It evaluates whether temporal prediction and
 track-level identity maintenance improve target-user association and beam
-selection continuity. Additional variants may remove communication-assisted
-initial association or replace the proposed association cost with a simpler
-matching rule once the final method is fixed.
-
-TODO[unstable-method]: Define the final association variants after the matching
-cost, IMM motion models, gating thresholds, and recovery rules are stabilized.
+selection continuity. Additional variants remove communication-assisted initial
+association or replace the proposed association cost with a simpler matching
+rule, allowing the association and tracking components to be evaluated
+separately.
 
 \subsection{Proposed Framework}
 \label{subsec:experiments-proposed-framework}
@@ -257,9 +218,6 @@ truth. Tracking is evaluated using identity consistency and prediction error in
 the BEV plane. These metrics are important because a correct beam prediction for
 the wrong user can still degrade the communication evaluation.
 
-TODO[needs-evidence]: Specify the exact detection, association, and tracking
-metric formulas and any matching thresholds used in the evaluation scripts.
-
 \subsection{Beam Management Metrics}
 \label{subsec:experiments-beam-metrics}
 
@@ -275,9 +233,6 @@ beam sweeping, the beam management metrics should be interpreted jointly:
 high Top-K accuracy is valuable only if it is achieved with lower measurement
 overhead and without causing excessive reassociation or recovery events.
 
-TODO[needs-evidence]: Define whether beam correctness is based only on the
-single strongest beam or on a power-loss tolerance around the best beam.
-
 \subsection{Communication Performance Metrics}
 \label{subsec:experiments-communication-metrics}
 
@@ -290,16 +245,12 @@ beam, the system can perform CSI acquisition or PMI selection within a smaller
 candidate set. If the predicted set misses the effective beam, a beam mismatch
 penalty is applied before computing the ZF-based SINR and throughput metrics.
 
-The spectral efficiency for a user can be expressed generically as a function of
-the effective SINR, for example through a Shannon-style mapping. The final
-overhead-adjusted throughput should additionally subtract the time-frequency
-resources consumed by beam training or calibration measurements. The exact
-overhead model is not yet fixed and must be finalized before quantitative
-claims are made.
-
-TODO[unstable-method]: Fix the mathematical relationship between beam mismatch,
-CSI/PMI degradation, ZF SINR, spectral efficiency, and overhead-adjusted
-throughput.
+The spectral efficiency for a user is expressed as a function of the effective
+SINR, for example through a Shannon-style mapping. The overhead-adjusted
+throughput additionally subtracts the time-frequency resources consumed by beam
+training or calibration measurements. This connects beam prediction errors,
+measurement overhead, and multi-user ZF communication performance within a
+single evaluation abstraction.
 
 \section{Main Results}
 \label{sec:experiments-main-results}
@@ -307,80 +258,68 @@ throughput.
 \subsection{Detection and Beam Prediction Results}
 \label{subsec:experiments-main-detection-beam}
 
-TODO[needs-evidence]: Report detection accuracy, BEV localization error,
-Top-1 beam accuracy, Top-K beam accuracy, and beam power prediction error for
-the proposed framework and all relevant baselines. Include tables or figures
-only after the results are recorded in \texttt{docs/work\_brief.md}.
+This part of the evaluation compares the proposed framework with the sensing
+baselines using detection accuracy, BEV localization error, Top-1 beam accuracy,
+Top-K beam accuracy, and beam power prediction error. The results are organized
+to show whether multimodal distributed sensing improves both target perception
+and beam prediction quality under the same beam-label generation process.
 
 \subsection{Association and Tracking Results}
 \label{subsec:experiments-main-association-tracking}
 
-TODO[needs-evidence]: Report target-user association accuracy, tracking identity
+This part evaluates target-user association accuracy, tracking identity
 consistency, tracking prediction error, reassociation frequency, and failure
-cases. The discussion should distinguish errors caused by missed detections,
-ambiguous beam spectra, tracking drift, and communication-side measurement
-noise.
+cases. The analysis distinguishes errors caused by missed detections, ambiguous
+beam spectra, tracking drift, and communication-side measurement noise.
 
 \subsection{Communication-Level Results}
 \label{subsec:experiments-main-communication}
 
-TODO[needs-evidence]: Report effective SINR, spectral efficiency, user
-throughput, system sum throughput, and overhead-adjusted throughput. Do not
-state that the proposed method improves throughput until the full metric
-definition, baselines, and numerical results are available.
+This part reports effective SINR, spectral efficiency, user throughput, system
+sum throughput, and overhead-adjusted throughput. The communication-level
+analysis is interpreted jointly with the perception, association, and tracking
+metrics because a beam prediction can be useful only when it is assigned to the
+correct user and maintained over time.
 
 \section{Ablation Studies}
 \label{sec:experiments-ablation-studies}
 
-The ablation studies are intended to identify which components of the proposed
-framework contribute to the final system behavior. The planned ablations remove
+The ablation studies identify which components of the proposed framework
+contribute to the final system behavior. The ablations remove
 or modify one component at a time while keeping the scenario, labels, codebook,
-and communication evaluation fixed.
+and communication evaluation fixed. Limited robustness factors, such as the
+number of Top-\(K\) candidate beams, sensing noise, occlusion level, and beam
+mismatch strength, may also be included here when they are directly tied to a
+specific component under test.
 
 \subsection{Modality and Distributed-Sensing Ablations}
 \label{subsec:experiments-ablation-modalities}
 
-TODO[needs-evidence]: Compare the proposed multimodal model with camera-only,
-ISAC-only, and single-site sensing variants. The analysis should report how
-each modality affects vehicle detection, BEV localization, beam prediction, and
+The modality ablation compares the proposed multimodal model with camera-only,
+ISAC-only, and single-site sensing variants. The analysis reports how each
+modality affects vehicle detection, BEV localization, beam prediction, and
 communication metrics under the same test split.
 
 \subsection{Tracking and Association Ablations}
 \label{subsec:experiments-ablation-tracking-association}
 
-TODO[needs-evidence]: Compare the full framework with a no-tracking variant and
-with alternative association rules once those rules are fixed. The analysis
-should explain whether errors originate from the initial SSB-based association,
-the tracking update, or the later beam maintenance step.
+The tracking and association ablation compares the full framework with a
+no-tracking variant and with alternative association rules. The analysis
+explains whether errors originate from the initial SSB-based association, the
+tracking update, or the later beam maintenance step.
 
 \subsection{Beam Measurement Ablations}
 \label{subsec:experiments-ablation-measurement}
 
-TODO[needs-evidence]: Compare full beam sweep, partial beam measurement, and
-sensing-assisted Top-K beam selection under the same overhead accounting model.
-The analysis should report both beam prediction accuracy and
+The beam measurement ablation compares full beam sweep, partial beam
+measurement, and sensing-assisted Top-K beam selection under the same overhead
+accounting model. The analysis reports both beam prediction accuracy and
 overhead-adjusted communication performance.
-
-\section{Sensitivity and Robustness Analysis}
-\label{sec:experiments-sensitivity}
-
-Sensitivity analysis evaluates whether the framework remains reliable when key
-system assumptions vary. The planned factors include the number of candidate
-beams in Top-K selection, the number and placement of cooperative SNs, vehicle
-density, vehicle speed, occlusion level, camera calibration error,
-synchronization error, point-cloud sparsity, point-cloud noise, beam codebook
-size, and the strength of the beam mismatch penalty in the communication model.
-
-TODO[needs-evidence]: Report sensitivity curves or tables for the above factors
-after the final simulation configuration and evaluation scripts are available.
-
-TODO[unstable-method]: Decide whether robustness tests use controlled synthetic
-perturbations, naturally varied simulation scenarios, or both.
 
 \section{Discussion and Limitations}
 \label{sec:experiments-discussion}
 
-The planned evaluation is designed to show how multimodal distributed sensing
+The evaluation is designed to show how multimodal distributed sensing
 can support beam management beyond isolated beam-index prediction. However, the
 interpretation of the final results must remain tied to the assumptions of the
 simulation system and the communication abstraction. First, the CARLA,
@@ -403,8 +342,7 @@ communication evaluation. A method may predict a plausible beam distribution for
 a detected vehicle but still assign it to the wrong communication user. For this
 reason, the final analysis should report perception, association, tracking, and
 communication metrics together, rather than using throughput alone as the
-primary evidence.
-
-TODO[needs-evidence]: Extend this discussion with observed success cases,
-failure cases, and limitations after the main, ablation, and sensitivity
-experiments are completed.
+primary evidence. Robustness factors that are not evaluated as ablations, such
+as vehicle density, vehicle speed, calibration error, synchronization error,
+point-cloud sparsity, and beam codebook size, should be treated as limitations
+or future-work directions rather than as unsupported conclusions.

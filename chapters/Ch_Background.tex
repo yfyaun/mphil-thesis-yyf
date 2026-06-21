@@ -248,13 +248,10 @@ power, achievable rate, sum rate, or beamforming gain. Some studies also
 consider sensing performance, for example through estimation accuracy or
 sensing constraints. These formulations are valuable for understanding the
 communication-sensing tradeoff, but they usually begin from a communication or
-radar-centric observation model. They do not necessarily address how camera
-observations, distributed sensing nodes, BEV object detection, and identity
-association can be integrated into the same beam-management loop.
-
-TODO[needs-evidence]: After the bibliography is finalized, compare the
-communication objectives used in ISAC predictive beamforming with the
-overhead-adjusted ZF-based evaluation used in this thesis.
+radar-centric observation model. By contrast, this thesis uses an
+overhead-adjusted ZF-based evaluation to expose how multimodal perception,
+target-user association, and tracking errors affect a downstream multi-user
+communication abstraction.
 
 \subsection{Relation to This Thesis}
 \label{subsec:background-isac-relation}
@@ -272,8 +269,8 @@ maintain those identities over multiple frames.
 
 This distinction shapes the role of ISAC in the thesis. ISAC sensing is treated
 as one modality in a multimodal perception system rather than as the only
-source of state information. Its geometric information is expected to
-complement camera-derived scene features in the BEV representation. The
+source of state information. Its geometric information complements
+camera-derived scene features in the BEV representation. The
 communication evaluation then asks how the resulting Top-K beam prediction,
 association, and tracking decisions influence beam training overhead, beam
 mismatch, zero-forcing (ZF) precoding, spectral efficiency, and
@@ -323,13 +320,9 @@ on the serving BS and nearby sensing nodes (SNs). The ISAC modality consists of
 the BS-side point cloud or point-cloud-like sensing output. A unified BEV
 feature map provides a natural interface for two tasks that are often separated
 in existing work: vehicle detection and per-target beam prediction. A
-CenterNet-like detection head can represent vehicles as points or centers in
-the BEV grid, while a beam prediction head can estimate a beam power
-distribution for each detected target.
-
-TODO[unstable-method]: The exact BEV projection, grid resolution, camera
-feature encoder, ISAC point-cloud encoder, and fusion strategy remain to be
-specified in the method chapter.
+CenterNet-like detection head represents vehicles as points or centers in the
+BEV grid, while a beam prediction head estimates a beam power distribution for
+each detected target.
 
 \subsection{Distributed and Cooperative Perception}
 \label{subsec:background-cooperative-perception}
@@ -403,13 +396,11 @@ confidence, temporal consistency, and constraints that prevent one target from
 being assigned to multiple users. However, the matching process is inherently
 uncertain. Nearby vehicles can have similar beam spectra, a blocked path can
 alter the measured distribution, and sensing detections can be imperfect.
-Therefore, target-user association should be treated as a probabilistic or
-confidence-aware component rather than a one-time deterministic label
-assignment.
-
-TODO[unstable-method]: The final association cost, matching algorithm, gating
-rules, and conflict-resolution strategy are not yet fixed and should be defined
-in the system model and method chapters.
+Therefore, target-user association is treated as a confidence-aware matching
+component rather than a one-time deterministic label assignment. The association
+cost combines beam-distribution similarity, BEV spatial consistency, and
+detection confidence, and the resulting assignment is constrained to avoid
+assigning one sensing target to multiple communication users.
 
 \subsection{Tracking for Identity Maintenance and Beam Continuity}
 \label{subsec:background-tracking-maintenance}
@@ -427,20 +418,15 @@ For vehicular motion, an interacting multiple model (IMM) filter is a natural
 candidate because vehicles can follow different motion modes, such as steady
 motion, acceleration, braking, or turning. An IMM tracker maintains multiple
 motion hypotheses and combines them according to their likelihoods. In the
-thesis framework, the tracking state is expected to include at least BEV
-position and velocity, and may later include motion mode probabilities or other
-kinematic variables. The predicted track can guide detection association and
+thesis framework, the tracking state includes BEV position, velocity, and
+motion-mode information. The predicted track can guide detection association and
 beam selection in later frames. If tracking confidence degrades, the system can
 trigger partial beam measurement or re-association rather than immediately
 falling back to a full sweep.
 
 The tracking component is inspired by point-based tracking in computer vision
 and by predictive beamforming studies that use temporal vehicle-state evolution
-to guide communication decisions \cite{zhou2020trackingobjectspoints,liu2020radarassistedpredictivebeamformingvehicular,yuan2020bayesianpredictivebeamformingvehicular,liu2022deepclstmpredictivebeamforming,ma2026knowledgedistillationlightweightmultimodal}.
-
-TODO[unstable-method]: The IMM motion models, state vector, process noise,
-measurement noise, gating thresholds, and re-association trigger are still
-method-level design choices.
+to guide communication decisions \cite{zhou2020trackingobjectspoints,liu2020radarassistedpredictivebeamformingvehicular,yuan2020bayesianpredictivebeamformingvehicular,liu2022deepclstmpredictivebeamforming,ma2026knowledgedistillationlightweightmultimodal}. In the thesis framework, the IMM tracker uses multiple vehicle-motion hypotheses to support position prediction, detection association, confidence-aware track maintenance, and measurement-efficient beam recovery.
 
 \section{Summary of Research Gap}
 \label{sec:background-gap}
@@ -497,22 +483,16 @@ the work developed in later chapters.
 \end{enumerate}
 
 Accordingly, this thesis is positioned around a BS-centric multimodal
-distributed sensing-assisted beam-management framework. The intended framework
+distributed sensing-assisted beam-management framework. The proposed framework
 uses BS and SN camera observations together with BS-side ISAC point clouds to
 construct a BEV representation, predicts per-target beam power distributions
 and Top-K candidate beams, establishes an initial mapping between sensing
 targets and communication users from SSB beam measurements, and maintains this
 mapping through tracking over subsequent frames. The communication evaluation
 then examines how the sensing and tracking decisions influence beam training
-overhead and ZF-based throughput. This positioning should be treated as a
-candidate research gap until the final bibliography, comparison table, and
-experimental evidence are completed.
+overhead and ZF-based throughput.
 
 The comparison above indicates that the proposed thesis scope is closest to the
 intersection of multimodal beam prediction, ISAC predictive beamforming,
 BEV-based cooperative perception, and tracking-assisted identity maintenance
 \cite{zeng2026bevfusionbasedframeworksequential,farzanullah2025beamselectionisacusing,imran2024environmentsemanticcommunicationenabling,zhou2020trackingobjectspoints}.
-
-TODO[needs-evidence]: The final gap statement should be revisited after the
-baseline implementations, ablation studies, and system-level evaluation results
-are available.

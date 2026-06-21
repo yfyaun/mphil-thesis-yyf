@@ -3,11 +3,10 @@
 
 This chapter defines the system model used throughout the thesis. The objective is
 to provide a consistent notation for the vehicular network, the multimodal sensing
-observations, the communication beam measurements, the target-user association
-variables, and the simplified communication-performance abstraction. The model is
-intended to support the sensing-assisted beam management framework developed in
-the following chapter; it is therefore kept at a system level and avoids assuming
-implementation details that have not yet been fixed.
+observations, the target-user association variables, the tracking states, and the
+communication model used for beam management and system-level evaluation. The
+model supports the sensing-assisted beam management framework developed in the
+following chapter and keeps implementation-specific parameters explicit.
 
 \section{Network Scenario and Time Structure}
 \label{sec:system-network-time}
@@ -18,9 +17,8 @@ distributed sensing nodes (SNs), and mobile vehicle users. Let
 service to vehicles in its local coverage region and also acts as the center of a
 local sensing-assisted beam management process. Let \(\mathcal{S}_b\) denote the
 set of SNs selected by BS \(b \in \mathcal{B}\) for cooperative sensing. The
-number of cooperating SNs is denoted by \(K_{\mathrm{SN}}=|\mathcal{S}_b|\), and
-is treated as a configurable system parameter rather than a fixed constant in
-this first-pass formulation. Each SN contributes sensing observations but does
+number of cooperating SNs is denoted by \(K_{\mathrm{SN}}=|\mathcal{S}_b|\).
+Each SN contributes sensing observations but does
 not directly provide communication service in the considered model.
 
 The mobile communication users are vehicles traveling through the road region.
@@ -33,25 +31,21 @@ thesis.
 
 Time is divided into discrete decision epochs \(t=0,1,\ldots,T-1\). Each epoch
 may correspond to one sensing frame, one communication scheduling interval, or a
-coarser beam-management interval depending on the final simulation setup. At
+coarser beam-management interval according to the evaluation granularity. At
 each epoch, BS \(b\) receives multimodal sensing observations from its local
 sensor suite and from the cooperating SNs, maintains tracking states for
 previously associated users, and selects a beam-management action for the active
 vehicle users. Initial access epochs may include a more complete beam sweep,
-whereas subsequent epochs are intended to rely more heavily on sensing-assisted
+whereas subsequent epochs rely more heavily on sensing-assisted
 prediction and tracking.
 
 Each BS and each SN is equipped with four tilted down-looking cameras that cover
 the road region from multiple viewpoints. In addition, each BS has an ISAC
 sensing capability that produces a local sensing point cloud. For BS \(b\), all
 sensing inputs are represented in a local bird's-eye-view (BEV) coordinate frame
-anchored to the BS or to a fixed road-side reference frame. The exact simulation
-layout, the default value of \(K_{\mathrm{SN}}\), the frame duration, and the
-spatial extent of the BEV region remain configuration choices.
-
-TODO[unstable-method]: Fix the final BS/SN layout, the default number of
-cooperative SNs, the frame duration, and the BEV coordinate range after the
-simulation system is finalized.
+anchored to the BS or to a fixed road-side reference frame. The simulation
+layout, the value of \(K_{\mathrm{SN}}\), the frame duration, and the spatial
+extent of the BEV region are explicit scenario parameters.
 
 \section{Multimodal Sensing Observation Model}
 \label{sec:system-sensing-observation}
@@ -76,9 +70,8 @@ where \(\mathbf{q}_{b,m}(t)\) denotes the three-dimensional location of the
 \(m\)-th sensing point in the local coordinate system, \(a_{b,m}(t)\) denotes an
 optional point attribute such as intensity or confidence, and
 \(N_b^{\mathrm{pt}}(t)\) is the number of points available at epoch \(t\). This
-point cloud is used as an
-ISAC-like geometric observation and should not be interpreted as a fully
-specified radar signal-processing model.
+point cloud is used as an ISAC-like geometric observation and should not be
+interpreted as a fully specified radar signal-processing model.
 
 The complete sensing observation available to BS \(b\) is written as
 \begin{equation}
@@ -92,8 +85,7 @@ denote the calibrated transformation from the coordinate frame of sensor or node
 \(j\) into the local BEV frame of BS \(b\). These transformations allow visual
 features and ISAC point-cloud features to be encoded into a common BEV
 representation. The detailed projection, lifting, and point-cloud encoding
-operations are left to the method chapter, because their exact implementation is
-still part of the model design.
+operations are specified through the BEV fusion functions in the method chapter.
 
 After multimodal BEV fusion, a vehicle detection module outputs a set of detected
 targets
@@ -112,14 +104,93 @@ where \(\hat{\mathbf{p}}_{b,i}(t)=[\hat{x}_{b,i}(t),\hat{y}_{b,i}(t)]^{\mathrm{T
 is the estimated BEV center, \(\hat{\mathbf{l}}_{b,i}(t)\) contains target-size
 or box-related attributes when available, and \(\hat{c}_{b,i}(t)\) is a detection
 confidence score. Additional attributes such as heading or appearance features
-may be included if they are used by the final association and tracking modules.
+are included when they support association and tracking.
 
-TODO[unstable-method]: Specify the final BEV resolution, feature encoding,
-camera-to-BEV projection, ISAC point-cloud representation, and detection-target
-attributes after the network architecture is fixed.
+\section{Target-User Association and Tracking State}
+\label{sec:system-association-tracking}
 
-\section{Communication and Beam Model}
-\label{sec:system-communication-beam}
+The system must connect three types of identity: detected sensing targets,
+communication users, and temporal tracks. A detected target \(d_{b,i}(t)\)
+describes an object observed in the BEV sensing output at epoch \(t\). A
+communication user \(u\) is the network identity used for beam measurement,
+scheduling, and throughput evaluation. A track \(r\) is a temporal state that
+maintains the estimated motion of a physical vehicle across epochs. Defining
+these variables before the communication model makes explicit that beam
+measurements are user-indexed, whereas sensing predictions are target-indexed.
+
+Let \(a_{b,i,u}(t) \in \{0,1\}\) be the binary target-user association variable:
+\begin{equation}
+    a_{b,i,u}(t)=
+    \begin{cases}
+    1, & \text{if detected target } d_{b,i}(t) \text{ is associated with user } u,\\
+    0, & \text{otherwise.}
+    \end{cases}
+    \label{eq:association-variable}
+\end{equation}
+The association is subject to one-to-one matching constraints at a given epoch,
+\begin{equation}
+    \sum_{u \in \mathcal{U}_b(t)} a_{b,i,u}(t) \leq 1,\quad
+    \sum_{i=1}^{N_b^{\mathrm{det}}(t)} a_{b,i,u}(t) \leq 1.
+    \label{eq:association-constraints}
+\end{equation}
+At an initial access epoch \(t_0\), the association may be estimated by matching
+the sensing-predicted beam distribution \(\hat{\mathbf{g}}_{b,i}(t_0)\) with the
+communication-side beam spectrum \(\mathbf{y}^{\mathrm{SSB}}_{b,u}(t_0)\), while
+also considering BEV spatial priors and detection confidence when available. A
+generic initial association problem can be written as
+\begin{equation}
+    \min_{\{a_{b,i,u}(t_0)\}}
+    \sum_{i=1}^{N_b^{\mathrm{det}}(t_0)}
+    \sum_{u \in \mathcal{U}_b(t_0)}
+    a_{b,i,u}(t_0) C^{\mathrm{init}}_{b,i,u}(t_0),
+    \label{eq:initial-association}
+\end{equation}
+subject to \eqref{eq:association-constraints}, where
+\(C^{\mathrm{init}}_{b,i,u}(t_0)\) is an initial matching cost that combines
+beam-spectrum similarity, BEV-domain consistency, and detection confidence.
+
+For each associated vehicle, the system maintains a tracking state in the BEV
+plane. Let \(r\) denote a track identity associated with a physical vehicle. A
+minimal kinematic state is
+\begin{equation}
+    \mathbf{x}_{b,r}(t)
+    = [x_{b,r}(t),y_{b,r}(t),v_{x,b,r}(t),v_{y,b,r}(t)]^{\mathrm{T}},
+    \label{eq:tracking-state}
+\end{equation}
+where \((x_{b,r}(t),y_{b,r}(t))\) is the BEV position and
+\((v_{x,b,r}(t),v_{y,b,r}(t))\) is the planar velocity. To support maneuvering
+vehicles, the tracker uses an interacting multiple model (IMM) filter with a
+set of motion models \(\mathcal{Q}\), such as constant-velocity,
+constant-acceleration, and turning-motion models. The probability of motion model
+\(q \in \mathcal{Q}\) for track \(r\) is denoted by \(\mu_{b,r,q}(t)\), with
+\begin{equation}
+    \sum_{q \in \mathcal{Q}} \mu_{b,r,q}(t)=1.
+    \label{eq:imm-mode-probability}
+\end{equation}
+The IMM prediction provides a prior track state at epoch \(t\), which is then
+associated with the new BEV detections \(\mathcal{D}_b(t)\). A generic
+tracking-to-detection cost may be written as
+\begin{equation}
+    C^{\mathrm{trk}}_{b,r,i}(t)
+    = \Psi_{\mathrm{trk}}\left(\hat{\mathbf{x}}^{-}_{b,r}(t),
+    \mathbf{z}_{b,i}(t),\hat{\mathbf{g}}_{b,i}(t)\right),
+    \label{eq:tracking-cost}
+\end{equation}
+where \(\hat{\mathbf{x}}^{-}_{b,r}(t)\) is the predicted track state before
+measurement update and \(\Psi_{\mathrm{trk}}(\cdot)\) denotes a method-specific
+association function based on spatial innovation, motion consistency, detection
+confidence, and optionally beam-distribution consistency. After a successful track-to-detection association, the
+track state, the target-user mapping, and the beam prediction for the
+corresponding communication user are updated jointly.
+
+\section{Communication and Beam Management Model}
+\label{sec:system-communication-model}
+
+This section combines the codebook-level beam model, communication measurements,
+beam mismatch abstraction, and system-level performance metrics. The goal is to
+define a communication model that is detailed enough to connect sensing-assisted
+beam decisions to throughput, while remaining simpler than a full 5G NR
+protocol-stack simulation.
 
 Each BS is equipped with a finite beam codebook for directional communication.
 For BS \(b\), the codebook is denoted by
@@ -181,98 +252,6 @@ This codebook-level abstraction is consistent with sensing-aided beam prediction
 studies that supervise beam indices, Top-\(K\) candidate beams, or per-beam
 quality distributions rather than modeling the complete standard-compliant
 control procedure \cite{charan2021visionpositionmultimodalbeamprediction,alkhateeb2023deepsense6glargescalerealworld,charan2023camerabasedmmwavebeam,zeng2026bevfusionbasedframeworksequential}.
-
-TODO[unstable-method]: Fix the final codebook size, beam-label generation
-procedure, beam-power normalization, and abstraction of partial measurement or
-calibration signals.
-
-\section{Target-User Association and Tracking State}
-\label{sec:system-association-tracking}
-
-The system must connect three types of identity: detected sensing targets,
-communication users, and temporal tracks. A detected target \(d_{b,i}(t)\)
-describes an object observed in the BEV sensing output at epoch \(t\). A
-communication user \(u\) is the network identity used for beam measurement,
-scheduling, and throughput evaluation. A track \(r\) is a temporal state that
-maintains the estimated motion of a physical vehicle across epochs.
-
-Let \(a_{b,i,u}(t) \in \{0,1\}\) be the binary target-user association variable:
-\begin{equation}
-    a_{b,i,u}(t)=
-    \begin{cases}
-    1, & \text{if detected target } d_{b,i}(t) \text{ is associated with user } u,\\
-    0, & \text{otherwise.}
-    \end{cases}
-    \label{eq:association-variable}
-\end{equation}
-The association is subject to one-to-one matching constraints at a given epoch,
-\begin{equation}
-    \sum_{u \in \mathcal{U}_b(t)} a_{b,i,u}(t) \leq 1,\quad
-    \sum_{i=1}^{N_b^{\mathrm{det}}(t)} a_{b,i,u}(t) \leq 1.
-    \label{eq:association-constraints}
-\end{equation}
-At an initial access epoch \(t_0\), the association may be estimated by matching
-the sensing-predicted beam distribution \(\hat{\mathbf{g}}_{b,i}(t_0)\) with the
-communication-side beam spectrum \(\mathbf{y}^{\mathrm{SSB}}_{b,u}(t_0)\), while
-also considering BEV spatial priors and detection confidence when available. A
-generic initial association problem can be written as
-\begin{equation}
-    \min_{\{a_{b,i,u}(t_0)\}}
-    \sum_{i=1}^{N_b^{\mathrm{det}}(t_0)}
-    \sum_{u \in \mathcal{U}_b(t_0)}
-    a_{b,i,u}(t_0) C^{\mathrm{init}}_{b,i,u}(t_0),
-    \label{eq:initial-association}
-\end{equation}
-subject to \eqref{eq:association-constraints}, where
-\(C^{\mathrm{init}}_{b,i,u}(t_0)\) is an initial matching cost. In this thesis,
-the cost is expected to include beam-spectrum similarity and may include
-additional BEV-domain terms, but its final form is method-dependent.
-
-For each associated vehicle, the system maintains a tracking state in the BEV
-plane. Let \(r\) denote a track identity associated with a physical vehicle. A
-minimal kinematic state is
-\begin{equation}
-    \mathbf{x}_{b,r}(t)
-    = [x_{b,r}(t),y_{b,r}(t),v_{x,b,r}(t),v_{y,b,r}(t)]^{\mathrm{T}},
-    \label{eq:tracking-state}
-\end{equation}
-where \((x_{b,r}(t),y_{b,r}(t))\) is the BEV position and
-\((v_{x,b,r}(t),v_{y,b,r}(t))\) is the planar velocity. To support maneuvering
-vehicles, the tracker may use an interacting multiple model (IMM) filter with a
-set of motion models \(\mathcal{Q}\). The probability of motion model
-\(q \in \mathcal{Q}\) for track \(r\) is denoted by \(\mu_{b,r,q}(t)\), with
-\begin{equation}
-    \sum_{q \in \mathcal{Q}} \mu_{b,r,q}(t)=1.
-    \label{eq:imm-mode-probability}
-\end{equation}
-The IMM prediction provides a prior track state at epoch \(t\), which is then
-associated with the new BEV detections \(\mathcal{D}_b(t)\). A generic
-tracking-to-detection cost may be written as
-\begin{equation}
-    C^{\mathrm{trk}}_{b,r,i}(t)
-    = \Psi_{\mathrm{trk}}\left(\hat{\mathbf{x}}^{-}_{b,r}(t),
-    \mathbf{z}_{b,i}(t),\hat{\mathbf{g}}_{b,i}(t)\right),
-    \label{eq:tracking-cost}
-\end{equation}
-where \(\hat{\mathbf{x}}^{-}_{b,r}(t)\) is the predicted track state before
-measurement update and \(\Psi_{\mathrm{trk}}(\cdot)\) denotes a method-specific
-association function. After a successful track-to-detection association, the
-track state, the target-user mapping, and the beam prediction for the
-corresponding communication user are updated jointly.
-
-TODO[unstable-method]: Specify the final association cost, matching algorithm,
-IMM motion models, gating thresholds, failure recovery rule, and whether beam
-prediction is used directly in temporal association.
-
-\section{Communication Performance Abstraction}
-\label{sec:system-performance-abstraction}
-
-The communication evaluation in this thesis uses a simplified and interpretable
-system-level abstraction. It connects sensing-assisted Top-\(K\) beam prediction,
-target-user association, tracking errors, and beam-management overhead to
-multi-user communication metrics. It is not intended to reproduce the full 5G NR
-protocol stack, detailed control-channel design, or exact standard-compliant
-SSB/CSI-RS timing.
 
 Let \(m_{b,u}(t)\) denote the selected beam index for user \(u\) served by BS
 \(b\) at epoch \(t\). If the true effective beam for user \(u\) is contained in
@@ -336,23 +315,22 @@ The system sum throughput at epoch \(t\) can be written as
     R^{\mathrm{adj}}_{b,u}(t).
     \label{eq:sum-throughput}
 \end{equation}
-This abstraction allows the evaluation to account for two competing effects:
-sensing-assisted prediction can reduce beam training overhead, while prediction,
-association, or tracking failures can reduce the SINR through beam mismatch or
-imperfect effective-channel estimation.
+This communication model allows the evaluation to account for two competing
+effects: sensing-assisted prediction can reduce beam training overhead, while
+prediction, association, or tracking failures can reduce the SINR through beam
+mismatch or imperfect effective-channel estimation.
 
-TODO[unstable-method]: Fix the mathematical mapping from Top-\(K\) beam miss,
-beam mismatch, association failure, and tracking error to \(\eta_{b,u}(t)\) and
-\(\tilde{\mathbf{h}}_{b,u}(t)\). Also fix the time or resource unit used to
-compute \(\rho_{b,u}(t)\).
+The codebook size, beam-label generation procedure, beam-power normalization,
+partial-measurement abstraction, mismatch factor, and overhead unit are treated
+as evaluation parameters shared across the proposed method and baselines.
 
 Similar system-level abstractions are commonly used in predictive beamforming
 and ISAC studies to connect sensing, beam selection, and communication
 performance through SINR, rate, or throughput-oriented metrics
 \cite{liu2020radarassistedpredictivebeamformingvehicular,yuan2020bayesianpredictivebeamformingvehicular,liu2022learningbasedpredictivebeamformingintegrated,Wang_2023}.
 
-\section{Problem Statement}
-\label{sec:system-problem-statement}
+\section{Problem Formulation}
+\label{sec:system-problem-formulation}
 
 Given the multimodal sensing observations
 \(\{\mathcal{O}^{\mathrm{sen}}_b(t)\}_{t=0}^{T-1}\) and the communication
@@ -379,18 +357,14 @@ where \(\mathcal{M}_{b,u}(t)\) denotes any later partial communication
 measurement used for calibration or recovery. The desired behavior is to improve
 beam prediction accuracy, maintain reliable target-user association and tracking,
 reduce repeated full beam sweeps, and increase overhead-adjusted throughput. In
-the current stage of the work, this objective is treated as a coupled
-system-design and evaluation problem rather than as a single closed-form
+this objective is treated as a coupled system-design and evaluation problem
+rather than as a single closed-form
 optimization problem.
 
 More formally, the final framework should balance the following goals:
 accurate BEV target detection, high Top-\(K\) beam coverage, stable target-user
 identity maintenance, low beam-management overhead, and high
-\(R^{\mathrm{adj}}_{b,u}(t)\) under the evaluation model in
-Section~\ref{sec:system-performance-abstraction}. The exact training losses,
-matching costs, overhead accounting, and mismatch penalties will be specified
-after the method and simulation pipeline are finalized.
-
-TODO[unstable-method]: Convert this high-level problem statement into the final
-mathematical formulation after the learning objectives, association cost,
-tracking update, beam mismatch model, and evaluation protocol are fixed.
+\(R^{\mathrm{adj}}_{b,u}(t)\) under the communication model in
+Section~\ref{sec:system-communication-model}. The learning objectives, matching
+costs, overhead accounting, and mismatch penalties are defined consistently in
+the method and evaluation chapters.

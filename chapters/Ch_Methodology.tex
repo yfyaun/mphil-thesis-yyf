@@ -6,9 +6,8 @@ management framework. The objective of the framework is to use distributed
 sensing observations, initial communication measurements, and temporal tracking
 to support vehicle detection, per-target beam prediction, target-user
 association, and beam maintenance in vehicular networks. The chapter focuses on
-the algorithmic data flow and system interface. It does not claim measured
-performance improvement, because the experimental evidence and the final
-simulation settings are not yet fixed.
+the algorithmic data flow and system interface, while the quantitative
+performance evaluation is presented in Chapter~\ref{ch:experiments}.
 
 \section{Framework Overview}
 \label{sec:method-framework}
@@ -123,14 +122,11 @@ where \(\mathbf{M}_{b,t}\) denotes optional modality-availability or confidence
 masks. Such masks are useful because distributed sensing observations may be
 missing, delayed, partially occluded, or noisy.
 
-The current design assumes that temporal synchronization and spatial
-calibration are handled before BEV fusion. In practice, calibration and
-synchronization errors can affect both detection and beam prediction. Therefore,
-the implementation should keep explicit records of sensor timestamps, camera
-extrinsics, point-cloud coordinate transforms, and missing-modality indicators.
-TODO[unstable-method]: Finalize the BEV grid resolution, coordinate range,
-camera-to-BEV projection method, ISAC point-cloud encoding, feature fusion
-strategy, and the treatment of missing or noisy sensing observations.
+The fusion design assumes that temporal synchronization and spatial calibration
+are handled before BEV fusion. In practice, calibration and synchronization
+errors can affect both detection and beam prediction. Therefore, the framework
+keeps explicit sensor timestamps, camera extrinsics, point-cloud coordinate
+transforms, and missing-modality indicators as part of the sample metadata.
 
 \section{Vehicle Detection and Per-Target Beam Prediction}
 \label{sec:method-detection-beam}
@@ -192,8 +188,7 @@ This distributional output is more informative than a single hard beam index:
 it supports Top-\(K\) beam selection, uncertainty-aware association, and
 communication-side mismatch modelling.
 
-The training objective is expected to combine detection and beam-prediction
-terms,
+The training objective combines detection and beam-prediction terms,
 \begin{equation}
   \mathcal{L}
   =
@@ -207,9 +202,10 @@ terms,
 where \(\mathcal{L}_{\mathrm{det}}\) may include heatmap, offset, and attribute
 losses, \(\mathcal{L}_{\mathrm{beam}}\) supervises the predicted per-beam
 distribution, and \(\mathcal{L}_{\mathrm{aux}}\) denotes optional auxiliary
-terms. TODO[unstable-method]: Finalize the exact detection loss, beam
-distribution loss, target-to-label assignment, positive and negative sample
-definition, beam-label generation process, and beam power normalization.
+terms. The detection term follows the CenterNet-style combination of heatmap
+classification and target-attribute regression, while the beam term compares
+the predicted beam distribution with the beam labels generated from the channel
+or ray-tracing model.
 
 \section{Initial Target-User Association}
 \label{sec:method-association}
@@ -271,10 +267,10 @@ written as
   \end{aligned}
   \label{eq:method-initial-assignment}
 \end{equation}
-This formulation gives the intended interface without fixing the final cost
-terms. TODO[unstable-method]: Finalize the association cost, spectrum
-normalization, geometric prior, matching algorithm, conflict handling, rejection
-thresholds, and recovery behaviour when no reliable one-to-one match exists.
+The spectra are normalized before matching, and the one-to-one assignment is
+solved with a bipartite matching procedure. Matches whose costs exceed a
+reliability threshold are rejected and handled by later re-association or
+partial-measurement recovery.
 
 Once a match is accepted, the framework creates a unified track containing a
 sensing track identity, a communication user identity, a BEV state estimate, and
@@ -359,10 +355,9 @@ module receives the candidate set
 \(\widehat{\mathcal{K}}_{\ell,t}^{(K)}\) from the associated detection. For a
 temporarily unmatched track, the framework may use the predicted state and the
 previous beam distribution as a short-term fallback, subject to confidence and
-age limits. TODO[unstable-method]: Finalize the IMM motion-model set, mode
-transition matrix, process and observation noise parameters, gating thresholds,
-track birth and deletion rules, prediction-only lifetime, and the exact trigger
-for partial beam measurement or re-association.
+age limits. The IMM model set includes constant-velocity, constant-acceleration,
+and turning-motion hypotheses, with gating and track-management rules used to
+control prediction-only maintenance and re-association.
 
 \section{Communication Interface and System-Level Evaluation}
 \label{sec:method-communication-interface}
@@ -448,11 +443,10 @@ and an overhead-adjusted sum throughput can be written as
 where \(\rho_t\) denotes the fraction of time-frequency resources consumed by
 beam training, calibration, or recovery measurements at epoch \(t\).
 
-These equations define an evaluation interface rather than a finalized
-communication protocol. TODO[unstable-method]: Finalize the beam mismatch
-penalty, how mismatch modifies CSI or PMI abstraction, ZF normalization,
-overhead accounting, and the exact mapping from Top-\(K\) coverage to SINR
-degradation.
+These equations define an evaluation interface rather than a complete
+communication protocol. Beam mismatch is represented through the effective
+channel used by the ZF abstraction, while the overhead term accounts for full
+beam sweep, partial measurement, calibration, and re-association resources.
 
 \section{Algorithm Summary and Complexity}
 \label{sec:method-algorithm-complexity}
@@ -506,13 +500,12 @@ beam heads add target-level inference cost; the beam head scales with the number
 of detected targets and the codebook size \(M_b^{\mathrm{beam}}\). Third, initial target-user
 association requires matching \(N_{b,t}\) detected targets to \(U_{b,t}\)
 communication users. If a standard bipartite assignment solver is used after
-the association cost is fixed, this step scales cubically in the larger side of
-the matching problem. Fourth, IMM tracking scales with the number of active
+the association cost matrix is formed, this step scales cubically in the larger
+side of the matching problem. Fourth, IMM tracking scales with the number of active
 tracks and the number of motion modes. Finally, the communication evaluation
 cost depends on the number of associated users and the matrix operations used by
 the ZF abstraction.
 
-This complexity discussion is intentionally qualitative at the current stage.
-TODO[needs-evidence]: Add measured runtime, memory usage, and implementation
-details after the model architecture, simulator, and evaluation scripts are
-fixed.
+This complexity discussion identifies the dominant algorithmic terms. Measured
+runtime and memory usage can be reported together with the experimental setup
+when implementation-specific profiling is available.

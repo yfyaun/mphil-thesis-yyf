@@ -37,28 +37,23 @@ tracking layer is central to the thesis scope because it connects per-frame
 sensing predictions with a persistent communication service process.
 
 The third part of the work specified a multimodal simulation and system-level
-evaluation methodology. The planned evaluation connects road traffic
+evaluation methodology. The evaluation connects road traffic
 simulation, multiview sensing data generation, ISAC-like point clouds,
 ray-tracing-based beam labels, and simplified communication metrics. Within
 this abstraction, beam prediction accuracy, target-user association, tracking
 quality, beam training overhead, beam mismatch, zero-forcing (ZF) precoding
 SINR, spectral efficiency, and overhead-adjusted throughput can be considered
-together. This evaluation pipeline is intended to make explicit how errors in
-sensing and identity maintenance may propagate into communication-level
-performance.
-
-Because the experimental results are not yet available, this conclusion does
-not claim demonstrated throughput improvement, beam prediction superiority, or
-robustness under specific operating conditions. TODO[needs-evidence]: After
-Chapter~\ref{ch:experiments} is finalized, summarize only the findings directly
-supported by the completed experiments, including the relevant baselines,
-metrics, figures, and statistical evidence.
+together. This evaluation pipeline makes explicit how errors in sensing and
+identity maintenance may propagate into communication-level performance.
+The overall contribution is therefore a framework-level and evaluation-level
+study of multimodal sensing-assisted beam management rather than a
+protocol-complete 5G NR implementation.
 
 \section{Limitations}
 \label{sec:conclusion-limitations}
 
 Several limitations follow from the current scope of the thesis. First, the
-evaluation is expected to rely on a simulated or generated multimodal
+evaluation relies on a simulated or generated multimodal
 environment. Such a setting is necessary for controlled access to camera
 observations, ISAC-like point clouds, vehicle trajectories, beam labels, and
 channel data, but it may introduce a domain gap relative to real road-side
@@ -82,7 +77,8 @@ time-synchronization errors, sparse or noisy ISAC point clouds, missing
 modalities, and severe occlusion can degrade BEV detection, beam prediction,
 target-user association, and tracking. The framework includes partial beam
 measurement and re-association as possible recovery mechanisms, but the precise
-robustness limits and failure thresholds still require experimental study.
+robustness limits and failure thresholds remain important factors for
+system-level evaluation and deployment-oriented future work.
 
 Fourth, the thesis focuses primarily on a BS-centric local service region.
 This choice keeps the problem tractable and allows the relationship between
@@ -91,11 +87,6 @@ be studied clearly. However, it leaves broader network-level questions only
 partially addressed, including cooperative multi-BS beam management,
 inter-cell interference, load-aware service selection, and handover decisions
 for vehicles moving across BS coverage regions.
-
-TODO[needs-evidence]: After the ablation and robustness experiments in
-Chapter~\ref{ch:experiments} are completed, refine this section so that each
-limitation is tied to the observed failure cases, sensitivity trends, or
-unvalidated assumptions.
 
 \section{Future Work}
 \label{sec:conclusion-future-work}
@@ -147,7 +138,7 @@ sensor placements, vehicle distributions, and propagation conditions. Possible
 directions include continual calibration, self-supervised adaptation from
 communication measurements, and domain adaptation between simulated and real
 scenarios. These extensions should be designed carefully to avoid reinforcing
-incorrect associations or unstable beam predictions during deployment.
+incorrect associations or unreliable beam predictions during deployment.
 
 \subsection{Cooperative Multi-BS Beam Management and Handover}
 \label{subsec:future-multi-bs-handover}

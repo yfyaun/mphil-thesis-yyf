@@ -19,6 +19,7 @@
 ### 1.2 场景、数据与协议边界
 
 - 数据来自既有 `mmbeam_town05_3weather_v1` 数据集；本文不生成 CARLA、Sionna RT、图像、点云或无线信道资产。
+- 本文构建的是基于既有多模态数据资产的系统级 Multimodal V2I Simulator；它复现和比较 beam-management policy、测量事件、RZF 与资源记账，而不重新生成原始感知或信道资产。
 - 场景包括 `clear_day`、`rain_fog_day` 和 `night` 三种天气。训练、验证和测试切分由数据集 manifest 显式定义。
 - 单帧感知样本由 `(weather_id, frame_id, bs_id)` 标识，其中 `bs_id` 是 target BS；链路监督额外由 `ue_id` 标识，即 `(weather_id, frame_id, bs_id, ue_id)`。
 - 单帧感知和初始轨迹均在 target-BS-centered Sionna BEV 局部坐标系中定义；该坐标系不是全局坐标系。
@@ -58,10 +59,9 @@
 
 下列为方法与评估层面的拟贡献。只有在冻结 test 的同协议结果支持时，才能将其扩展为性能优越性结论。
 
-1. 构建以 target-BS-centered BEV 为共同表示的多模态、跨感知节点联合学习任务，使车辆检测与 192-way CSI 波束质量预测在同一空间网格中对齐。
-2. 将单一最优 beam 标签扩展为 CSI 功率分布与排序约束的监督，并将输出解释为可导出的波束似然，而非仅作为分类答案。
-3. 提出“未绑定感知输出--多目标轨迹--传统测量辅助 UE--track binding--可靠度门控候选扫描”的接口化框架，避免在感知模型输出中注入 oracle UE identity。
-4. 建立覆盖感知、轨迹、绑定、候选集、物理层和资源记账的分层评价链路，直接检验 beam hint 的质量能否转化为有效速率与导频开销的合理权衡。
+1. **Distributed Multimodal BEV Perception for Joint Vehicle Detection and Beam Prediction：** 构建以 target-BS-centered BEV 为共同表示的分布式多模态联合学习任务，使车辆检测与 192-way CSI 波束质量分布预测在同一空间网格中对齐；以功率分布与排序约束学习可用于候选测量的 beam likelihood，而非仅输出单一最优 beam 标签。
+2. **Target-to-User Association with IMM-Based Tracking：** 提出“未绑定感知输出--目标到用户关联--IMM 多目标跟踪--可靠度门控候选扫描”的 identity-consistent beam-alignment 框架。传统通信测量建立或恢复 target-to-user association，IMM tracking 维持该关联的时序有效性，使 beam hint 服务于正确通信 UE。
+3. **Multimodal V2I Simulator and 5G NR-Oriented Beam-Management Evaluation Framework：** 建立基于既有多模态数据资产的系统级 V2I simulator 与 5G NR-oriented 评价框架，在一致的 SSB/CSI-RS、码本、RZF、Doppler 和资源记账条件下，检验 beam hint 对候选集、有效速率与导频开销权衡的影响。
 
 ## 3. 系统模型与符号约定
 

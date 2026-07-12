@@ -1,340 +1,281 @@
 # 工作说明
 
-最后更新：2026-06-22
-
-论文暂定题目：Multimodal Sensing-Assisted User Association and Tracking in Vehicular Networks
-
-本文档是当前研究工作的事实源，用于记录“目前这项工作到底在做什么”。它可以
-随着实验、算法设计和论文定位的变化持续更新。后续论文正文应依据本文档和
-`docs/thesis_outline.md` 撰写，不应脱离本文档自行扩展未经确认的贡献或结论。
-
-写作控制原则：本文档可以记录内部待确认事项，但 `docs/thesis_outline.md` 应只呈现
-当前采用的确定方案，`chapters/*.tex` 应写成可供审稿的正式英文论文文本。未完成的实验、
-参数细化、实现细节或方法备选项应留在本文档中，不应以 TODO、未完成口吻或代码库说明的
-形式进入正文。
-
-## 1. 研究背景与动机
-
-本论文关注车联网场景下的多模态感知辅助通信问题。车辆用户在道路环境中高速移动，
-其相对于基站的角度、距离和遮挡状态会快速变化，导致毫米波或高频通信中的波束管理、
-用户关联和链路维护面临较大开销与不确定性。传统通信系统主要依赖 beam sweeping、
-SSB/CSI-RS 测量和后续 CSI 反馈进行波束选择与预编码设计，但在高移动性场景下，完整
-beam sweep 会消耗较多时频资源，且测量结果可能由于车辆运动、遮挡和环境变化而迅速失效。
-
-道路侧基础设施通常具备较强的环境感知能力。例如，BS 可以配置多视角摄像头并通过
-ISAC 双功能波形获得感知点云，分布式 sensing nodes 也可以通过多视角摄像头提供额外
-空间观测。这些感知信息能够在通信测量之外提供车辆位置、运动状态、道路几何关系和
-潜在遮挡信息。因此，本研究希望利用多模态分布式感知信息预测车辆用户的候选通信波束，
-并通过目标检测、target-user association 和 tracking 降低后续 beam management 开销，
-最终改善有效通信吞吐量。
-
-本工作将多模态感知与通信过程耦合起来：感知网络负责从多视角图像和 ISAC 点云中识别
-车辆目标并预测其 beam power distribution / Top-K beams；通信测量用于初始接入阶段
-建立 sensing target 与通信 user identity 的关联；后续帧通过 tracking 维持该关联并
-减少完整 beam sweep 的频率。论文中的通信性能评估采用简化但可解释的 5G beam
-management 与 ZF precoding 抽象，而不追求完整 5G NR 协议栈仿真。
-
-## 2. 关注的问题
+最后更新：2026-07-12
 
-本论文拟解决的问题是：在车联网场景中，如何利用 BS 与分布式 sensing nodes 的多模态
-观测，为车辆用户进行低开销、可追踪的 beam management，并将 sensing-assisted beam
-prediction 的准确性转化为通信系统层面的性能收益。
+论文暂定题目：*Multimodal Sensing-Assisted User Association and Tracking in Vehicular Networks*
 
-系统输入包括：
+本文档是当前研究工作的事实源，用于界定论文的研究对象、已采用的方法、证据边界和后续实验要求。正式 LaTeX 正文须依据本文档及 `docs/thesis_outline.md` 撰写；不得把本文档中的内部确认事项、开发性结果或诊断性上界写成已经验证的论文结论。
 
-- BS 侧多视角摄像头图像。每个 BS 配置 4 个倾斜下视摄像头，用于覆盖道路区域。
-- 分布式 sensing nodes 侧多视角摄像头图像。每个 SN 配置 4 个倾斜下视摄像头。
-- BS 侧 ISAC sensing point cloud，由双功能通信-感知波形或等价 ISAC 感知过程获得。
-- 通信侧 beam measurements，包括初始接入阶段的 SSB beam sweep power spectrum，以及
-  后续必要时的少量 beam measurement / calibration signal。
+## 1. 论文命题与研究边界
 
-系统输出包括：
+### 1.1 核心命题
 
-- 道路场景中的车辆目标检测结果及其 BEV 空间位置。
-- 每个 detected target 对应的 per-beam power distribution，并由此得到 Top-K candidate beams。
-- sensing target 与通信 user identity 的关联关系。
-- 每个已关联车辆用户的 tracking state，包括位置、速度和运动模型状态。
-- 面向通信评估的 beam management 开销、有效 SINR、spectral efficiency 和 throughput。
+本文研究多小区 V2I 场景中的多模态感知辅助波束管理。传统 SSB/CSI-RS 测量在高速移动、遮挡和天气变化下具有显著资源开销，且测得的 CSI 会随时间老化。道路侧基础设施能够同时提供相机和 ISAC 观测，但感知结果本身可能漏检、误检、失去连续身份，且不天然携带通信 UE 身份。
 
-决策过程按帧或时间槽运行。初始接入时，系统允许较完整的 SSB beam sweep，并将通信测量
-与 sensing network 输出进行匹配，完成 target-user association。后续帧中，系统主要依赖
-多模态感知和 tracking 预测维持用户状态，只在必要时进行少量 beam measurement，从而降低
-beam training overhead。
+因此，本文采用以 target BS 为中心的闭环框架：在统一的 target-BS-centered BEV 表达中，从服务 BS、邻近 sensing nodes (SNs) 的相机观测和 BS-local ISAC 点云中检测车辆，并预测其 CSI 波束质量分布；以不携带通信身份的感知轨迹为中介，在传统测量支持的初始接入或重关联阶段建立 UE--track binding；只有在绑定和当前观测均可靠时，才用感知提示压缩下一次 CSI-RS 测量候选集。否则，系统保留 conventional scanning/refinement。
 
-本文关注的核心问题包括：
+论文的目标不是将感知无条件替代传统波束管理，也不是只提高单帧 beam Top-1 分类率；目标是在统一资源模型下检验感知辅助候选集压缩在 effective rate、outage/failure risk 与 pilot overhead 之间的可验证权衡。
 
-- 多模态分布式传感器如何在统一 BEV 表征中融合图像与 ISAC 点云。
-- 如何从 BEV 特征中同时完成车辆目标检测和 per-target beam prediction。
-- 如何利用初始 SSB beam sweep power spectrum 建立 target-user association。
-- 如何利用 IMM tracking 在后续帧中维持用户身份并辅助 beam selection。
-- Top-K beam prediction 的正确或错误如何影响后续 CSI/PMI 抽象、ZF precoding SINR 和
-  最终吞吐量。
+### 1.2 场景、数据与协议边界
 
-## 3. 核心创新点 / 贡献
+- 数据来自既有 `mmbeam_town05_3weather_v1` 数据集；本文不生成 CARLA、Sionna RT、图像、点云或无线信道资产。
+- 场景包括 `clear_day`、`rain_fog_day` 和 `night` 三种天气。训练、验证和测试切分由数据集 manifest 显式定义。
+- 单帧感知样本由 `(weather_id, frame_id, bs_id)` 标识，其中 `bs_id` 是 target BS；链路监督额外由 `ue_id` 标识，即 `(weather_id, frame_id, bs_id, ue_id)`。
+- 单帧感知和初始轨迹均在 target-BS-centered Sionna BEV 局部坐标系中定义；该坐标系不是全局坐标系。
+- 当前码本由 48 个 SSB 波束和 192 个 CSI 波束组成，每个 CSI 波束对应一个 SSB parent。码本、SSB/CSI-RS 周期和候选数必须在实验设置或表注中明确报告。
+- RT 信道以相邻保存帧构成的约 100 ms segment 为基础：segment 内采用固定多径参数及 Doppler 相位演化，跨 segment 使用新的参考信道。本文可研究候选集、pilot 周期和 CSI aging 的相对影响，但不声称复现完整 NR 协议或 segment 内所有遮挡变化。
+- 本文重点是每个 target BS 内的感知、轨迹维持和通信绑定。UE 切换到新的 serving cell 后重新绑定；当前版本不主张跨 BS 的全局统一轨迹 ID。
 
-以下贡献为当前论文采用的贡献表述。贡献表述保持克制，不在缺少实验支撑时给出具体性能
-提升结论。
+### 1.3 统一角色定义
 
-1. 提出一种面向车联网波束管理的 BS-centric multimodal distributed sensing-assisted
-   framework。该框架以服务 BS 为中心，融合 BS/SN 多视角摄像头与 BS 侧 ISAC point cloud，
-   在统一 BEV 表征中进行车辆目标检测，并为每个 detected target 预测 per-beam power
-   distribution / Top-K candidate beams。
+| 术语 | 当前采用的含义 | 不应混同为 |
+| --- | --- | --- |
+| target BS | 构造局部 BEV、输出 detection 并服务 UE 的基站 | 全局融合中心 |
+| sensing node (SN) | 为 target BS 提供邻近视觉观测的感知节点 | 独立服务小区 |
+| perception detection / track | 未绑定通信身份的车辆观测或其时间连续轨迹 | 已识别的 UE |
+| communication UE | 参与 SSB、CSI-RS 和下行传输的通信实体 | 感知网络输出类别 |
+| UE--track binding | 由通信测量和感知证据建立的映射 | 由 ground truth 强行赋予的 ID |
+| candidate beam | 下一次 CSI-RS 实测的候选集合 | 已确认的最优下行 beam |
+| oracle / ground truth | 上界、诊断和正确性统计所用信息 | 正式决策输入 |
 
-2. 设计一种面向多车辆场景的 target-user association and tracking 流程。初始接入阶段
-   利用 SSB beam sweep power spectrum 与感知网络预测的 per-target beam distribution
-   建立 sensing target 与 communication user identity 的关联；后续帧通过 IMM tracking
-   与 BEV detection association 维护用户身份和 beam selection 连续性，从而减少完整
-   beam sweep 的使用频率。
+## 2. 研究问题、假设与贡献
 
-3. 构建一种多模态车联网仿真系统与系统级评估方法。仿真系统借鉴 multimodal wireless
-   digital-twin 类数据生成范式，将 CARLA 道路交通与多传感器数据生成、Blender/Mitsuba
-   场景重建、Sionna ray tracing 信道生成连接起来，形成 camera observations、ISAC-like
-   point clouds、vehicle trajectories、beam power labels 和通信信道数据。基于该数据，
-   系统级评估同时考虑 Top-K beam prediction、target-user association、tracking error、
-   beam training overhead、beam mismatch penalty、ZF precoding SINR、spectral efficiency
-   和 overhead-adjusted throughput。
+### 2.1 核心科学问题
 
-## 4. 系统模型
+1. 多模态与跨节点观测能否在 target-BS-centered BEV 中同时支持车辆检测和条件 CSI 波束质量预测？
+2. 监督完整 CSI 功率排序能否比仅监督最强 beam 产生更可靠、可用于候选选择的 beam distribution？
+3. 感知轨迹 ID 的稳定性以及初始/重关联正确性如何影响 beam hint 能否持续服务正确 UE？
+4. 在计入 SSB、CSI-RS、CSI aging、RZF、切换和 fallback 后，可靠度门控的感知辅助能否形成可接受的 rate--overhead Pareto trade-off？
 
-### 4.1 网络实体与拓扑
+### 2.2 研究假设
 
-考虑一个道路侧车联网场景，网络中包括多个 BS、若干分布式 sensing nodes，以及道路上
-移动的车辆用户。BS 同时承担通信服务和感知信息采集任务；SN 不直接提供通信服务，主要
-提供额外视觉感知覆盖。每个 BS 以自身为中心构建局部协作感知区域，并选取周围 K 个 SN
-作为协作 sensing nodes。K 表示每个 BS 使用的邻近 SN 数量，可在实验中作为系统参数。
+- **H1：信息互补。** 相机的语义和可见性信息、ISAC 的无线感知信息以及邻近节点的互补视角共同支持检测与 beam ranking；融合收益应同时由 detection 和 matched-beam 指标验证。
+- **H2：排序优于单标签。** CSI 功率分布包含超过 strongest-beam ID 的候选价值；质量分布监督应改善 candidate recall、power retention 和置信度校准，而不只优化 Top-1。
+- **H3：身份是系统中介变量。** 正确的位置和单帧 beam ranking 仍可能因 ID switch 或错误 binding 被交给错误 UE；因此 tracking 和 binding 是感知指标转化为通信指标的必要中间环节。
+- **H4：保守使用感知。** 可靠度门控与 conventional fallback 能够拒绝低质量 beam hint，使导频压缩不以不可接受的性能风险为代价。
 
-每个 BS 和 SN 均配备 4 个倾斜下视摄像头，用于从多个视角观测道路区域。BS 还通过 ISAC
-能力获取局部感知点云。对于每个 BS，系统输入由该 BS 自身的 camera views、该 BS 的 ISAC
-point cloud，以及周围 K 个 SN 的 camera views 组成。
+### 2.3 当前采用的贡献表述
 
-### 4.2 车辆用户与目标模型
+下列为方法与评估层面的拟贡献。只有在冻结 test 的同协议结果支持时，才能将其扩展为性能优越性结论。
 
-道路中的每个通信用户由一个车辆目标承载。感知系统首先在 BEV 空间中检测车辆目标，
-得到目标位置、尺寸或中心点等表示；通信系统则通过 beam measurements 观测 user 与 BS
-之间的波束响应。由于 sensing target identity 和 communication user identity 不天然
-一致，系统需要在初始接入和后续跟踪过程中维护 target-user association。
+1. 构建以 target-BS-centered BEV 为共同表示的多模态、跨感知节点联合学习任务，使车辆检测与 192-way CSI 波束质量预测在同一空间网格中对齐。
+2. 将单一最优 beam 标签扩展为 CSI 功率分布与排序约束的监督，并将输出解释为可导出的波束似然，而非仅作为分类答案。
+3. 提出“未绑定感知输出--多目标轨迹--传统测量辅助 UE--track binding--可靠度门控候选扫描”的接口化框架，避免在感知模型输出中注入 oracle UE identity。
+4. 建立覆盖感知、轨迹、绑定、候选集、物理层和资源记账的分层评价链路，直接检验 beam hint 的质量能否转化为有效速率与导频开销的合理权衡。
 
-### 4.3 通信与波束模型
+## 3. 系统模型与符号约定
 
-每个 BS 配置一个离散 beam codebook。对车辆用户而言，不同 candidate beams 对应不同
-接收功率或有效信道增益。感知神经网络为每个 detected target 输出一个 per-beam power
-distribution，表示该目标在当前 BS codebook 下的 beam quality 估计。Top-K candidate
-beams 由该分布中排名最高的 K 个 beam 得到。
+### 3.1 多模态局部观测
 
-初始接入阶段，BS 通过 SSB beam sweep 获得 user 的 beam power spectrum。该 spectrum
-与 sensing network 为 detected targets 预测的 beam distribution 进行匹配，用于确定
-哪个 sensing target 对应哪个 communication user。后续帧中，系统优先使用 sensing-assisted
-Top-K beam prediction 与 tracking state 进行 beam management，仅在校准或失配恢复时使用
-少量 beam measurement。
+对时刻 (t) 的 target BS (b)，多模态观测记为
 
-### 4.4 多模态感知模型
+\[
+\mathcal{O}_{b,t}=\{\mathcal{I}_{b,t},\mathcal{I}_{\mathcal{N}_b,t},\mathcal{P}_{b,t}\},
+\]
 
-感知输入包含两类模态：
+其中，\(\mathcal{I}_{b,t}\) 是 target BS 的多视角相机观测，\(\mathcal{I}_{\mathcal{N}_b,t}\) 是邻近 SN 的相机观测，\(\mathcal{P}_{b,t}\) 是 BS-local ISAC 点云。相机特征经地平面投影，点云特征经 BEV 编码；二者以及跨节点信息随后在同一 target-BS-centered BEV 平面融合。
 
-- Camera modality：来自 BS 与周围 K 个 SN 的多视角图像，每个站点包含 4 个倾斜下视摄像头。
-- ISAC modality：来自 BS 的 sensing point cloud，由双功能波形或等价 ISAC 感知过程得到。
+联合网络输出两类空间量：车辆中心热图及尺度、朝向和速度等回归量；以及空间密集的 192 维 CSI 波束质量分布。对与 detection 对齐的 BEV 位置采样后，得到该感知目标的 beam prediction。训练和评估中可使用 link coordinate 进行监督采样，但该坐标和 UE identity 不作为网络前向输入。
 
-不同站点和模态的观测被投影或编码到统一 BEV 表征中。BEV 表征用于对齐不同摄像头视角、
-不同 sensing node 的空间信息，以及 BS 侧 ISAC 点云。神经网络基于 BEV feature map 同时
-执行车辆目标检测和 beam prediction。
+### 3.2 波束质量与候选集
 
-### 4.5 Tracking 状态
+对一个 BS--UE 链路的 CSI 功率向量 \(g\in\mathbb{R}_{+}^{192}\)，以
 
-对于已关联的车辆用户，系统维护 tracking state。状态包括 BEV 位置、速度和运动模式概率。
-tracking module 采用 IMM filter，对 constant velocity、constant acceleration 和 turning
-motion 等车辆运动模式进行融合预测。IMM 预测状态与后续帧的 BEV detection 进行 data
-association，以维持车辆用户身份并辅助 beam prediction 的时间连续性。
+\[
+q(k)=\operatorname{softmax}\!\left(
+\frac{10\log_{10}g(k)-\max_j 10\log_{10}g(j)}{T}
+\right),\qquad k\in\{1,\ldots,192\},
+\]
 
-### 4.6 通信性能抽象
+构造软目标。网络在相应 BEV 位置输出 \(p_\theta(k)\)，当前采用的 beam loss 为
 
-本文采用简化通信模型评估 sensing-assisted beam management 对通信性能的影响。若 Top-K
-beam prediction 覆盖真实有效 beam，则系统可以减少 beam sweep 开销，并将节省的资源用于
-数据传输。若 Top-K beam prediction 错误，则后续 CSI/PMI 抽象会受到 beam mismatch 影响，
-导致 ZF precoding 所使用的有效信道方向或增益不准确，从而降低 SINR。频谱效率可基于
-ZF 后的 SINR 计算，吞吐量进一步考虑 beam training overhead 后得到。
+\[
+\mathcal{L}_{\mathrm{beam}}
+=D_{\mathrm{KL}}(q\Vert p_\theta)
++\lambda_{\mathrm{rank}}\mathcal{L}_{\mathrm{hard-rank}},
+\]
 
-## 5. 算法与整体流程框架
+其中 \(\mathcal{L}_{\mathrm{hard-rank}}\) 约束最强物理 beam 的得分高于功率明显较弱的 hard negatives。该方案与 strongest-beam cross-entropy 和 KL-only 控制组对照，检验“可供扫描的质量排序”而非瞬时 precoder 的直接预测。
 
-本论文采用一个以 BS 为中心的多模态感知辅助 beam management 框架。整体流程包括五个阶段。
+论文必须区分以下三个候选尺度：
 
-### 5.1 多模态输入构建
+- \(K_{\mathrm{model}}\)：导出或存储的预测分布长度，初始 binding 时建议不小于 32；
+- \(K_{\mathrm{bind}}\)：association 实际采用的分布长度；
+- \(K_{\mathrm{scan}}\)：已绑定后实际发送 CSI-RS 测量的 beam 数。
 
-对每个 BS，在每个时间帧收集以下输入：
+三者不能互换，也不能把导出的 Top-\(M\) 误写为无线测量预算。
 
-- 该 BS 的 4 个 camera views。
-- 周围 K 个 SN 的 camera views，每个 SN 包含 4 个摄像头。
-- 该 BS 的 ISAC sensing point cloud。
-- 初始接入或校准阶段可用的 communication beam measurements。
+### 3.3 未绑定 detection 与多目标轨迹
 
-输入数据首先进行时间同步和空间标定，随后进入 BEV-based fusion network。
+感知输出描述当前 target BS 视角下的未绑定车辆观测，至少包含时间、BS、confidence、BEV 中心、尺寸、朝向、速度、坐标系以及按分数排序的 beam IDs/scores；其语义中不包含 `ue_id` 或 `track_id`。`diagnostic_gt_track_id` 只用于离线评估。
 
-### 5.2 BEV 多模态融合与目标检测
+对每个 `(split, weather_id, bs_id)` 独立构造时序轨迹。CV Kalman filter、constant-turn EKF 和 IMM(CV+CT) 构成可比较的状态估计方案，并共享 Hungarian 一对一分配与合理的中心距离 gating。以 CV 为例，状态与观测为
 
-Camera features 和 ISAC point-cloud features 被映射到统一 BEV 坐标系中。网络在 BEV
-空间聚合不同站点和不同模态的信息，形成 BEV feature map。基于该 feature map，目标检测
-head 采用类似 CenterNet 的结构输出车辆中心点、目标属性和置信度。
+\[
+\mathbf{x}_t=[p_x,p_y,v_x,v_y]^{\mathsf T},\qquad
+\mathbf{z}_t=[p_x,p_y]^{\mathsf T}.
+\]
 
-该设计使系统能够在统一空间中处理来自 BS 与分布式 SN 的多视角视觉信息，并结合 BS 侧
-ISAC 点云提供的几何观测，从而增强车辆检测与定位能力。
+tracking 在本文中用于维持 beam hint 所属感知对象的时间连续性，而不是声称某一滤波器本身构成主要创新。GT/noisy-GT 结果仅用于运动模型和数据关联的受控诊断，不能替代 predicted-detection 的端到端主结果。
 
-### 5.3 Per-target Beam Prediction
+### 3.4 测量辅助 UE--track binding
 
-在 BEV feature map 或 detected target features 上设置 beam prediction head。该 head
-为每个 detected target 输出 per-beam power distribution，即该目标在当前 BS codebook 下
-对应各个 beams 的预测质量。Top-K beams 由该分布排序获得，并作为后续 beam management
-和通信评估的候选 beams。
+感知轨迹没有通信身份。在初始接入、切换到新 serving cell、已有 binding 失效或当前帧未观测时，系统执行 conventional SSB 与 CSI-RS refinement。令扫描为 communication UE \(u\) 选出的 CSI beam 为 \(b_u\)，当前 observed perception track \(i\) 的导出 beam distribution 为 \(p_i(k)\)，当前采用的 beam-likelihood 关联代价为
 
-采用 per-beam distribution 而不是只输出 hard Top-K，可以同时支持监督学习、Top-K accuracy
-评估和 beam mismatch 对通信性能影响的建模。
+\[
+c(u,i)=\frac{-\log p_i(b_u)}{\log 192}.
+\]
 
-### 5.4 Target-User Association
+只有当预测分布包含当前 serving SSB parent 时，该 UE--track 配对才可行。系统在可行配对和未匹配虚拟列上执行 Hungarian assignment；高代价或低 margin 的配对被拒绝，并继续沿用 conventional scanning。该规则不使用 ground truth、不以预测位置反推码本的几何近似，也不以人工 UE ID 作为模型输入。
 
-初始接入阶段，BS 对通信用户执行 SSB beam sweep，得到每个 user 的 beam power spectrum。
-系统将该 spectrum 与每个 detected target 的 predicted beam distribution 进行相似度匹配，
-建立 sensing target 与 communication user identity 的关联。匹配可以结合 beam distribution
-相似度、BEV 空间先验和检测置信度。
+`beam_direction` 和 `beam_topk` 可作为 association ablation；正式叙事以 beam likelihood + SSB-parent consistency + reliability decision 为主。实验须分别报告 binding coverage、可诊断样本上的 accuracy 和 active accuracy，不能以单一百分比掩盖拒绝关联的比例。
 
-完成初始关联后，每个车辆用户拥有统一的 sensing track identity 和 communication user
-identity。该关联关系用于后续 tracking、beam prediction 和通信性能评估。
+### 3.5 可靠度门控、候选扫描与回退
 
-### 5.5 IMM Tracking 与后续帧维护
+已建立 binding \((weather_id,bs_id,ue_id)\mapsto track_id\) 后，系统定义可靠度事件 \(G_{u,t}\)。其证据只能来自非 ground-truth 信息，例如 binding confidence、association margin、当前 observed detection/track confidence、hint age、SSB-parent consistency、已有观测次数以及 beam score mass。仅当 \(G_{u,t}=1\) 时使用感知候选；否则进行 conventional refinement。
 
-后续帧中，系统为每个已关联用户运行 IMM filter，预测其 BEV 位置和运动状态。新的 BEV
-detections 到达后，系统根据 IMM predicted state 与 detection 之间的空间距离、运动一致性
-和检测置信度进行 data association。关联成功的 track 更新状态并刷新 beam prediction；
-关联失败或置信度降低时，可触发少量 beam measurement 或重新关联流程。
+若当前 observed detection 的前 \(K_{\max}\) 个 beam scores 为 \(s_1\geq\cdots\geq s_{K_{\max}}\)，自适应候选数可定义为
 
-该机制使系统在不进行完整 beam sweep 的情况下维持 user identity，并利用时间连续性提高
-beam selection 的稳定性。
+\[
+k^*=\min\left\{k:\ k\geq K_{\min},
+\frac{\sum_{i=1}^{k}s_i}{\sum_{i=1}^{K_{\max}}s_i}\geq q\right\}.
+\]
 
-### 5.6 通信性能评估流程
+该规则只决定 CSI-RS 测量集合大小；UE 在实测候选中按测得 SNR 选择 beam。正式 policy 仅使用当前 observed detection 的 beam Top-\(K\)，不将 KF/IMM 的纯预测位置映射为正式候选 beam；后者只保留为诊断性几何消融。
 
-通信评估从 Top-K beam prediction 结果出发。若真实最优 beam 被包含在 Top-K candidate beams
-中，则认为后续 CSI acquisition 或 PMI selection 可以在较小候选集合内进行，从而降低 beam
-training overhead。若真实有效 beam 未被包含，则引入 beam mismatch penalty，用于刻画 CSI
-方向或信道增益估计误差。随后在多用户 ZF precoding 模型下计算每个 user 的有效 SINR、
-spectral efficiency 和 throughput。
+### 3.6 资源记账与通信评价
 
-总吞吐量同时考虑：
+所有系统比较必须保持 SSB、RT/Doppler、信道估计、RZF、调度与功率设置一致，只改变 CSI-RS candidate set。资源预算采用
 
-- 数据传输阶段的 spectral efficiency。
-- beam training / measurement 占用的时频资源开销。
-- Top-K beam prediction 错误导致的 SINR degradation。
+\[
+\tau_{\mathrm{total}}=\tau_{\mathrm{SSB}}+\tau_{\mathrm{CSI\text{-}RS}}
++\tau_{\mathrm{ctrl}}+\tau_{\mathrm{data}},
+\]
 
-## 6. 实验计划
+并分别报告 SSB、CSI-RS、PDCCH、DM-RS、UL、guard 和 payload 的 RE 比例。对于 dedicated-per-UE beam measurement，CSI-RS 资源可写为
 
-### 6.1 仿真环境或数据来源
+\[
+N_{\mathrm{CSI\text{-}RS}}=
+\left\lceil\frac{N_{\mathrm{UE-beam}}}{M}\right\rceil
+N_{\mathrm{PRB}}N_{\mathrm{RE/PRB}},
+\]
 
-实验构建包含道路、BS、SN、车辆轨迹、camera observations、ISAC point clouds 和
-communication beam labels 的仿真数据生成环境。该环境基于自动驾驶仿真平台生成多视角
-视觉数据，并结合射线追踪或几何信道模型生成 beam power labels 和通信信道。整体数据生成
-链路采用 CARLA 定义道路交通场景并采集多传感器数据，使用 Blender/Mitsuba 进行逐帧场景
-重建，再使用 Sionna RT 计算多径传播、信道系数和 beam-related labels。
+其中 \(M\) 是可正交复用的 UE--beam measurement 数。系统同时报告 raw achievable rate、扣除资源后的 effective rate、p05 rate 和 outage；不得以均值掩盖高风险 UE。
 
-数据应至少包含：
+## 4. 算法整体框架
 
-- 多 BS / 单 BS 局部服务区域设置。
-- BS 与 SN 的空间位置、摄像头外参和视场设置。
-- 车辆轨迹、位置、速度和目标框标注。
-- BS 侧 ISAC point cloud。
-- 每个车辆用户相对于服务 BS 的 beam power distribution 或最优 beam label。
-- 可用于评估 ZF precoding 的信道或等效信道增益。
+对每个 target BS、每个感知更新时刻，方法按以下顺序运行：
 
-### 6.2 对比方法
+1. **观测对齐与 BEV 融合：** 收集 target BS 与邻近 SN 的多视角相机观测以及 BS-local ISAC 点云，依据 target-BS local calibration 映射至共享 BEV；采用节点聚合、跨节点注意力或模态门控等可比较融合机制形成联合特征。
+2. **联合检测与 beam distribution 预测：** 从共享 BEV 特征输出车辆 heatmap、几何/运动回归量和 dense 192-way CSI quality map；在 detection 位置采样得到未绑定 detection 及其 beam likelihood。
+3. **per-BS 多目标轨迹维护：** 采用 CV、CT 或 IMM 在相同 BS、天气和 split 的序列内预测轨迹；通过 gated Hungarian assignment 将当前 detections 与预测轨迹关联，更新 track state、confidence 和 hint age。
+4. **初始/重关联 binding：** 在系统触发传统扫描时，将实测 CSI beam 与当前 observed tracks 的 beam likelihood 匹配；SSB-parent consistency 先筛除不可能配对，再以 Hungarian assignment 和拒绝门限建立或修复 UE--track binding。
+5. **可靠度门控候选 CSI-RS：** 对已绑定 UE，根据当前检测、track 和 binding 的可信证据判定是否使用感知 hint。通过时从当前 observation 的 distribution 形成固定或自适应 \(K_{\mathrm{scan}}\) 候选；不通过时使用 conventional refinement。
+6. **实测选择、RZF 与资源评价：** 在真正扫描的 CSI-RS candidates 内根据实测 SNR 选择 beam；在一致的 RT/Doppler、RZF、调度、功率和 RE 记账条件下计算 candidate recall、overhead、raw/effective rate、p05 rate 与 outage。
 
-实验设置以下 baselines：
+该算法的关键边界是：网络预测的对象始终是未绑定感知目标；通信身份只经由传统测量辅助的 binding 层进入；感知输出是缩小实测集合的 hint，而不是绕过测量直接确认下行最优 beam。
 
-- Communication-only full beam sweep：每次决策都依赖完整 beam sweep，作为高开销上界参考。
-- Communication-only partial sweep：只扫描部分 beams，不使用 sensing 信息。
-- Camera-only BEV beam prediction：仅使用 BS/SN 多视角图像，不使用 ISAC point cloud。
-- ISAC-only beam prediction：仅使用 BS 侧 ISAC point cloud。
-- Single-site sensing：仅使用服务 BS 的传感器，不使用周围 K 个 SN。
-- No-tracking variant：逐帧独立检测与 beam prediction，不使用 IMM tracking。
-- Proposed multimodal distributed sensing-assisted framework：使用 BS + K 个 SN 的 camera views、
-  BS 侧 ISAC point cloud、target-user association 和 IMM tracking。
+### 4.1 模块职责与信息接口
 
-### 6.3 Evaluation Metrics
+后续 Chapter 3--5 应以以下接口边界组织方法和实验，避免把诊断信息误写为正式决策输入。
 
-感知与 tracking 指标：
+| 模块 | 正式输入 | 正式输出 | 不得跨越的边界 |
+| --- | --- | --- | --- |
+| BEV 感知与联合预测 | target BS/SN 相机观测、BS-local ISAC 点云及标定信息 | 未绑定 detection、几何/运动属性、192-way beam quality distribution | 不输入 `ue_id`、link coordinate、ground-truth beam 或 oracle identity |
+| 多目标 tracking | 同一 `(split, weather_id, bs_id)` 序列的未绑定 detections 与既有 track state | perception tracks、状态预测、track confidence 与 hint age | track 只维护感知对象身份；纯预测位置不产生正式 CSI-RS candidate |
+| UE--track binding | 当前 observed tracks、传统 SSB/CSI-RS 测量、SSB-parent consistency | 已接受的 binding、margin/confidence 与拒绝/重关联状态 | ground truth 仅用于离线正确性统计，不能参与匹配代价或接受决策 |
+| 可靠度门控与候选扫描 | 当前 observed detection 的 distribution、binding/track reliability evidence | fixed/adaptive \(K_{\mathrm{scan}}\) candidates 或 conventional fallback | prediction 只缩小实测集合；最终服务 beam 仍由实际 CSI-RS/SNR 测量决定 |
+| PHY 与资源评价 | 实测候选、统一的 RT/Doppler、RZF、调度、功率和 RE profile | candidate recall、资源开销、raw/effective rate、p05 rate 与 outage | 不从通信结果反向修改 test 阈值或把 oracle ceiling 作为正式方案 |
 
-- detection accuracy / mAP。
-- BEV localization error。
-- tracking identity consistency。
-- target-user association accuracy。
-- tracking prediction error。
+## 5. 实验设计与证据链
 
-beam management 指标：
+### 5.1 分层评价问题
 
-- Top-1 beam accuracy。
-- Top-K beam accuracy。
-- beam power prediction error。
-- beam training overhead reduction。
-- beam recovery / reassociation frequency。
+| 层级 | 要回答的问题 | 主指标 | 不能单独推出的结论 |
+| --- | --- | --- | --- |
+| Detection | 是否发现可用车辆目标 | mAP、AP@距离、precision/recall、center L2 | 不能证明通信速率提升 |
+| Beam distribution | 排序是否有候选价值且可信 | matched Recall@K、power ratio、NLL/ECE/Brier、availability | 不能证明 UE 已被正确绑定 |
+| Tracking | 同一感知目标能否维持身份 | ID maintenance、ID switches、fragmentation、轨迹可用率 | 不能证明初始 binding 正确 |
+| Binding | UE 是否安全对应到 perception track | coverage、diagnostic/active accuracy、loss/rebind、fallback reason | 不能证明测量开销已降低 |
+| Candidate selection | 更少 beam 是否保留有用 CSI 候选 | true-CSI/conventional-CSI recall、候选 beam 数 | 不能直接等同 effective rate |
+| PHY/system | 资源代价后是否有网络收益 | effective rate、p05、outage、CSI-RS overhead、fairness、handover | 不能反推感知模型必然最优 |
 
-通信性能指标：
+每个系统主表至少同时给出 candidate recall、CSI-RS overhead、hint usage/fallback、active binding accuracy、mean/p05 effective rate 与 outage，以区分 beam prediction、identity binding、candidate truncation 和 pilot saving 的影响。
 
-- effective SINR under ZF precoding。
-- spectral efficiency。
-- user throughput。
-- system sum throughput。
-- overhead-adjusted throughput。
+### 5.2 公平比较与冻结规则
 
-### 6.4 Ablation Studies
+- `train` 仅用于训练，`val` 用于 checkpoint、tracking 参数、association margin、calibration 和 candidate policy 的模型选择；`test` 在方案冻结后才用于主结果。
+- 每种天气分别统计；总体比例由原始分子/分母汇总，不对天气百分比简单平均。
+- 不得使用 test rate、test binding accuracy 或 test candidate recall 调节阈值；这样得到的数字不能作为严格 held-out 主结论。
+- 条件指标必须写出条件并同时报告 coverage，例如 `beam Recall@4 | matched detection within 2 m`。
+- GT-ID、GT detection 和 oracle hint 仅作为 ceiling 或诊断；正式路径必须以 predicted detection 和非 GT reliability evidence 为输入。
 
-实验开展以下消融实验：
+### 5.3 对照组
 
-- 去除 ISAC point cloud，仅保留 camera modality。
-- 去除 SN camera views，仅使用 BS 侧传感器。
-- 改变协作 SN 数量 K。
-- 去除 IMM tracking，比较逐帧独立关联的效果。
-- 比较完整 beam sweep、partial beam measurement 和 sensing-assisted Top-K beam selection。
-- 分析不同车辆密度、速度、遮挡强度和感知噪声下的性能变化。
+- 感知模态：camera、ISAC、camera+ISAC。
+- 节点与融合：node mean、mean/gated fusion、cross-agent attention 等。
+- Beam supervision：strongest-beam CE、KL-only、KL+ranking。
+- Tracking：CV Kalman filter、CT EKF、IMM(CV+CT)。
+- Binding：无感知、beam direction、beam top-\(K\)、beam likelihood + reliability gate。
+- 系统：conventional 4/12-beam refinement、GT-ID ceiling、fixed/adaptive sensing top-\(K\) + fallback。
 
-## 7. 当前证据
+主结果建议使用一套冻结 radio profile：48 SSB、20 ms SSB period 的 raw-RE accounting、20 ms CSI-RS period、每 SSB parent 的 4-beam conventional refinement、4-BS 场景以及一致的 RT segment、功率、噪声、调度与 PHY abstraction。CSI-RS period、conventional refinement 宽度、\(K_{\mathrm{scan}}\)、SSB 记账口径、单/多 BS 和 Doppler 可作为敏感性轴，而不应与全部上游模型形成全笛卡尔积。
 
-本节用于记录实验观察。只有当实验设置、指标和对比对象清楚时，观察才可以被
-进一步转化为论文 claim。
+## 6. 当前进展与证据等级
 
-| 日期 | 证据 / 观察 | 实验设置 | 指标 | 状态 |
-| --- | --- | --- | --- | --- |
-| 2026-06-21 | 完成论文仓库初始写作结构搭建。 | N/A | N/A | setup |
-| 2026-06-21 | 明确初步研究方向：车联网场景下利用 BS/SN 多视角摄像头和 BS 侧 ISAC 点云进行 sensing-assisted beam management，覆盖目标检测、Top-K beam prediction、target-user association、IMM tracking 和简化 ZF 通信评估。 | Conceptual design | N/A | design draft |
+### 6.1 已具备的研究与实验框架
 
-## 8. 内部待确认事项
+- 已建立 manifest 驱动的 target-BS-centered 数据读取、相机/ISAC BEV 表达、联合 detection--beam prediction 及不同模态和节点融合的实验框架。
+- 已建立未绑定 perception prediction、per-BS track state、传统测量辅助关联、current-detection beam Top-\(K\) candidate scanning、SSB-parent check、reliability log、自适应 \(K\)、conventional fallback、RT/Doppler/RZF/RE accounting 的端到端流程。
+- 已具备 camera、ISAC、multimodal 与多节点融合；CV、CT、IMM；conventional、direction/top-\(K\)/reliability-gated 等可比较协议。
+- 正式模块接口遵守“learning output -> unbound detection；tracking -> perception track；beam management -> track state + communication measurement”的边界，避免直接传递训练网络内部状态。
 
-以下内容用于内部推进和后续实验补充，不应以 TODO 或未完成口吻写入正式 LaTeX 正文：
+### 6.2 已有定量证据
 
-- 系统性文献调研与 related work 分类。
-- 与已有 sensing-assisted beam management、ISAC-assisted communication、vehicular tracking
-  和 user association 工作的差异。
-- 数据集规模、场景数量、BS/SN 具体布局、K 的默认取值和帧率。
-- BEV fusion network 的具体输入尺寸、BEV grid、训练目标、损失函数和标签生成方式。
-- Target-user association 中 beam distribution distance、BEV spatial gating、detection confidence
-  的权重设置，以及失败恢复阈值。
-- IMM filter 的模型参数、过程噪声、gating threshold 和 track management 规则。
-- Beam mismatch 对 CSI/PMI 抽象和 ZF SINR 的数学刻画及参数取值。
-- 主要贡献表述和实验支撑证据。
+| 层级 | 已保存证据 | 可谨慎使用的表述 | 证据等级 |
+| --- | --- | --- | --- |
+| 初版 multimodal 感知 | 旧 `concat + conv` multimodal test：mAP 0.4408，AP@2m 0.6940，matched beam Top-1@2m 0.7241，Top-5@2m 0.9610 | 既定 test 协议下，多模态基线已具备联合感知和条件 beam prediction 能力 | 已完成 test，但不是最终融合/监督方案 |
+| 跨节点融合 | 完整 val、SN5 下：cross-agent attention mAP 0.5239；cross-agent+gated beam Top-1@2m 0.7498、Top-5@2m 0.9715 | 邻近节点观测与跨节点聚合呈现增益；detection 最优与 beam 最优可能不同 | 验证集消融，不能替代冻结 test 主表 |
+| 节点数量 | 同一训练模型的 SN0--SN5 零样本缺失节点评估中，cross-agent attention mAP 从 0.1663 增至 0.5239 | 更多且互补的邻近视角与更强感知性能相关 | val 诊断，不是独立训练的容量曲线 |
+| Tracking | 0.5 m noisy-GT 下，tuned IMM center error 为 0.4013 m、ID switch 为 7、ID maintenance 为 0.9997；1.0 m noisy-GT 下，ID-stable IMM 的 ID switch 为 16，而匹配配置 CV/CT 为 151/406 | IMM 在受控位置噪声下可改善 ID 连续性 | GT/noisy-GT 验证，不能宣称 predicted-detection 端到端优势 |
+| 直接 detection 系统链路 | clear-day/val、4-BS、9.9 s 下，`beam-topk binding + detection top-4` system rate 为 2.720 Gbps，conventional 为 2.743 Gbps；CSI-RS overhead 均为 0.119%，outage 分别为 33.07%/31.84% | 当前 detection-beam candidate 端到端路径已跑通，top-4 接近 conventional，但尚未产生系统正增益 | 开发性 val 结果，不能作最终收益结论 |
+| 可靠度门控 | clear-day/val 重 pilot-load 开发测试中，dynamic SSB gate 比 conventional 少 0.530 个百分点 CSI-RS RE，但平均速率低 0.60%、outage 高 0.96 个百分点 | 门控可降低开销并拒绝部分错误提示，但当前设定尚未达到 non-inferior | 开发性负结果，必须如实保留 |
 
-## 9. 术语与符号
+### 6.3 当前必须保持的证据边界
 
-当术语和符号稳定后，在此处维护统一写法。
+- 不得宣称 KL+ranking 已优于 Top-1 CE；三组 controlled beam-supervision、统一 calibration 和三天气冻结 test 尚未完成。
+- 不得宣称 IMM 已在 predicted detection 路径上优于 CV/CT；需在相同 detection outputs 上完成冻结的端到端对比。
+- 不得宣称 beam-likelihood binding、gate 或 adaptive \(K\) 已在 held-out test 与三天气上优于 conventional；阈值和策略必须先在独立 val/calibration 固定。
+- 20 ms SSB raw-RE 的 frozen conventional baseline 仍需重新运行；历史 100 ms SSB profile 或短段结果不可混入最终主表。
+- 当前完整 val 开发测试尚未显示 reliability-gated policy 超越 conventional。论文主叙事应报告 rate--overhead Pareto、fallback 与失效边界，而不预设必然的净速率增益。
+
+## 7. 内部待确认事项与后续实验
+
+以下事项留在本文档中推进，不应以未完成口吻进入正式正文。
+
+1. 冻结最终 beam-supervision 模型：在一致 calibration 下完成 Top-1 CE、KL-only 和 KL+ranking 的三天气 test，并保存 checkpoint、输入输出、seed 与原始分子/分母。
+2. 在相同 predicted-detection outputs 上锁定 CV/CT/IMM 的端到端 tracking 协议，并量化上游监督方式对 tracking/binding 的影响。
+3. 用 val/calibration 独立选择 beam-likelihood binding、association margin、reliability gate 和 adaptive \(K\)；随后在 held-out test、三天气上评估。
+4. 重跑 frozen conventional baseline，并以相同 RT manifest、RE profile、调度和 PHY 参数比较 sensing 与 oracle ceiling。
+5. 研究 conservative candidate union、基于实际 pilot-SNR 的两阶段 fallback 或更稳健的初始/重关联，重点改善当前 gate 的 rate/outage 边界。
+6. 为最终结果建立可追溯 artifact：resolved configuration、seed、checkpoint 或 input JSONL、原始统计、汇总指标、可视化及轻量 run manifest。
+
+## 8. 术语与符号
 
 | 概念 | 推荐术语或符号 | 说明 |
 | --- | --- | --- |
-| 多模态感知 | multimodal sensing | 由 camera modality 和 ISAC modality 共同构成 |
-| 车联网 | vehicular networks | 本论文主要考虑道路侧基础设施辅助的车辆通信场景 |
-| 基站 | base station (BS) | 通信服务节点，同时具备 camera 和 ISAC sensing 能力 |
-| 分布式感知节点 | sensing node (SN) | 提供多视角 camera observations，不直接承担通信服务 |
-| 多视角摄像头 | multiview cameras | 每个 BS/SN 配置 4 个倾斜下视摄像头 |
-| ISAC 点云 | ISAC point cloud | BS 侧由双功能波形或等价 ISAC 感知过程获得的点云 |
-| 鸟瞰图表征 | bird's-eye-view (BEV) representation | 用于对齐多站点、多模态观测的统一空间表征 |
-| 用户关联 | user association | 通信 user 与 BS/beam 之间的服务关系；本文还涉及 sensing target 与 communication user identity 的关联 |
-| 目标到用户关联 | target-user association | detected sensing target 与 communication user identity 之间的匹配 |
-| 波束选择 | beam selection | 从 BS codebook 中选择服务车辆用户的 beam |
-| Top-K 波束 | Top-K candidate beams | predicted beam distribution 中排名最高的 K 个 beams |
-| 波束功率分布 | beam power distribution | 每个 detected target 对应不同 codebook beams 的预测质量或功率 |
-| 跟踪状态 | tracking state | 车辆用户在 BEV 空间中的位置、速度和运动模式状态 |
-| 交互多模型滤波器 | interacting multiple model (IMM) filter | 用于融合不同车辆运动模式并进行 tracking prediction |
-| 零迫预编码 | zero-forcing (ZF) precoding | 通信性能评估中采用的多用户预编码抽象 |
-| 频谱效率 | spectral efficiency | 基于 ZF 后有效 SINR 计算的通信指标 |
-| 开销修正吞吐量 | overhead-adjusted throughput | 同时考虑数据传输效率和 beam training overhead 的吞吐量 |
+| 多模态感知 | multimodal sensing | camera modality、ISAC modality 与跨节点观测共同构成 |
+| 目标基站 | target base station (target BS) | 当前构造局部 BEV、输出 detection 并服务 UE 的 BS |
+| 分布式感知节点 | sensing node (SN) | 向 target BS 提供邻近视觉观测，不独立提供通信服务 |
+| 局部鸟瞰表征 | target-BS-centered BEV representation | 对齐多站点、多模态观测的局部空间表征 |
+| 感知检测/轨迹 | perception detection / track | 不带 communication UE identity 的目标观测或轨迹 |
+| UE--轨迹绑定 | UE--track binding | 通信测量与感知证据建立的身份映射 |
+| CSI 波束质量分布 | CSI beam quality distribution | 对 192 个 CSI codebook beams 的预测质量/似然 |
+| 波束似然关联 | beam-likelihood association | 用预测 distribution 与扫描所得 CSI beam 的负对数似然完成 binding |
+| \(K_{\mathrm{model}}\) | exported distribution length | 用于导出或存储的预测分布长度 |
+| \(K_{\mathrm{bind}}\) | binding distribution length | association 使用的分布长度 |
+| \(K_{\mathrm{scan}}\) | CSI-RS scan budget | 已绑定 UE 实际进行 CSI-RS 测量的 beam 数 |
+| 可靠度门控 | reliability gate | 判定当前是否使用 sensing hint 的非 GT 决策机制 |
+| 常规回退 | conventional fallback/refinement | 不可靠时沿用传统扫描的安全机制 |
+| 有效速率 | effective rate | 同时扣除 SSB、CSI-RS 与控制资源后的速率指标 |
+| RZF | regularized zero-forcing (RZF) | 系统评价中的下行多用户预编码抽象 |

@@ -4,62 +4,247 @@
 \section{Background}
 \label{sec:introduction-background}
 
-Vehicular networks are becoming an important part of connected mobility, intelligent transportation systems, and future wireless infrastructure. In vehicle-to-infrastructure (V2I) communication, roadside base stations (BSs) are expected to provide high-rate and reliable links for vehicles whose positions, velocities, and blockage conditions vary rapidly over time. The use of millimetre-wave and other high-frequency bands can provide large communication bandwidth, but it also makes the communication link more dependent on narrow beams, accurate beam alignment, and timely beam maintenance \cite{xu2022computervisionaidedmmwave,jiang2022lidaraidedfuturebeam,liu2020radarassistedpredictivebeamformingvehicular}.
+Vehicular networks are a key component of connected mobility and intelligent
+transportation systems. Vehicle-to-infrastructure (V2I) links are expected to
+support data-intensive and delay-sensitive services while vehicles move through
+road environments whose geometry, visibility, and propagation conditions change
+continuously. Millimetre-wave and other high-frequency bands provide the
+bandwidth required by these services, but their array gain depends on narrow and
+accurately aligned beams. A communication link must therefore be established and
+maintained while the relative angle, range, blockage state, and dominant
+propagation paths between a base station (BS) and a vehicle evolve rapidly
+\cite{xu2022computervisionaidedmmwave,liu2020radarassistedpredictivebeamformingvehicular}.
 
-In conventional high-frequency cellular systems, beam management is commonly supported by beam sweeping, synchronization signal block (SSB) measurements, channel state information reference signal (CSI-RS) measurements, and subsequent channel state information (CSI) feedback. These mechanisms allow the BS and the user equipment to identify suitable transmit and receive beams and to support later precoding decisions. However, when the users are vehicles moving through dynamic road environments, the validity of a beam measurement can be short-lived. A beam that is suitable at one frame may become suboptimal after a short displacement, a lane change, or the emergence of a blockage. Performing frequent full beam sweeps can reduce this uncertainty, but it consumes time-frequency resources that would otherwise be used for data transmission \cite{alrabeiah2019millimeterwavebasestations,charan2021visionpositionmultimodalbeamprediction,charan2023camerabasedmmwavebeam}.
+Conventional beam management obtains communication evidence through
+synchronization signal block (SSB) sweeps, channel-state-information
+reference-signal (CSI-RS) measurements, and subsequent channel-state-information
+acquisition and refinement. These procedures are indispensable at initial access
+and whenever an existing link becomes uncertain. Their cost, however, grows with
+the search space and with the frequency at which measurements must be repeated.
+In a dynamic road scene, a beam measurement may become stale before it supports
+the next data transmission. Repeated exhaustive scanning mitigates this
+uncertainty, but consumes time--frequency resources that could otherwise carry
+payload data. Consequently, vehicular beam alignment is not solely a problem of
+identifying a favourable beam index; it is a communication decision that must
+balance candidate-set quality, CSI aging, measurement overhead, and service
+reliability \cite{charan2021visionpositionmultimodalbeamprediction,alkhateeb2023deepsense6glargescalerealworld,charan2023camerabasedmmwavebeam}.
 
-Roadside infrastructure also has a natural sensing role. A BS can be equipped with cameras and integrated sensing and communication (ISAC) capability, while nearby sensing nodes (SNs) can provide additional views of the road using distributed cameras. These sensing observations are not merely auxiliary context: they can reveal vehicle locations, motion patterns, occlusion relationships, and road geometry before or alongside communication measurements. In this thesis, the sensing infrastructure is treated as a source of spatial information that can assist beam management in a BS-centric vehicular network. The service BS collects its own multiview camera observations, its BS-side ISAC point cloud, and the multiview camera observations from nearby SNs. These inputs are then fused in a bird's-eye-view (BEV) representation to support vehicle detection and per-target beam prediction.
+Roadside infrastructure can observe the physical environment in which the
+wireless link is formed. Cameras provide semantic and visibility cues, whereas
+radar-, LiDAR-, and integrated sensing and communication (ISAC)-like
+observations provide geometric information about vehicle position and motion.
+Such information has been used to assist beam alignment, blockage prediction,
+and future-beam prediction \cite{alrabeiah2019millimeterwavebasestations,demirhan2021radaraided6gbeam,jiang2022lidaraidedfuturebeam}. Multimodal learning and
+predictive beamforming further indicate that environmental observations can
+reduce the communication measurements needed to locate useful beams
+\cite{tian2023multimodaltransformerswirelesscommunications,liu2022learningbasedpredictivebeamformingintegrated,farzanullah2025beamselectionisacusing}.
 
-The central motivation is that beam management in vehicular networks should not be considered only as a communication measurement problem. If the network can identify which detected vehicle corresponds to which communication user, and if it can maintain this identity over time, sensing information can be used to narrow the beam search space and reduce the frequency of full beam sweeping. This motivates a joint workflow that couples multimodal sensing, target-user association, tracking, and system-level communication evaluation \cite{alrabeiah2019millimeterwavebasestations,demirhan2021radaraided6gbeam,jiang2022lidaraidedfuturebeam,liu2022learningbasedpredictivebeamformingintegrated}.
+The value of sensing is particularly compelling in a road environment that
+extends beyond the field of view of a single sensor. A serving BS can collect
+multiview camera observations locally, neighbouring sensing nodes (SNs) can
+offer complementary views of occluded or distant road segments, and a BS-local
+ISAC point cloud can supply geometric cues unavailable from images alone. A
+target-BS-centered bird's-eye-view (BEV) representation provides a common local
+frame in which these heterogeneous observations can be aligned. BEV methods have
+proved effective for camera--geometric fusion and cooperative perception
+\cite{philion2020liftsplatshootencoding,liu2024bevfusionmultitaskmultisensorfusion,xu2022v2xvitvehicletoeverythingcooperativeperception}; their use in the present setting links
+wide-area environment perception to the beam codebook of the serving BS.
+
+Nevertheless, sensing information cannot be used as a direct substitute for
+communication evidence. A sensing system observes physical vehicles in the road
+scene, whereas the communication system operates on user equipment (UE)
+identities. The difference is fundamental in a multi-vehicle setting: a model
+may correctly detect several vehicles and predict a plausible beam-quality
+distribution for each of them, yet none of these predictions is useful for
+user-specific beam alignment until it is assigned to the correct UE. The central
+question of this thesis is therefore how multimodal and cross-node sensing can
+support beam alignment over a broad and changing road environment while ensuring
+that a sensing-derived beam hint is associated with the communication user it is
+intended to serve.
 
 \section{Challenges}
 \label{sec:introduction-challenges}
 
-The first challenge is the fast temporal variation of the wireless link. In a road environment, a vehicle may change its relative angle and distance to the serving BS over a small number of frames. The received beam power distribution over a discrete BS codebook can therefore change quickly, particularly in high-frequency bands where narrow beams are used. A sensing-assisted system must predict useful candidate beams from visual and ISAC observations while accounting for the fact that the communication channel and the sensing scene are both time-varying.
+The first challenge is to exploit multimodal and cross-node sensing
+complementarity under changing observation conditions. A single camera may be
+limited by field of view, illumination, weather, or occlusion, while a point
+cloud may be sparse, noisy, or geometrically incomplete. Similarly, the serving
+BS may have limited visibility of road segments that are observable from a
+neighbouring SN. Simply increasing the number of sensors does not by itself
+produce a communication-relevant representation: the observations must be
+spatially aligned, temporally coherent, and fused in a manner that retains both
+semantic and geometric information. The resulting representation must support
+vehicle detection and a conditional beam-quality ranking over the codebook in
+the target BS's local service region. This requirement goes beyond single-modal
+beam prediction because it asks whether complementary sensing can remain useful
+across variations in coverage, visibility, blockage, and weather.
 
-The second challenge is blockage and measurement uncertainty. Vehicles, roadside objects, and surrounding infrastructure can occlude line-of-sight or dominant reflection paths. At the same time, sensing observations can be incomplete because of camera field-of-view limits, synchronization errors, calibration errors, or sparse ISAC point clouds. Communication measurements can also be noisy or outdated. A practical beam management workflow must therefore tolerate uncertain observations across both sensing and communication modalities rather than assuming that either side provides a perfect state estimate.
+The second challenge is sensing target-to-user association. Beam prediction
+studies commonly evaluate a sensing sample that is already paired with the
+corresponding communication link. In operational V2I beam alignment, however,
+the detector produces a set of physical sensing targets, whereas the BS receives
+SSB and CSI-RS measurements indexed by communication UEs. The two sets need not
+have the same cardinality: some observed vehicles may be inactive users, an
+active UE may be temporarily unobserved, and nearby vehicles may have similar
+beam signatures. A beam-quality distribution predicted for the correct physical
+vehicle still leads to an incorrect beam-alignment action if it is assigned to a
+different UE. Sensing target-to-user association is thus not a bookkeeping
+operation after beam prediction; it is the mechanism that makes sensing-derived
+beam information applicable to a particular communication link. This distinction
+is especially important relative to beam-alignment formulations that assume UE
+identity or link correspondence is available at the sensing input
+\cite{charan2023camerabasedmmwavebeam,imran2024environmentsemanticcommunicationenabling}.
 
-The third challenge is multi-vehicle identity ambiguity. A detected sensing target is not automatically a communication user identity. In a scene with multiple vehicles, the sensing network may output several target detections and several per-target beam distributions, while the communication system observes beam power spectra associated with communication users. The system must determine which detected target corresponds to which user before the predicted beams can be used for user-specific communication decisions. This target-user association problem is essential in multi-vehicle sensing-assisted beam management, but it is distinct from the beam index prediction problem itself \cite{charan2023camerabasedmmwavebeam,imran2024environmentsemanticcommunicationenabling,zhou2020trackingobjectspoints}.
+The third challenge is maintaining the target-to-user correspondence over time.
+After an initial association, vehicle motion, short-term occlusion, missed
+detections, and interactions among nearby targets can invalidate a correspondence
+that was previously credible. The required mechanism is not visual recognition
+of a UE identity. Rather, it is a multi-object state-estimation and data-
+association process that preserves the temporal correspondence between an
+unbound perception track and a communication UE, and that requests a new
+communication measurement when the correspondence is no longer reliable.
+Classical filtering and tracking approaches, together with predictive
+beamforming research, motivate this temporal treatment of vehicle state
+\cite{zhou2020trackingobjectspoints,yuan2020bayesianpredictivebeamformingvehicular,liu2022deepclstmpredictivebeamforming}. Within the present thesis, correspondence
+maintenance is important because it determines whether a beam hint remains
+assigned to the correct user across successive beam-alignment decisions.
 
-The fourth challenge is maintaining association over time. Repeating a full SSB beam sweep at every frame can re-establish user-specific beam observations, but it increases overhead. Conversely, relying only on a previous association can lead to beam mismatch when the vehicle moves, when tracking drifts, or when the scene becomes occluded. This motivates a tracking mechanism that predicts the state of associated users, matches new BEV detections to existing tracks, and decides when additional communication measurement is needed. In this thesis, the tracking component is based on an interacting multiple model (IMM) filter that combines multiple vehicle-motion hypotheses for temporally continuous identity maintenance.
+The fourth challenge is to use sensing conservatively in the communication
+decision. A candidate set may contain a useful beam but still be unsuitable when
+the target-to-user association is ambiguous, the current observation is
+unreliable, or the beam-quality distribution is diffuse. Conversely, a small
+candidate set can reduce CSI-RS resources only if the retained beams preserve
+sufficient link quality for the correct UE. A meaningful policy must therefore
+assess the reliability of the association and the current sensing evidence,
+apply sensing-derived candidates only when that evidence is credible, and retain
+conventional refinement otherwise. Its evaluation must connect candidate recall
+and CSI-RS overhead with effective rate, lower-tail user rate, and outage,
+rather than inferring communication benefit from Top-\(K\) accuracy alone.
 
-These challenges indicate that a sensing-assisted vehicular beam management system should be evaluated beyond Top-K beam accuracy alone. Incorrect association, tracking failure, beam mismatch, and beam training overhead can all affect the final communication performance. For this reason, this thesis connects sensing outputs to a simplified system-level communication evaluation that includes beam training overhead, zero-forcing (ZF) precoding, effective signal-to-interference-plus-noise ratio (SINR), spectral efficiency, and overhead-adjusted throughput.
+These challenges reveal two connected requirements for sensing-assisted
+vehicular beam alignment: broad, condition-resilient environmental perception
+through multimodal and cross-node observations, and identity-consistent use of
+that perception through sensing target-to-user association and correspondence
+maintenance. The framework developed in this thesis addresses both requirements
+within a common measurement-aware communication procedure.
 
 \section{Research Objective}
 \label{sec:introduction-objective}
 
-The objective of this thesis is to develop and evaluate a BS-centric multimodal distributed sensing-assisted framework for low-overhead and trackable beam management in vehicular networks. The framework uses the service BS as the coordination point. For each decision frame, the BS collects its local multiview camera observations, its BS-side ISAC point cloud, and the multiview camera observations from a selected set of nearby SNs. These multimodal observations are fused in a BEV representation to detect vehicles and to predict a per-target beam power distribution over the BS beam codebook.
+The objective of this thesis is to develop a BS-centric multimodal
+sensing-assisted beam-alignment framework that uses complementary environmental
+observations to reduce the CSI-RS measurement search space for the correct UE.
+For every target BS, the framework fuses multiview camera observations at the
+target BS and neighbouring SNs with a BS-local ISAC point cloud in a shared BEV
+frame. A joint perception model detects vehicles and predicts a 192-way CSI
+beam-quality distribution at each detected target. The distribution is intended
+to rank beams as measurement candidates; it is not treated as a direct
+replacement for the beam selected through communication measurement.
 
-The thesis focuses on four connected tasks. The first task is BEV-based vehicle detection from multimodal distributed sensing observations. The second task is per-target beam prediction, where each detected vehicle is assigned a predicted beam power distribution and a set of Top-K candidate beams. The third task is target-user association, where the initial SSB beam sweep power spectrum of each communication user is matched with the predicted beam distribution of detected sensing targets. The fourth task is tracking-assisted beam maintenance, where associated users are maintained over subsequent frames by combining BEV detections with an IMM tracking state.
+The second objective is to establish sensing target-to-user correspondence
+without inserting a UE identifier or an oracle link coordinate into the
+perception model. During initial access, after a serving-cell change, or when an
+existing correspondence has lost credibility, conventional SSB and CSI-RS
+measurements remain available. The measured beam evidence is associated with the
+beam likelihood predicted for currently observed perception tracks. A one-to-one
+association, constrained by the SSB-parent relation and its reliability, binds a
+communication UE to an appropriate sensing track. Multi-object state estimation
+then maintains the temporal correspondence between subsequent detections and the
+bound UE. This construction makes the association between a physical sensing
+target and a communication user an explicit and testable component of beam
+alignment.
 
-The communication objective is not to reproduce a complete 5G New Radio protocol stack. Instead, this thesis adopts a simplified and interpretable system-level abstraction. In this abstraction, sensing-assisted Top-K beam prediction can reduce beam training overhead when the correct beam is included in the candidate set, while an incorrect candidate set introduces a beam mismatch penalty that affects subsequent CSI or precoding decisions. The resulting effective SINR, spectral efficiency, and overhead-adjusted throughput are then used to study how sensing accuracy, association reliability, tracking continuity, and measurement overhead interact at the communication-system level.
+The third objective is to convert a reliable correspondence into a conservative
+candidate-measurement decision. Only a currently observed target with a credible
+target-to-user correspondence provides a fixed-size or adaptive set of CSI-RS
+candidates. The UE selects a service beam from the candidates that are actually
+measured. When the evidence is insufficient, the procedure falls back to
+conventional refinement. The framework consequently separates three distinct
+quantities: the beam-quality distribution exported by the perception model, the
+distribution used for sensing target-to-user association, and the number of
+beams measured by CSI-RS. This separation prevents a large model output from
+being mistaken for a small pilot budget.
 
-The resulting study is methodological and system-oriented: it defines the sensing-to-communication workflow, specifies the association and tracking interface, and evaluates how beam prediction, identity maintenance, and communication overhead interact in the proposed vehicular setting.
+The study is scoped to a target-BS-centered local service region. A vehicle that
+enters a new serving cell establishes a new local correspondence; the framework
+does not assume a global multi-BS identity. Its system-level evaluation uses a
+48-beam SSB codebook, a 192-beam CSI codebook, and common propagation, Doppler,
+scheduling, power, regularized zero-forcing (RZF), and resource-accounting
+assumptions across compared policies. The evaluation examines a chain of
+evidence from multimodal perception and beam-quality ranking, through sensing
+target-to-user association and correspondence maintenance, to candidate recall,
+pilot overhead, effective rate, lower-tail rate, and outage. Ground-truth
+identities and detections serve only diagnostic and upper-bound roles; the
+formal decision path relies on sensing and communication measurements available
+to the BS.
 
 \section{Contributions}
 \label{sec:introduction-contributions}
 
-This thesis is organized around three contributions.
+This thesis makes the following contributions.
 
 \begin{enumerate}
-    \item A BS-centric multimodal distributed sensing-assisted beam management framework is developed for vehicular networks. The framework uses the serving BS as the coordination point and fuses BS-side multiview camera observations, BS-side ISAC point clouds, and camera observations from nearby distributed SNs. The fused BEV representation supports vehicle target detection and per-target beam power distribution prediction, from which Top-K candidate beams are obtained for later beam management decisions.
+    \item A target-BS-centered multimodal and cross-node learning formulation is
+    developed for joint vehicle detection and 192-way CSI beam-quality
+    prediction. By fusing camera observations from the target BS and neighbouring
+    SNs with a BS-local ISAC point cloud in a common BEV grid, the formulation
+    aligns object-level perception and link-level supervision and enables the
+    complementarity of sensing modalities and viewpoints to be evaluated under
+    varying observation conditions.
 
-    \item A target-user association and tracking workflow is designed for multi-vehicle sensing-assisted communication. During initial access, the workflow uses the SSB beam sweep power spectrum from the communication side and the predicted per-target beam distribution from the sensing side to associate detected sensing targets with communication user identities. In later frames, an IMM tracking module and BEV detection association are used to maintain user identity and support temporally continuous beam selection while reducing reliance on repeated full beam sweeping.
+    \item A CSI power-distribution and ranking-based beam-supervision strategy
+    is formulated in place of strongest-beam classification alone. The predicted
+    distribution supports candidate ranking, confidence characterization, and
+    beam-likelihood evaluation for sensing target-to-user association. Its value
+    is assessed through controlled comparisons with strongest-beam and
+    distribution-only supervision using beam-ranking and calibration measures.
 
-    \item A multimodal vehicular simulation system and system-level evaluation method are constructed to connect sensing outputs with communication metrics. The simulation workflow links road traffic generation, multisensor observation generation, scene reconstruction, ray-tracing-based channel generation, beam power labels, and simplified communication evaluation. The evaluation considers Top-K beam prediction, target-user association, tracking error, beam training overhead, beam mismatch penalty, ZF precoding SINR, spectral efficiency, and overhead-adjusted throughput.
+    \item A sensing target-to-user association framework is introduced for
+    identity-consistent beam alignment. The framework separates unbound
+    perception outputs from communication UEs, maintains per-BS multi-object
+    perception tracks, and uses conventional measurements for initial and
+    recovery association. SSB-parent consistency, one-to-one assignment,
+    reliability assessment, and conventional fallback ensure that a sensing-
+    derived beam hint is used only when it has credible correspondence to the
+    intended UE.
+
+    \item A layered evaluation methodology is established to examine the system
+    consequence of sensing-assisted beam alignment. The methodology jointly
+    reports perception quality, beam-distribution quality, sensing target-to-user
+    association, correspondence maintenance, candidate recall, CSI-RS overhead,
+    RZF-based effective rate, lower-tail rate, and outage under a common resource
+    model. It thereby distinguishes a useful beam ranking from a beam hint that
+    is both correctly associated and beneficial to communication.
 \end{enumerate}
 
-The contributions are stated at the framework, association-and-tracking, and system-evaluation levels; quantitative performance claims are made only where they are supported by the experimental evaluation.
+The contributions are stated at the formulation, method, and evaluation levels.
+Quantitative comparative claims are restricted to results obtained under the
+corresponding frozen protocol and held-out evaluation.
 
 \section{Thesis Organization}
 \label{sec:introduction-organization}
 
-The remainder of this thesis is organized as follows. Chapter~\ref{ch:background} reviews the background and related work on vehicular beam management, sensing-assisted beam prediction, ISAC predictive beamforming, BEV multimodal fusion, cooperative perception, target-user association, and tracking. It also identifies the research gap addressed by this thesis.
+The remainder of this thesis is organized as follows. Chapter~\ref{ch:background}
+reviews vehicular beam management, sensing-aided beam prediction, ISAC
+predictive beamforming, BEV and cooperative perception, and sensing
+target-to-user association. It uses these research strands to identify the need
+for broad, condition-resilient sensing and identity-consistent beam alignment.
 
-Chapter~\ref{ch:system-model} presents the system model and problem formulation. It defines the roadside vehicular network, BSs, distributed SNs, vehicle users, multimodal sensing observations, target-user association variables, tracking states, and the communication and beam management model used for system-level evaluation.
+Chapter~\ref{ch:system-model} defines the target-BS local coordinate system,
+the multimodal observations, the physical-target, perception-track, and
+communication-UE identities, the sensing target-to-user correspondence, and the
+codebook, candidate-measurement, and resource models. Chapter~\ref{ch:methodology}
+then presents the proposed framework, including cross-node BEV fusion, joint
+detection and beam-quality learning, multi-object correspondence maintenance,
+measurement-assisted association, reliability-gated candidate scanning, and the
+communication interface.
 
-Chapter~\ref{ch:methodology} describes the proposed multimodal sensing-assisted beam management framework. It introduces the BS-centric data flow, BEV-based multimodal fusion, vehicle detection head, per-target beam prediction head, initial target-user association procedure, IMM tracking module, and the interface between sensing outputs and communication evaluation.
-
-Chapter~\ref{ch:experiments} describes the multimodal simulation system and experimental evaluation. It covers scenario and dataset construction, baselines, evaluation metrics, main results, ablation studies, and discussion of limitations.
-
-Finally, Chapter~\ref{ch:conclusion} concludes the thesis and discusses future work. It summarizes the findings supported by the thesis, clarifies the main limitations of the simulation and communication abstraction, and outlines possible extensions toward more realistic protocol-level simulation, robust multimodal sensing, and broader cooperative vehicular network settings.
+Chapter~\ref{ch:experiments} describes the data protocol, comparison methods,
+layered metrics, and system-level evaluation. It examines how multimodal and
+cross-node complementarity, sensing target-to-user association, and candidate
+measurement decisions affect communication performance under common resource
+assumptions. Finally, Chapter~\ref{ch:conclusion} summarizes the findings
+supported by the evaluation, discusses the limitations of the local BS scope and
+communication abstraction, and outlines extensions toward cross-BS
+correspondence, measurement calibration, and more detailed protocol-level
+assessment.

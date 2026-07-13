@@ -119,78 +119,95 @@ BEV 表征，而 sensing target 与 communication UE 的身份差异必须经由
 
 ## Chapter 2: Background and Related Work
 
-本章目的：梳理 sensing-assisted beam prediction、ISAC predictive beamforming、BEV / cooperative
-perception，以及 sensing target-to-user association 相关研究，明确多模态/跨节点互补性与
-identity-consistent beam alignment 的研究缺口。
+本章目的：围绕 Chapter 1 的三项贡献组织相关工作，而非按彼此孤立的技术名词罗列文献。章节依次
+说明：为何波束管理需要感知辅助；为何分布式多模态 BEV 表征适合联合车辆检测与 beam prediction；
+为何 sensing target-to-user association 与 IMM-based tracking 是用户级 beam alignment 的必要条件；
+以及为何需要以 5G NR-oriented 系统级评价检验感知方案的实际通信价值。
 
-叙述逻辑：先介绍车联网和 beam management 基础，再按 sensing modalities 与方法类型梳理已有工作，
-随后引入 BEV 多模态融合和分布式感知，最后收束到本文的研究定位：以跨节点 BEV 感知扩大条件化
-观测能力，以 sensing target-to-user association 保证 beam hint 的正确 UE 归属，并以资源感知的
-系统评价检验实际 beam alignment 影响。
+叙述逻辑：先建立传统测量和 sensing-aided beam prediction 的问题背景，再将 BEV fusion、
+cooperative perception 与 ISAC sensing 收束为第一项贡献的技术基础；随后以 multi-candidate
+prediction、transmitter identification、multi-object tracking 和 predictive beamforming 为证据，论证
+第二项贡献的必要性；最后讨论多模态数据、仿真器、资源模型和通信指标，说明第三项贡献的评价定位。
+每一节均按“已有工作解决了什么--其边界在哪里--本文据此连接什么”展开，并在末节形成对三项贡献的
+明确定位。
 
-### 2.1 Vehicular Networks and Beam Management
-
-写作要点：
-
-- 回顾 V2I / vehicular networks 中高频通信的 beam alignment、beam selection、beam tracking
-  和 handover 问题。
-- 介绍 beam codebook、SSB beam sweeping、CSI/PMI acquisition 和 beam training overhead。
-- 说明 beam management 与 spectral efficiency / throughput 的关系。
-
-### 2.2 Sensing-Aided Beam Prediction
+### 2.1 Beam Management and Sensing-Aided Beam Prediction
 
 写作要点：
 
-- 按 sensing modality 组织已有工作：camera-based、position/GPS-aided、radar-aided、
-  LiDAR-aided 和 multimodal sensing-aided beam prediction。
-- 介绍 DeepSense 6G 系列工作、Top-K beam accuracy、beam power loss 和 overhead reduction
-  等常用指标。
-- 说明现有工作多关注 beam index prediction，而 sensing target 与 communication user identity
-  的长期维护仍需要与 tracking 和 association 结合。
+- 回顾高频 V2I 中 beam alignment、beam training、CSI acquisition 和 beam refinement 的作用，说明
+  移动性、遮挡和 CSI aging 使 measurement overhead 成为系统问题。
+- 以 camera、position/GPS、radar、LiDAR 和 ISAC sensing-aided beam prediction 为主线，概括这些
+  方法如何利用环境信息缩小 beam search space；介绍 Top-\(K\) accuracy、power loss、candidate recall
+  和 overhead 等常用评价口径。
+- 结合 DeepSense 6G 与 multi-candidate camera-based prediction，说明多数学习任务仍以已配对的
+  sensing sample--communication link 为单位；由此引出“beam ranking 有用”不等于“该 ranking 已归属
+  正确 UE”的身份边界。
+- 本节结尾自然过渡：为使 beam prediction 在真实多车道路场景中发挥作用，需要同时提高环境观测
+  的空间覆盖与用户级关联的可靠性。
 
-### 2.3 ISAC Predictive Beamforming and Tracking
-
-写作要点：
-
-- 回顾 DFRC/ISAC 中利用 radar echo、historical channel 或 reflected signal samples 做车辆状态预测
-  和 predictive beamforming 的工作。
-- 介绍 EKF、Bayesian/message passing、CLSTM、Transformer 或 end-to-end predictive beamforming。
-- 说明 ISAC 文献通常重视 channel/beamforming/rate 优化，本文进一步结合 camera-based multi-object
-  perception 和 target-user association。
-
-### 2.4 BEV Multimodal Fusion and Cooperative Perception
+### 2.2 Distributed Multimodal BEV Perception for Joint Vehicle Detection and Beam Prediction
 
 写作要点：
 
-- 介绍 CenterNet / CenterTrack 对 point-based detection 和 tracking 的启发。
-- 介绍 Lift-Splat-Shoot、BEVFusion 等 BEV 表征方法，说明 BEV 对多视角图像和点云融合的意义。
-- 介绍 V2X cooperative perception，说明多节点协作感知对覆盖范围、遮挡和视角互补的帮助。
-- 连接到本文 BS/SN 多视角 camera 与 BS-side ISAC point cloud 的 BEV 融合设计。
+- 先说明 BEV 表征为何适合道路侧基础设施：它将多视角图像、点云和不同站点的观测转换为统一局部
+  空间表示，使车辆检测与几何相关的 beam prediction 共享场景上下文。
+- 回顾 Lift-Splat-Shoot、BEVFusion、CenterNet、V2X-ViT 等关于 camera-to-BEV、camera--point-cloud
+  fusion、point-based detection 和 cooperative perception 的关键思想；不要把自动驾驶任务直接等同于
+  通信任务。
+- 讨论 distributed sensing 与 multimodal beam prediction 的直接相关工作：邻近节点可改善遮挡和覆盖，
+  camera、point cloud/ISAC-like sensing 具有语义与几何互补性；同时指出已有工作较少把它们组织为
+  target-BS-centered、面向 joint vehicle detection and beam prediction 的 BEV 模型。
+- 明确第一项贡献的定位：本文以分布式多模态 BEV perception 将 vehicle detection 与 per-target
+  beam-energy distribution prediction 对齐，重点是为后续用户级 beam management 提供未绑定的
+  physical-target evidence，而非直接从感知输出确认最终服务 beam。
 
-### 2.5 Sensing Target-to-User Association and Identity-Consistent Beam Alignment
-
-写作要点：
-
-- 区分 physical sensing target、perception-track identity 和 communication UE identity；明确后两者的
-  correspondence 不是由 detection 类别、位置标签或 ground truth 自动给定。
-- 回顾 multi-candidate beam prediction、transmitter identification、multi-object data association 与
-  state-estimation-based tracking 的相关思想，说明它们各自处理的身份边界。
-- 将 sensing target-to-user association 定位为 identity-consistent beam alignment 的必要机制：只有
-  beam hint 与正确 UE 对应，候选测量的节省才可能转化为该 UE 的通信收益。
-- 说明本文采用 conventional-measurement-assisted initial/re-association、beam likelihood、
-  SSB-parent consistency 和一对一 assignment；多目标状态估计只维持 correspondence 的时序一致性。
-
-### 2.6 Summary of Research Gap
+### 2.3 Target-to-User Association with IMM-Based Tracking
 
 写作要点：
 
-- 总结已有工作分别覆盖 sensing-aided beam prediction、ISAC predictive beamforming、BEV fusion、
-  cooperative perception 和 multi-candidate identification。
-- 从两条主线收束研究缺口：跨模态/跨节点观测如何在变化条件下形成可用的局部 BEV 表征；以及如何
-  在不注入 oracle identity 的前提下建立 sensing target-to-user correspondence，使 beam ranking
-  成为正确 UE 的候选测量提示。
-- 指出仅报告 Top-\(K\) accuracy 的不足，并引出从 target-to-user association 到候选扫描、资源记账
-  和 RZF effective-rate 的系统级证据链。gap 与 Chapter 1 的三项贡献对齐。
+- 明确 physical sensing target、perception track 和 communication UE 是三个不同的实体；multi-candidate
+  beam prediction 与 transmitter identification 已开始处理多目标歧义，但通常未将 association、
+  temporal maintenance 和 communication measurement 组织为完整的用户级链路。
+- 回顾 object association、tracking-by-detection、Kalman/EKF/IMM state estimation 以及 ISAC
+  predictive beamforming 的相关思想。说明这些工作分别提供运动状态估计、data association 或
+  temporal beam prediction，而不必声称它们解决相同的问题。
+- 将 conventional measurement 说明为 target-to-user association 的通信锚点：感知提供 target-level
+  beam likelihood，通信测量提供 UE-level evidence；一对一 association 将二者连接，IMM-based tracking
+  用于维持该关联随时间演化的有效性。
+- 明确第二项贡献的定位：本文关注 association correctness 与 association persistence 如何决定
+  beam hint 是否仍属于正确 UE；IMM tracking 是这一用户级对应关系的维护机制，而非独立的 UE
+  recognition module。
+
+### 2.4 Multimodal V2I Simulation and 5G NR-Oriented Beam-Management Evaluation
+
+写作要点：
+
+- 回顾多模态 sensing-and-communication datasets、realistic simulation frameworks 和 ISAC
+  beamforming evaluations，说明它们如何提供同步观测、beam labels 或 rate-oriented 指标。
+- 区分 perception-level metrics 与 communication-level metrics：mAP、beam Top-\(K\) 或 power loss
+  只能说明局部预测质量；CSI-RS overhead、effective rate、lower-tail rate 和 outage 才能评价候选
+  测量策略的系统后果。
+- 说明现有系统评价常从 channel/echo 直接优化 rate，或只以 Top-\(K\) accuracy 推断开销收益；较少
+  同时追踪 perception availability、target-to-user association、IMM-based tracking、candidate recall
+  和 resource accounting 的误差传播链。
+- 明确第三项贡献的定位：本文的 Multimodal V2I Simulator 基于既有数据资产组织 beam-management
+  episodes，并在统一的 5G NR-oriented measurement/resource abstraction 下比较 policy；该评价并非
+  完整标准协议栈仿真。
+
+### 2.5 Research Positioning and Summary
+
+写作要点：
+
+- 用连续论证而非逐篇重复总结本章：已有 sensing-aided prediction 证明环境信息可缩小候选空间，
+  BEV/cooperative perception 证明多模态、多节点观测可形成更完整的道路场景表征，tracking/ISAC
+  studies 证明时间状态对 beam management 重要，系统级工作则说明资源与速率必须共同评价。
+- 对应第一项贡献，指出缺少将分布式 camera 与 BS-local ISAC sensing 在 target-BS-centered BEV 中
+  联合用于 vehicle detection and beam prediction 的闭环任务；对应第二项贡献，指出缺少以通信测量
+  为锚点、由 IMM tracking 维持的 target-to-user association；对应第三项贡献，指出缺少从未绑定
+  感知、关联质量到 5G NR-oriented beam-management consequences 的统一评价链路。
+- 以克制措辞说明本文的研究定位是连接上述要素，而不是宣称单一模块已经替代所有传统 beam
+  management procedures；章节结尾过渡至 Chapter 3 的系统模型与问题定义。
 
 ## Chapter 3: System Model and Problem Formulation
 

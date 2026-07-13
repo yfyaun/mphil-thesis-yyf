@@ -1,370 +1,337 @@
 \chapter{System Model and Problem Formulation}
 \label{ch:system-model}
 
-This chapter defines the system model used throughout the thesis. The objective is
-to provide a consistent notation for the vehicular network, the multimodal sensing
-observations, the target-user association variables, the tracking states, and the
-communication model used for beam management and system-level evaluation. The
-model supports the sensing-assisted beam management framework developed in the
-following chapter and keeps implementation-specific parameters explicit.
+This chapter establishes the system abstraction for distributed multimodal
+sensing-assisted beam management in a vehicular network.  It distinguishes the
+physical vehicle observed by the sensing system from the vehicle user equipment
+(VUE) addressed by the communication system, and specifies how the two domains
+are coupled through communication measurements.  The presentation proceeds from
+the local network architecture and sensing observations to an NR-oriented beam
+management procedure, before formulating the coupled perception, association,
+and communication objectives.  The learning and inference mechanisms that
+realise this model are developed in Chapter~\ref{ch:methodology}.
 
-\section{Network Scenario and Time Structure}
-\label{sec:system-network-time}
+\section{Network Architecture}
+\label{sec:system-network}
 
-We consider a roadside vehicular network consisting of base stations (BSs),
-distributed sensing nodes (SNs), and mobile vehicle users. Let
-\(\mathcal{B}\) denote the set of BSs. A BS provides downlink communication
-service to vehicles in its local coverage region and also acts as the center of a
-local sensing-assisted beam management process. Let \(\mathcal{S}_b\) denote the
-set of SNs selected by BS \(b \in \mathcal{B}\) for cooperative sensing. The
-number of cooperating SNs is denoted by \(K_{\mathrm{SN}}=|\mathcal{S}_b|\).
-Each SN contributes sensing observations but does
-not directly provide communication service in the considered model.
+Consider a roadside vehicular network with a set of base stations (BSs)
+\(\mathcal{B}\).  The formulation is centred on a target BS \(b\in\mathcal{B}\),
+which serves the VUEs in its local service region and executes the corresponding
+beam-management decisions.  A set \(\mathcal{N}_b\) of neighbouring distributed
+sensing nodes (SNs) provides additional camera views of the same road region.
+The SNs are sensing-only collaborators: they neither schedule VUEs nor establish
+independent service cells in the model.  Thus, all communication measurements,
+beam decisions, and association states discussed below are local to the target
+BS.
 
-The mobile communication users are vehicles traveling through the road region.
-For a serving BS \(b\), the set of active vehicle users at decision epoch \(t\)
-is denoted by \(\mathcal{U}_b(t)\). Each communication user corresponds to a
-physical vehicle target in the sensing scene, but the sensing target identity and
-the communication user identity are not assumed to be known a priori. This
-distinction is central to the target-user association problem addressed in this
-thesis.
+Let \(\mathcal{U}_b[n]\) denote the active VUE set of BS \(b\) at sensing epoch
+\(n\).  A member \(u\in\mathcal{U}_b[n]\) has a communication-side identifier
+used for synchronisation, measurement reporting, scheduling, and downlink
+transmission.  In contrast, the sensing system produces unlabelled physical
+targets.  A vehicle that is visible to the sensors is therefore not automatically
+known to be a particular VUE, and a VUE can be temporarily unobserved because of
+occlusion or a sensing miss.  This distinction makes target-to-user association
+an explicit part of the system model rather than an implicit consequence of
+detection.
 
-Time is divided into discrete decision epochs \(t=0,1,\ldots,T-1\). Each epoch
-may correspond to one sensing frame, one communication scheduling interval, or a
-coarser beam-management interval according to the evaluation granularity. At
-each epoch, BS \(b\) receives multimodal sensing observations from its local
-sensor suite and from the cooperating SNs, maintains tracking states for
-previously associated users, and selects a beam-management action for the active
-vehicle users. Initial access epochs may include a more complete beam sweep,
-whereas subsequent epochs rely more heavily on sensing-assisted
-prediction and tracking.
+The index \(n\) refers to a sensing epoch, at which observations from the BS and
+its SNs are aligned to a common local bird's-eye-view (BEV) frame.  The frame is
+anchored at the target BS and covers its local service region.  A VUE entering a
+new serving cell establishes a new local association there; no global identity
+is assumed to persist across BSs.  The relation between sensing epochs and the
+radio timing used for beam management is specified in
+Section~\ref{subsec:system-timing}.
 
-Each BS and each SN is equipped with four tilted down-looking cameras that cover
-the road region from multiple viewpoints. In addition, each BS has an ISAC
-sensing capability that produces a local sensing point cloud. For BS \(b\), all
-sensing inputs are represented in a local bird's-eye-view (BEV) coordinate frame
-anchored to the BS or to a fixed road-side reference frame. The simulation
-layout, the value of \(K_{\mathrm{SN}}\), the frame duration, and the spatial
-extent of the BEV region are explicit scenario parameters.
+\section{Multimodal and Distributed Sensing Model}
+\label{sec:system-sensing}
 
-\section{Multimodal Sensing Observation Model}
-\label{sec:system-sensing-observation}
-
-At epoch \(t\), BS \(b\) observes the road scene through camera and ISAC
-modalities. The multiview camera observations at the BS are denoted by
-\[
-    \mathcal{I}_b(t)=\{I_{b,c}(t)\}_{c=1}^{4},
-\]
-where \(I_{b,c}(t)\) is the image captured by the \(c\)-th camera mounted on BS
-\(b\). Similarly, the camera observations from the cooperating SNs are denoted
-by
-\[
-    \mathcal{I}_{\mathcal{S}_b}(t)
-    = \{I_{s,c}(t): s \in \mathcal{S}_b,\ c=1,\ldots,4\}.
-\]
-The BS-side ISAC modality is represented by a point-cloud observation
-\[
-    \mathcal{P}_b(t)=\{(\mathbf{q}_{b,m}(t), a_{b,m}(t))\}_{m=1}^{N_b^{\mathrm{pt}}(t)},
-\]
-where \(\mathbf{q}_{b,m}(t)\) denotes the three-dimensional location of the
-\(m\)-th sensing point in the local coordinate system, \(a_{b,m}(t)\) denotes an
-optional point attribute such as intensity or confidence, and
-\(N_b^{\mathrm{pt}}(t)\) is the number of points available at epoch \(t\). This
-point cloud is used as an ISAC-like geometric observation and should not be
-interpreted as a fully specified radar signal-processing model.
-
-The complete sensing observation available to BS \(b\) is written as
+At sensing epoch \(n\), the observations available to BS \(b\) combine multiview
+images from the BS and its neighbouring SNs with an ISAC-derived point cloud
+available locally at the BS.  We write
 \begin{equation}
-    \mathcal{O}^{\mathrm{sen}}_b(t)
-    = \left\{\mathcal{I}_b(t),\mathcal{I}_{\mathcal{S}_b}(t),\mathcal{P}_b(t)\right\}.
-    \label{eq:sensing-observation}
+    \mathcal{O}_{b,n}
+    = \bigl\{\mathcal{I}_{b,n},\mathcal{I}_{\mathcal{N}_b,n},
+    \mathcal{P}_{b,n}\bigr\},
+    \label{eq:system-sensing-observation}
 \end{equation}
-The camera images and point cloud are assumed to be temporally synchronized and
-spatially calibrated before being fused. Let \(\mathcal{T}_{j \rightarrow b}\)
-denote the calibrated transformation from the coordinate frame of sensor or node
-\(j\) into the local BEV frame of BS \(b\). These transformations allow visual
-features and ISAC point-cloud features to be encoded into a common BEV
-representation. The detailed projection, lifting, and point-cloud encoding
-operations are specified through the BEV fusion functions in the method chapter.
+where the three terms respectively denote the target-BS camera observations,
+neighbouring-SN camera observations, and the BS-local point cloud.  Sensor
+calibration maps every modality into the BEV frame of BS \(b\).  This common
+representation permits complementary viewpoints to be used for vehicle
+observation, while retaining a BS-centred interpretation of the beam labels.
 
-After multimodal BEV fusion, a vehicle detection module outputs a set of detected
-targets
-\[
-    \mathcal{D}_b(t)=\{d_{b,1}(t),\ldots,d_{b,N_b^{\mathrm{det}}(t)}(t)\}.
-\]
-For detected target \(d_{b,i}(t)\), the sensing-side target representation is
-summarized as
-\begin{equation}
-    \mathbf{z}_{b,i}(t)
-    = \left(\hat{\mathbf{p}}_{b,i}(t),\hat{\mathbf{l}}_{b,i}(t),
-    \hat{c}_{b,i}(t)\right),
-    \label{eq:target-representation}
-\end{equation}
-where \(\hat{\mathbf{p}}_{b,i}(t)=[\hat{x}_{b,i}(t),\hat{y}_{b,i}(t)]^{\mathrm{T}}\)
-is the estimated BEV center, \(\hat{\mathbf{l}}_{b,i}(t)\) contains target-size
-or box-related attributes when available, and \(\hat{c}_{b,i}(t)\) is a detection
-confidence score. Additional attributes such as heading or appearance features
-are included when they support association and tracking.
+\subsection{Camera Observations}
+\label{subsec:system-camera}
 
-\section{Target-User Association and Tracking State}
-\label{sec:system-association-tracking}
+Let \(\mathcal{V}_j\) be the set of cameras mounted at roadside node \(j\).  The
+camera observations of the target BS and its collaborating SNs are respectively
+written as
+\begin{align}
+    \mathcal{I}_{b,n} & = \{I_{b,v,n}: v\in\mathcal{V}_b\}, \\
+    \mathcal{I}_{\mathcal{N}_b,n} & =
+    \{I_{s,v,n}:s\in\mathcal{N}_b,\ v\in\mathcal{V}_s\}.
+    \label{eq:system-camera-observations}
+\end{align}
+Each image is accompanied by fixed camera intrinsics and an extrinsic transform
+to the target-BS coordinate system.  The distributed views are not treated as
+separate predictions that are combined only after detection.  Instead, they
+provide observations of a shared physical scene before the joint detection and
+beam-prediction task.  In particular, an SN view can retain evidence of a
+vehicle whose target-BS view is partly occluded, whereas the target-BS view
+maintains the direct geometric relation to the serving link.
 
-The system must connect three types of identity: detected sensing targets,
-communication users, and temporal tracks. A detected target \(d_{b,i}(t)\)
-describes an object observed in the BEV sensing output at epoch \(t\). A
-communication user \(u\) is the network identity used for beam measurement,
-scheduling, and throughput evaluation. A track \(r\) is a temporal state that
-maintains the estimated motion of a physical vehicle across epochs. Defining
-these variables before the communication model makes explicit that beam
-measurements are user-indexed, whereas sensing predictions are target-indexed.
+\subsection{ISAC Point-Cloud Model}
+\label{subsec:system-isac}
 
-Let \(a_{b,i,u}(t) \in \{0,1\}\) be the binary target-user association variable:
+The BS-local ISAC observation is represented as a point cloud
 \begin{equation}
-    a_{b,i,u}(t)=
-    \begin{cases}
-    1, & \text{if detected target } d_{b,i}(t) \text{ is associated with user } u,\\
-    0, & \text{otherwise.}
-    \end{cases}
-    \label{eq:association-variable}
+    \mathcal{P}_{b,n}=
+    \{(\mathbf{q}_{b,m,n},a_{b,m,n})\}_{m=1}^{N^{\mathrm{pc}}_{b,n}},
+    \label{eq:system-point-cloud}
 \end{equation}
-The association is subject to one-to-one matching constraints at a given epoch,
+where \(\mathbf{q}_{b,m,n}\) is the position of a sensing point in the local
+frame, \(a_{b,m,n}\) denotes optional point attributes, and
+\(N^{\mathrm{pc}}_{b,n}\) is the number of retained points.  Its physical origin
+can be described by the monostatic echo observation
 \begin{equation}
-    \sum_{u \in \mathcal{U}_b(t)} a_{b,i,u}(t) \leq 1,\quad
-    \sum_{i=1}^{N_b^{\mathrm{det}}(t)} a_{b,i,u}(t) \leq 1.
-    \label{eq:association-constraints}
+    \mathbf{Y}^{\mathrm{echo}}_{b,n}
+    = \mathbf{H}^{\mathrm{echo}}_{b,n}\mathbf{S}_{b,n}
+    +\mathbf{N}_{b,n},\qquad
+    \mathbf{H}^{\mathrm{echo}}_{b,n}
+    =\mathbf{H}^{\mathrm{clu}}_{b,n}
+    +\sum_{q\in\mathcal{Q}^{\mathrm{tar}}_{b,n}}
+    \mathbf{H}^{\mathrm{tar}}_{b,q,n},
+    \label{eq:system-isac-echo}
 \end{equation}
-At an initial access epoch \(t_0\), the association may be estimated by matching
-the sensing-predicted beam distribution \(\hat{\mathbf{g}}_{b,i}(t_0)\) with the
-communication-side beam spectrum \(\mathbf{y}^{\mathrm{SSB}}_{b,u}(t_0)\), while
-also considering BEV spatial priors and detection confidence when available. A
-generic initial association problem can be written as
+where \(\mathbf{S}_{b,n}\) is the transmitted sensing waveform,
+\(\mathbf{N}_{b,n}\) is receiver noise, \(\mathbf{H}^{\mathrm{clu}}_{b,n}\)
+collects static clutter, and \(\mathcal{Q}^{\mathrm{tar}}_{b,n}\) indexes
+target-related multipath components.  With an echo-channel estimate
+\(\widehat{\mathbf{H}}^{\mathrm{echo}}_{b,n}\), obtained for example by
+correlating the received echo with the known waveform, static-clutter
+suppression and point extraction are abstracted as
 \begin{equation}
-    \min_{\{a_{b,i,u}(t_0)\}}
-    \sum_{i=1}^{N_b^{\mathrm{det}}(t_0)}
-    \sum_{u \in \mathcal{U}_b(t_0)}
-    a_{b,i,u}(t_0) C^{\mathrm{init}}_{b,i,u}(t_0),
-    \label{eq:initial-association}
+    \widehat{\mathbf{H}}^{\mathrm{echo}}_{b,n}
+    =\mathbf{Y}^{\mathrm{echo}}_{b,n}\mathbf{S}^{\dagger}_{b,n},\qquad
+    \widetilde{\mathbf{H}}_{b,n}
+    =\widehat{\mathbf{H}}^{\mathrm{echo}}_{b,n}
+    -\widehat{\mathbf{H}}^{\mathrm{clu}}_{b,n},\qquad
+    \mathcal{P}_{b,n}=
+    \mathcal{E}_{\mathrm{pc}}\bigl(\widetilde{\mathbf{H}}_{b,n}\bigr).
+    \label{eq:system-isac-extraction}
 \end{equation}
-subject to \eqref{eq:association-constraints}, where
-\(C^{\mathrm{init}}_{b,i,u}(t_0)\) is an initial matching cost that combines
-beam-spectrum similarity, BEV-domain consistency, and detection confidence.
+Equation~\eqref{eq:system-isac-extraction} is an observation abstraction: it
+explains how target-related propagation can give rise to a geometric point
+cloud, without claiming a complete ISAC waveform or radar signal-processing
+implementation.  The point-cloud data used in the evaluation are treated as the
+available output of this sensing stage.
 
-For each associated vehicle, the system maintains a tracking state in the BEV
-plane. Let \(r\) denote a track identity associated with a physical vehicle. A
-minimal kinematic state is
-\begin{equation}
-    \mathbf{x}_{b,r}(t)
-    = [x_{b,r}(t),y_{b,r}(t),v_{x,b,r}(t),v_{y,b,r}(t)]^{\mathrm{T}},
-    \label{eq:tracking-state}
-\end{equation}
-where \((x_{b,r}(t),y_{b,r}(t))\) is the BEV position and
-\((v_{x,b,r}(t),v_{y,b,r}(t))\) is the planar velocity. To support maneuvering
-vehicles, the tracker uses an interacting multiple model (IMM) filter with a
-set of motion models \(\mathcal{Q}\), such as constant-velocity,
-constant-acceleration, and turning-motion models. The probability of motion model
-\(q \in \mathcal{Q}\) for track \(r\) is denoted by \(\mu_{b,r,q}(t)\), with
-\begin{equation}
-    \sum_{q \in \mathcal{Q}} \mu_{b,r,q}(t)=1.
-    \label{eq:imm-mode-probability}
-\end{equation}
-The IMM prediction provides a prior track state at epoch \(t\), which is then
-associated with the new BEV detections \(\mathcal{D}_b(t)\). A generic
-tracking-to-detection cost may be written as
-\begin{equation}
-    C^{\mathrm{trk}}_{b,r,i}(t)
-    = \Psi_{\mathrm{trk}}\left(\hat{\mathbf{x}}^{-}_{b,r}(t),
-    \mathbf{z}_{b,i}(t),\hat{\mathbf{g}}_{b,i}(t)\right),
-    \label{eq:tracking-cost}
-\end{equation}
-where \(\hat{\mathbf{x}}^{-}_{b,r}(t)\) is the predicted track state before
-measurement update and \(\Psi_{\mathrm{trk}}(\cdot)\) denotes a method-specific
-association function based on spatial innovation, motion consistency, detection
-confidence, and optionally beam-distribution consistency. After a successful track-to-detection association, the
-track state, the target-user mapping, and the beam prediction for the
-corresponding communication user are updated jointly.
+\section{Communication and Beam Management}
+\label{sec:system-communication}
 
-\section{Communication and Beam Management Model}
-\label{sec:system-communication-model}
+The communication model captures the measurement and decision interfaces needed
+to assess sensing-assisted beam management.  It follows the main separation in
+5G NR beam management between coarse synchronisation using synchronisation
+signal blocks (SSBs), refinement using channel-state-information reference
+signals (CSI-RSs), and downlink transmission based on the resulting channel
+information.  It is an NR-oriented abstraction of these functions, rather than
+a full protocol-stack model.
 
-This section combines the codebook-level beam model, communication measurements,
-beam mismatch abstraction, and system-level performance metrics. The goal is to
-define a communication model that is detailed enough to connect sensing-assisted
-beam decisions to throughput, while remaining simpler than a full 5G NR
-protocol-stack simulation.
+\subsection{Timing and Measurements}
+\label{subsec:system-timing}
 
-Each BS is equipped with a finite beam codebook for directional communication.
-For BS \(b\), the codebook is denoted by
-\[
-    \mathcal{F}_b=\{\mathbf{f}_{b,1},\mathbf{f}_{b,2},\ldots,\mathbf{f}_{b,M_b^{\mathrm{beam}}}\},
-\]
-where \(\mathbf{f}_{b,m}\) is the \(m\)-th beamforming vector and
-\(M_b^{\mathrm{beam}}\) is the codebook size. For a vehicle user
-\(u \in \mathcal{U}_b(t)\), the channel from BS \(b\) at epoch \(t\) is denoted
-by \(\mathbf{h}_{b,u}(t)\). The idealized beam quality of codebook beam \(m\) can
-be expressed as
+The radio-frame duration is \(T_{\mathrm{frame}}=10\,\mathrm{ms}\).  For
+subcarrier spacing numerology \(\mu\), one slot occupies
 \begin{equation}
-    g_{b,u,m}(t)
-    = \left|\mathbf{h}_{b,u}^{\mathrm{H}}(t)\mathbf{f}_{b,m}\right|^2,
-    \label{eq:beam-quality}
+    T_{\mathrm{slot}}=\frac{1}{2^{\mu}}\,\mathrm{ms}.
+    \label{eq:system-slot-duration}
 \end{equation}
-up to a transmit-power and noise normalization. The vector
-\(\mathbf{g}_{b,u}(t)=[g_{b,u,1}(t),\ldots,g_{b,u,M_b^{\mathrm{beam}}}(t)]\)
-is referred to as the beam power distribution of user \(u\) with respect to the
-codebook of BS \(b\).
+The sensing update interval \(T_{\mathrm{sen}}\), SSB periodicity
+\(T_{\mathrm{SSB}}\), and CSI-RS periodicity \(T_{\mathrm{CSI}}\) need not be
+identical.  Each sensing epoch \(n\) is associated with a radio-time interval
+in which the most recent observation, the available measurements, and the
+beam-management decision are used consistently.  The concrete periodicities and
+resource allocations are fixed uniformly for all policies in the evaluation.
 
-The sensing-assisted beam prediction module does not directly know
-\(\mathbf{g}_{b,u}(t)\), because its input is a detected sensing target rather
-than a communication identity. For each detected target \(d_{b,i}(t)\), it
-predicts a per-target beam quality vector
-\begin{equation}
-    \hat{\mathbf{g}}_{b,i}(t)
-    = [\hat{g}_{b,i,1}(t),\ldots,\hat{g}_{b,i,M_b^{\mathrm{beam}}}(t)].
-    \label{eq:predicted-beam-distribution}
-\end{equation}
-The predicted Top-\(K\) candidate beam set is then
-\begin{equation}
-    \hat{\mathcal{K}}_{b,i}(t)
-    = \mathrm{TopK}_{K_{\mathrm{beam}}}\left(\hat{\mathbf{g}}_{b,i}(t)\right),
-    \label{eq:topk-beams}
-\end{equation}
-where \(K_{\mathrm{beam}}\) denotes the number of candidate communication beams
-retained for later beam management and evaluation. The notation
-\(\mathrm{TopK}_{K_{\mathrm{beam}}}(\cdot)\) returns the indices of the
-\(K_{\mathrm{beam}}\) largest entries in its argument.
+In conventional operation, an SSB sweep provides a coarse serving-beam or
+serving-SSB measurement.  The BS then transmits CSI-RSs over candidate narrow
+beams to refine the choice, and the VUE reports the relevant measurement or
+channel information.  The selected CSI-RS beam supports effective-channel
+estimation and subsequent downlink precoding.  This sequence is also used for
+initial access, recovery after a serving-cell change, and reassociation after a
+loss of reliable sensing evidence.
 
-During initial access, BS \(b\) may perform an SSB-like beam sweep for a
-communication user \(u\). The resulting measurement is abstracted as a beam power
-spectrum
-\begin{equation}
-    \mathbf{y}^{\mathrm{SSB}}_{b,u}(t_0)
-    = [y^{\mathrm{SSB}}_{b,u,1}(t_0),\ldots,
-       y^{\mathrm{SSB}}_{b,u,M_b^{\mathrm{beam}}}(t_0)],
-    \label{eq:ssb-spectrum}
-\end{equation}
-where \(t_0\) is an initial access or re-association epoch. This measurement is
-used to establish the correspondence between communication users and detected
-sensing targets. In later epochs, the system may use only partial beam
-measurements or calibration signals over a smaller candidate set, for example
-over the predicted Top-\(K\) beams. Such measurements are modeled as auxiliary
-communication observations rather than as a complete 5G NR protocol simulation.
+Sensing assistance changes only the CSI-RS candidate-selection step.  If a
+currently observed target has been reliably associated with VUE \(u\), its
+predicted beam distribution can rank the CSI-RS beams that should be measured.
+If the association is unavailable or fails its reliability test, the procedure
+reverts to conventional refinement.  Hence, sensing never replaces the
+communication measurement that selects the final service beam.
 
-This codebook-level abstraction is consistent with sensing-aided beam prediction
-studies that supervise beam indices, Top-\(K\) candidate beams, or per-beam
-quality distributions rather than modeling the complete standard-compliant
-control procedure \cite{charan2021visionpositionmultimodalbeamprediction,alkhateeb2023deepsense6glargescalerealworld,charan2023camerabasedmmwavebeam,zeng2026bevfusionbasedframeworksequential}.
+\subsection{Beam Selection and Precoding}
+\label{subsec:system-beam-precoding}
 
-Let \(m_{b,u}(t)\) denote the selected beam index for user \(u\) served by BS
-\(b\) at epoch \(t\). If the true effective beam for user \(u\) is contained in
-the predicted candidate set associated with that user, the system can restrict
-subsequent measurement or CSI acquisition to a smaller beam subset. If the
-candidate set does not contain a sufficiently good beam, the selected beam and
-the resulting CSI/PMI abstraction may be mismatched. We represent this effect
-through a generic mismatch factor \(\eta_{b,u}(t)\), where larger values
-correspond to more accurate beam and channel information.
+For BS \(b\), let \(\mathcal{F}^{\mathrm{SSB}}_b\) and
+\(\mathcal{F}^{\mathrm{CSI}}_b\) denote the SSB and CSI-RS beam codebooks,
+with \(M_{\mathrm{SSB}}=48\) and \(M_{\mathrm{CSI}}=192\) entries,
+respectively.  Each CSI-RS beam \(k\in\{1,\ldots,M_{\mathrm{CSI}}\}\) has an
+SSB parent given by \(\varphi_b(k)\in\{1,\ldots,M_{\mathrm{SSB}}\}\).  For a
+VUE \(u\), the narrow-beam quality at epoch \(n\) is
+\begin{equation}
+    g_{b,u,n}(k)=
+    \left|\mathbf{h}^{\mathrm{H}}_{b,u,n}
+    \mathbf{f}^{\mathrm{CSI}}_{b,k}\right|^2,
+    \qquad k\in\{1,\ldots,M_{\mathrm{CSI}}\},
+    \label{eq:system-beam-quality}
+\end{equation}
+where \(\mathbf{h}_{b,u,n}\) is the downlink channel and
+\(\mathbf{f}^{\mathrm{CSI}}_{b,k}\) is the corresponding beamforming vector.
+The associated normalised vector is the CSI beam-quality distribution used as
+the supervision target for prediction.
 
-For multi-user downlink evaluation, let \(\tilde{\mathbf{h}}_{b,u}(t)\) denote
-the effective channel used by the evaluation module after the selected beam and
-any mismatch abstraction have been applied. For a scheduled user set
-\(\mathcal{U}^{\mathrm{sch}}_b(t) \subseteq \mathcal{U}_b(t)\), the BS forms a
-ZF precoder
-\begin{equation}
-    \mathbf{W}_b(t)
-    = [\mathbf{w}_{b,u}(t)]_{u \in \mathcal{U}^{\mathrm{sch}}_b(t)}
-    \label{eq:zf-precoder}
-\end{equation}
-from the estimated or effective channel matrix. The resulting SINR of user \(u\)
-is abstracted as
-\begin{equation}
-    \gamma^{\mathrm{ZF}}_{b,u}(t)
-    =
-    \frac{
-    P_{b,u}(t)\left|\tilde{\mathbf{h}}_{b,u}^{\mathrm{H}}(t)
-    \mathbf{w}_{b,u}(t)\right|^2
-    }{
-    \sum\limits_{v \in \mathcal{U}^{\mathrm{sch}}_b(t), v \neq u}
-    P_{b,v}(t)\left|\tilde{\mathbf{h}}_{b,u}^{\mathrm{H}}(t)
-    \mathbf{w}_{b,v}(t)\right|^2 + \sigma^2
-    }.
-    \label{eq:zf-sinr}
-\end{equation}
-Under perfect channel knowledge and feasible ZF, the inter-user interference
-term is ideally suppressed. In the present abstraction, residual interference
-may remain because sensing-assisted beam selection, target-user association, or
-tracking errors can lead to imperfect effective-channel information.
+Three beam-list sizes play different roles.  \(K_{\mathrm{model}}\) is the
+length of the distribution produced by the perception model,
+\(K_{\mathrm{bind}}\) is the number of high-ranked entries inspected when
+forming a target-to-user association, and \(K_{\mathrm{scan}}\) is the number
+of CSI-RS beams actually measured for a beam-management decision.  In the
+present formulation, \(K_{\mathrm{model}}=M_{\mathrm{CSI}}\), whereas
+\(K_{\mathrm{bind}}\) and \(K_{\mathrm{scan}}\) are protocol-level choices.
+Keeping them separate prevents a rich predictive output from being mistaken for
+an equally large pilot budget.
 
-The spectral efficiency of user \(u\) is then evaluated as
+Let \(\mathcal{C}_{b,u,n}\) be the CSI-RS candidate set selected for VUE \(u\).
+After CSI-RS measurements \(\widetilde{g}_{b,u,n}(k)\) are obtained over this
+set, the service beam is chosen as
 \begin{equation}
-    r_{b,u}(t)=\log_2\left(1+\gamma^{\mathrm{ZF}}_{b,u}(t)\right).
-    \label{eq:spectral-efficiency}
+    k^{\star}_{b,u,n}=
+    \underset{k\in\mathcal{C}_{b,u,n}}{\arg\max}\;
+    \widetilde{g}_{b,u,n}(k).
+    \label{eq:system-service-beam}
 \end{equation}
-Let \(\rho_{b,u}(t) \in [0,1]\) denote the fraction of the epoch consumed by
-beam training, beam measurement, calibration, or re-association overhead for
-user \(u\). The overhead-adjusted throughput is modeled as
+For a scheduled VUE set \(\mathcal{U}^{\mathrm{sch}}_b[n]\), let
+\(\widehat{\mathbf{H}}_b[n]\) collect the effective channel estimates after
+this measurement and reporting procedure.  The BS forms a regularised
+zero-forcing (RZF) precoder according to
 \begin{equation}
-    R^{\mathrm{adj}}_{b,u}(t)
-    =
-    \left(1-\rho_{b,u}(t)\right) B_b r_{b,u}(t),
-    \label{eq:overhead-adjusted-throughput}
+    \mathbf{W}_b[n]=\widehat{\mathbf{H}}_b^{\mathrm{H}}[n]
+    \left(\widehat{\mathbf{H}}_b[n]\widehat{\mathbf{H}}_b^{\mathrm{H}}[n]
+    +\lambda_b\mathbf{I}\right)^{-1}\mathbf{D}_b[n],
+    \label{eq:system-rzf-precoder}
 \end{equation}
-where \(B_b\) is the bandwidth assigned by BS \(b\) in the simplified evaluation.
-The system sum throughput at epoch \(t\) can be written as
-\begin{equation}
-    R^{\mathrm{sum}}_b(t)
-    =
-    \sum_{u \in \mathcal{U}^{\mathrm{sch}}_b(t)}
-    R^{\mathrm{adj}}_{b,u}(t).
-    \label{eq:sum-throughput}
-\end{equation}
-This communication model allows the evaluation to account for two competing
-effects: sensing-assisted prediction can reduce beam training overhead, while
-prediction, association, or tracking failures can reduce the SINR through beam
-mismatch or imperfect effective-channel estimation.
-
-The codebook size, beam-label generation procedure, beam-power normalization,
-partial-measurement abstraction, mismatch factor, and overhead unit are treated
-as evaluation parameters shared across the proposed method and baselines.
-
-Similar system-level abstractions are commonly used in predictive beamforming
-and ISAC studies to connect sensing, beam selection, and communication
-performance through SINR, rate, or throughput-oriented metrics
-\cite{liu2020radarassistedpredictivebeamformingvehicular,yuan2020bayesianpredictivebeamformingvehicular,liu2022learningbasedpredictivebeamformingintegrated,Wang_2023}.
+where \(\lambda_b\) is the regularisation factor and \(\mathbf{D}_b[n]\)
+normalises the allocated transmit power.  The system-level link model therefore
+retains the effect of candidate selection on both CSI-RS overhead and the
+quality of the channel information used for multi-user transmission.
 
 \section{Problem Formulation}
-\label{sec:system-problem-formulation}
+\label{sec:system-problem}
 
-Given the multimodal sensing observations
-\(\{\mathcal{O}^{\mathrm{sen}}_b(t)\}_{t=0}^{T-1}\) and the communication
-measurements available during initial access or later calibration, the system
-aims to produce four coupled outputs. First, it detects vehicle targets in the
-BEV frame. Second, it predicts a per-target beam power distribution and a
-Top-\(K\) candidate beam set for each detected target. Third, it associates
-detected sensing targets with communication user identities and maintains those
-identities over time through tracking. Fourth, it evaluates the resulting
-beam-management decisions through SINR, spectral efficiency, and
-overhead-adjusted throughput under the simplified ZF-based communication model.
+The proposed system is not posed as a single monolithic optimisation because its
+outputs operate at different interfaces: sensing produces target-indexed
+evidence, communication measurements are VUE-indexed, and the final criterion
+is user-level communication performance.  This section therefore states three
+connected objectives that make these interfaces explicit.
 
-The problem can be summarized as the estimation and decision process
+\subsection{Sensing and Beam Prediction}
+\label{subsec:system-sensing-problem}
+
+From \(\mathcal{O}_{b,n}\), the sensing model \(\mathcal{G}_{\theta}\) produces
+a set of unbound target detections and beam distributions,
 \begin{equation}
-    \left\{\mathcal{O}^{\mathrm{sen}}_b(t),\mathbf{y}^{\mathrm{SSB}}_{b,u}(t_0),
-    \mathcal{M}_{b,u}(t)\right\}
-    \longrightarrow
-    \left\{\mathcal{D}_b(t),\hat{\mathbf{g}}_{b,i}(t),
-    \hat{\mathcal{K}}_{b,i}(t),a_{b,i,u}(t),
-    \mathbf{x}_{b,r}(t),m_{b,u}(t)\right\},
-    \label{eq:problem-mapping}
+    \mathcal{G}_{\theta}(\mathcal{O}_{b,n})
+    \longmapsto
+    \left\{\bigl(d_{b,i,n},\mathbf{p}_{b,i,n}\bigr):
+    i\in\mathcal{D}_{b,n}\right\},
+    \qquad
+    \mathbf{p}_{b,i,n}\in[0,1]^{M_{\mathrm{CSI}}},\qquad
+    \sum_{k=1}^{M_{\mathrm{CSI}}}p_{b,i,n}(k)=1.
+    \label{eq:system-perception-mapping}
 \end{equation}
-where \(\mathcal{M}_{b,u}(t)\) denotes any later partial communication
-measurement used for calibration or recovery. The desired behavior is to improve
-beam prediction accuracy, maintain reliable target-user association and tracking,
-reduce repeated full beam sweeps, and increase overhead-adjusted throughput. In
-this objective is treated as a coupled system-design and evaluation problem
-rather than as a single closed-form
-optimization problem.
+Here, \(d_{b,i,n}\) contains the estimated vehicle extent and confidence in the
+BEV frame, while \(\mathbf{p}_{b,i,n}\) estimates the energy distribution over
+CSI-RS beams for that physical target.  The objective is joint vehicle detection
+and conditional beam-quality prediction: a useful distribution should rank the
+beams that are strong for the detected target, but it does not itself identify a
+communication user or declare a service beam.  Detection quality and
+beam-ranking quality consequently characterise complementary, rather than
+interchangeable, aspects of the sensing output.
 
-More formally, the final framework should balance the following goals:
-accurate BEV target detection, high Top-\(K\) beam coverage, stable target-user
-identity maintenance, low beam-management overhead, and high
-\(R^{\mathrm{adj}}_{b,u}(t)\) under the communication model in
-Section~\ref{sec:system-communication-model}. The learning objectives, matching
-costs, overhead accounting, and mismatch penalties are defined consistently in
-the method and evaluation chapters.
+\subsection{Association and Tracking}
+\label{subsec:system-association-problem}
+
+Let \(\mathcal{R}_{b,n}\) denote the set of active perception tracks.  Each
+track \(r\in\mathcal{R}_{b,n}\) maintains a BEV kinematic state
+\(\mathbf{x}_{r,n}=[x_{r,n},y_{r,n},v_{x,r,n},v_{y,r,n}]^{\mathrm{T}}\).  The
+target-to-user association is a partial mapping
+\begin{equation}
+    \pi_{b,n}:\mathcal{U}_b[n]\longrightarrow
+    \mathcal{R}_{b,n}\cup\{\varnothing\},
+    \label{eq:system-association-map}
+\end{equation}
+where \(\pi_{b,n}(u)=\varnothing\) means that no sensing-derived hint is
+accepted for VUE \(u\).  The mapping is one-to-one over accepted matches.  It is
+established or recovered at events such as initial access, serving-cell change,
+or loss of association reliability, when conventional measurements provide
+communication-side evidence.
+
+Specifically, let \(s_{b,u,n}\) be the serving SSB and let
+\(\kappa_{b,u,n}\) be a CSI-RS beam selected by a communication measurement
+for VUE \(u\).  If track \(r\) carries the predicted distribution
+\(\mathbf{p}_{r,n}\), a beam-likelihood matching cost can be written as
+\begin{equation}
+    c_{u,r,n}= -\frac{\log p_{r,n}\bigl(\kappa_{b,u,n}\bigr)}
+    {\log M_{\mathrm{CSI}}}.
+    \label{eq:system-association-cost}
+\end{equation}
+The pair is feasible only if
+\(\varphi_b(\kappa_{b,u,n})=s_{b,u,n}\), and unmatched choices remain
+available in the assignment.  The intended outcome is therefore not forced
+coverage but a high probability of correct accepted associations.  An
+interacting multiple model (IMM) tracker propagates and updates each track state
+across sensing epochs, allowing the accepted association to be maintained
+through normal vehicle motion.  The tracker preserves the link between an
+established VUE and its perception track; it does not infer a VUE identifier
+from sensing data alone.  Ground-truth identities are reserved for diagnostic
+evaluation of this process.
+
+\subsection{Rate and Resource Objectives}
+\label{subsec:system-rate-objectives}
+
+The association state determines whether a sensing prediction can constrain the
+CSI-RS scan.  Let \(G_{u,n}\in\{0,1\}\) be a reliability gate derived only from
+available evidence, including association confidence, detection or track
+confidence, hint age, SSB consistency, observation history, and beam-score
+concentration.  A sensing-assisted candidate set is used only for a currently
+observed and reliably associated target:
+\begin{equation}
+    \mathcal{C}_{b,u,n}=
+    \begin{cases}
+        \operatorname{TopK}_{K_{\mathrm{scan}}}(\mathbf{p}_{\pi_{b,n}(u),n}),
+        & G_{u,n}=1,\\
+        \mathcal{C}^{\mathrm{conv}}_{b,u,n}, & G_{u,n}=0,
+    \end{cases}
+    \label{eq:system-candidate-policy}
+\end{equation}
+where \(\mathcal{C}^{\mathrm{conv}}_{b,u,n}\) is supplied by the conventional
+refinement procedure.  In both cases, the measured CSI-RS quality in
+Equation~\eqref{eq:system-service-beam} selects the transmitted beam.
+
+Let \(\gamma^{\mathrm{RZF}}_{b,u,n}\) denote the post-precoding downlink SINR
+obtained with Equation~\eqref{eq:system-rzf-precoder}, and let
+\(\rho_{b,u,n}\) be the fraction of available resources consumed by SSBs,
+CSI-RSs, control signalling, and the associated beam-management procedure.  The
+overhead-adjusted effective rate is
+\begin{equation}
+    R^{\mathrm{eff}}_{b,u,n}=
+    \bigl(1-\rho_{b,u,n}\bigr)B_b
+    \log_2\bigl(1+\gamma^{\mathrm{RZF}}_{b,u,n}\bigr),
+    \label{eq:system-effective-rate}
+\end{equation}
+where \(B_b\) is the allocated bandwidth.  The framework is assessed through a
+metric vector rather than a surrogate scalar objective: perception and
+beam-ranking quality, accepted-association accuracy and coverage, candidate
+recall, CSI-RS overhead, effective rate, lower-tail rate, and outage.  This
+evaluation structure exposes the full causal chain from distributed sensing to
+the communication benefit available to the intended VUE.  The concrete learning
+objectives, association procedure, and resource-accounting protocol are
+specified in the following chapters.

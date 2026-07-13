@@ -24,36 +24,48 @@ are specified in Chapter~\ref{ch:experiments}.
 \section{Framework Architecture}
 \label{sec:method-framework}
 
-For target BS \(b\) at sensing epoch \(n\), let \(\mathcal{O}_{b,n}\) denote
-the multimodal observation defined in Section~\ref{sec:system-sensing}.  The
-sensing network maps this observation to a set of vehicle detections and their
-associated beam-quality distributions:
-\begin{equation}
-    \mathcal{G}_{\theta}(\mathcal{O}_{b,n})
-    \longmapsto
-    \mathcal{D}_{b,n}
-    =
-    \left\{
-    \bigl(d_{b,i,n},\mathbf{p}_{b,i,n}\bigr)
-    \right\}_{i=1}^{N^{\mathrm{det}}_{b,n}},
-    \label{eq:method-sensing-output}
-\end{equation}
-where \(d_{b,i,n}\) is an unbound vehicle observation and
-\(\mathbf{p}_{b,i,n}\in[0,1]^{M_{\mathrm{CSI}}}\) is a normalised distribution
-over the CSI-RS codebook.  Neither quantity contains a VUE identifier.  A
-per-BS multi-object tracker converts the detection sequence into a track set
-\(\mathcal{R}_{b,n}\).  At an association event, conventional communication
-measurements provide the VUE-indexed evidence required to associate active VUEs
-with currently observed tracks.  The resulting partial mapping is
-\begin{equation}
-    \pi_{b,n}:\mathcal{U}_b[n]\longrightarrow
-    \mathcal{R}_{b,n}\cup\{\varnothing\},
-    \label{eq:method-binding-map}
-\end{equation}
-where the null value denotes that no sensing-derived hint is accepted for the
-VUE.
+For each target BS \(b\) and sensing epoch \(n\), the framework proceeds
+through four ordered stages.  This ordering makes explicit how unbound sensing
+evidence becomes a communication decision without treating a physical target
+as though it were already a known VUE.
 
-The end-to-end decision path can consequently be summarised as
+\begin{enumerate}
+    \item \emph{Multimodal perception and beam prediction.}  The sensing
+    network processes the observation \(\mathcal{O}_{b,n}\) defined in
+    Section~\ref{sec:system-sensing} and outputs a set of vehicle detections.
+    For every detected target, the output includes its BEV location, available
+    attributes and detection confidence, together with a normalised 192-way
+    CSI beam-quality distribution.  This distribution ranks beams that are
+    promising to measure for that physical target; it is neither a VUE
+    identifier nor a declaration of the service beam.
+
+    \item \emph{Perception-track maintenance.}  An IMM-based multi-object
+    tracker predicts and updates the state of each physical target over
+    successive sensing epochs.  Gated one-to-one matching links the current
+    detections to existing tracks, so that a track carries temporally coherent
+    target-level position, motion, confidence and beam-quality evidence.  The
+    tracker therefore maintains the identity of an observed vehicle in the
+    sensing domain; it does not infer the identity by which that vehicle is
+    addressed in the communication domain.
+
+    \item \emph{Measurement-assisted target-to-user association.}  At initial
+    access, after entry into a new serving cell, or whenever an accepted
+    association becomes unreliable, conventional SSB and CSI-RS measurements
+    provide VUE-indexed beam evidence.  The method compares this evidence with
+    the beam likelihoods of currently observed tracks.  SSB-parent consistency
+    and one-to-one assignment then determine whether a UE--track association
+    can be accepted; an ambiguous match remains unbound and is handled by the
+    conventional procedure.
+
+    \item \emph{Reliability-gated candidate selection.}  Only an accepted,
+    current and reliable UE--track association allows the corresponding
+    beam-quality distribution to form a compact CSI-RS candidate set.  The UE
+    is subsequently served using the best beam among those actually measured.
+    If the track is not currently observed or the association evidence is
+    insufficient, the framework reverts to conventional refinement.
+\end{enumerate}
+
+The resulting information flow is concisely represented by
 \begin{equation}
     \mathcal{O}_{b,n}
     \longrightarrow
@@ -66,12 +78,12 @@ The end-to-end decision path can consequently be summarised as
     \mathcal{C}_{b,u,n},
     \label{eq:method-decision-path}
 \end{equation}
-where \(\mathcal{C}_{b,u,n}\) is either a sensing-derived CSI-RS candidate set
-or a conventional refinement set.  This ordering follows from the different
-indices of the two domains: a beam distribution is target-indexed, whereas
-measurement, feedback, and scheduling are VUE-indexed.  The association layer
-is consequently required before a target-level ranking can influence a
-user-specific measurement decision.
+where \(\mathcal{R}_{b,n}\) is the set of perception tracks,
+\(\pi_{b,n}\) denotes the accepted UE--track associations, and
+\(\mathcal{C}_{b,u,n}\) is either a sensing-derived CSI-RS candidate set or a
+conventional refinement set.  The compact sequence is intended to accompany
+the overview figure; the associated models are developed in the subsequent
+sections.
 
 The framework is further defined by three information boundaries.  First, the
 perception network uses only calibrated camera and point-cloud observations;
@@ -83,8 +95,19 @@ the measured CSI-RS quality selects the service beam.  These boundaries make
 the contributions of perception, association, and measurement reduction
 separately identifiable in the evaluation.
 
-\section{Distributed Multimodal BEV Representation}
-\label{sec:method-bev}
+\section{Distributed Multimodal BEV Perception and Beam-Quality Learning}
+\label{sec:method-perception-learning}
+
+This section develops the perception-and-learning pipeline that implements the
+first stage of the framework.  It first constructs a target-BS-centred BEV
+representation from distributed visual observations and BS-local ISAC sensing,
+then decodes vehicle-level outputs and their beam-quality distributions from
+the shared representation.  The final subsection specifies the distributional
+supervision that makes these outputs suitable for candidate ranking rather than
+for direct service-beam declaration.
+
+\subsection{Multimodal BEV Representation}
+\label{subsec:method-bev-representation}
 
 The BEV representation provides a common spatial interface for distributed
 visual observations, BS-local ISAC sensing, vehicle detection, and beam-quality
@@ -160,10 +183,7 @@ before target-level outputs are decoded.  The resulting feature map
 \(\mathbf{F}_{b,n}\) is therefore shared by the two prediction tasks described
 next.
 
-\section{Joint Detection and Beam-Quality Learning}
-\label{sec:method-joint-learning}
-
-\subsection{Target-Level Prediction}
+\subsection{Joint Detection and Beam-Quality Prediction}
 \label{subsec:method-target-prediction}
 
 The joint prediction head maps \(\mathbf{F}_{b,n}\) to a vehicle-centre

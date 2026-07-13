@@ -6,204 +6,194 @@
 
 Vehicular networks are expected to support connected mobility and intelligent
 transportation services whose data-rate and latency requirements are difficult
-to meet with conventional wide-beam links. Millimetre-wave and other
+to meet with conventional wide-beam links.  Millimetre-wave and other
 high-frequency bands offer the required bandwidth, but their gains rely on
-narrow directional beams. In vehicle-to-infrastructure (V2I) communication, a
+narrow directional beams.  In vehicle-to-infrastructure (V2I) communication, a
 base station (BS) must therefore maintain beam alignment while the relative
-angle, range, blockage state, and dominant propagation paths of a vehicle change
-rapidly \cite{xu2022computervisionaidedmmwave,liu2020radarassistedpredictivebeamformingvehicular}. Beam alignment is consequently a recurrent decision problem rather
-than a one-off access operation.
+geometry and propagation conditions of a vehicle change rapidly.  Vision-aided
+V2X beam alignment has, for example, used visual vehicle information to infer a
+beam pair and predict its coherence time \cite{xu2022computervisionaidedmmwave}.
+Beam alignment is consequently a recurrent decision problem rather than a
+one-off access operation.
 
 Current high-frequency systems obtain direct communication evidence through
 synchronisation signal block (SSB) sweeps, channel-state-information
 reference-signal (CSI-RS) measurements, and subsequent channel-state-information
-acquisition and refinement. These procedures are indispensable at initial access
-and whenever the existing link is uncertain. Their cost, however, increases with
-the beam-search space and the frequency of remeasurement. In a dynamic road
-scene, a measurement may no longer describe the beam condition at the time of
-data transmission; repeated exhaustive scans reduce this uncertainty at the
-expense of time--frequency resources that could otherwise carry payload data.
-The central trade-off is thus between measurement reliability and measurement
-cost, rather than between alternative beam-index classifiers alone
-\cite{charan2021visionpositionmultimodalbeamprediction,alkhateeb2023deepsense6glargescalerealworld,charan2023camerabasedmmwavebeam}.
+acquisition and refinement.  These procedures are indispensable at initial
+access and whenever the existing link is uncertain.  Their cost, however,
+increases with the beam-search space and the frequency of remeasurement.  In a
+dynamic road scene, a measurement can become stale before data transmission;
+repeated exhaustive scans reduce that uncertainty at the expense of
+time--frequency resources that could otherwise carry payload data.  The central
+trade-off is therefore between measurement reliability and measurement cost,
+rather than between alternative beam-index classifiers alone.
 
-Environmental sensing offers a route to narrowing the measurement search space.
-Cameras reveal vehicle appearance, road geometry, and visibility, whereas
-radar-, LiDAR-, and integrated sensing and communication (ISAC)-like
-observations provide geometric and motion-related cues. These modalities have
-been used to assist blockage prediction, current-beam selection, and
-future-beam prediction \cite{alrabeiah2019millimeterwavebasestations,demirhan2021radaraided6gbeam,jiang2022lidaraidedfuturebeam}. More recent work has explored multimodal fusion and
-predictive beamforming, reinforcing the premise that physical-scene observations
-can guide communication measurements \cite{tian2023multimodaltransformerswirelesscommunications,liu2022learningbasedpredictivebeamformingintegrated,farzanullah2025beamselectionisacusing}.
+Environmental sensing offers a route to narrowing the measurement search
+space.  Alrabeiah \emph{et al.} use BS-mounted cameras and sub-6~GHz side
+information to predict mmWave beams and blockage events
+\cite{alrabeiah2019millimeterwavebasestations}.  Demirhan and Alkhateeb use
+radar observations to infer mmWave beams and examine the potential reduction in
+beam-training overhead \cite{demirhan2021radaraided6gbeam}.  Jiang \emph{et al.}
+use LiDAR observations to predict current and future beams in real-world V2I
+links \cite{jiang2022lidaraidedfuturebeam}.  These studies demonstrate that
+physical-scene observations can guide which communication measurements deserve
+priority.
 
 For roadside V2I systems, the sensing opportunity is inherently spatially
-distributed. The serving BS may observe the local road region through multiview
+distributed.  The serving BS may observe the local road region through multiview
 cameras and a BS-local ISAC point cloud, while neighbouring sensing nodes (SNs)
-can expose road segments that are distant, weakly visible, or occluded from the
-serving BS. A target-BS-centered bird's-eye-view (BEV) representation provides
-a common local frame in which these heterogeneous observations can be aligned.
-BEV perception has become an effective means of fusing visual and geometric
-information across sensors and agents \cite{philion2020liftsplatshootencoding,liu2024bevfusionmultitaskmultisensorfusion,xu2022v2xvitvehicletoeverythingcooperativeperception}. In the present setting, it supplies a
-communication-oriented representation from which vehicle targets and their
-beam-quality rankings can be inferred. This motivates a distributed multimodal
-BEV perception model that jointly addresses vehicle detection and beam
-prediction, rather than treating them as unrelated tasks.
+can reveal road segments that are distant, weakly visible, or occluded from the
+serving BS.  A target-BS-centered bird's-eye-view (BEV) representation provides
+a common local frame in which these observations can be aligned.
+Lift-Splat-Shoot demonstrates how multi-camera features can be projected to a
+BEV grid \cite{philion2020liftsplatshootencoding}.  BEVFusion shows how camera
+and LiDAR features can be fused in a unified BEV representation
+\cite{liu2024bevfusionmultitaskmultisensorfusion}.  V2X-ViT further demonstrates
+the value of fusing observations from multiple V2X agents while accounting for
+asynchrony and pose error \cite{xu2022v2xvitvehicletoeverythingcooperativeperception}.
+In the present setting, a local BEV representation is used to produce
+vehicle-level evidence for both detection and beam prediction.
 
 This sensing opportunity also exposes a distinction that is often hidden in
-beam-prediction formulations. Sensing observes physical vehicles, whereas the
-communication system serves user equipment (UE) identities. A beam-quality
-ranking can be accurate for a detected vehicle but still be unusable if it is
-applied to another UE. The problem is therefore not merely to predict promising
-beams from a road scene. It is to use distributed multimodal sensing to produce
-beam hints that are associated with, and remain attributable to, the correct
-communication user. This distinction motivates the challenges and research
-objectives developed below.
+beam-prediction formulations.  Sensing observes physical vehicles, whereas the
+communication system serves user equipment (UE) identities.  Charan \emph{et al.}
+make transmitter identification explicit when extending camera-based beam
+prediction to multi-candidate V2I scenes
+\cite{charan2023camerabasedmmwavebeam}.  Imran \emph{et al.} include transmitter
+identification and object-association-based tracking in a distributed semantic
+communication framework \cite{imran2024environmentsemanticcommunicationenabling}.
+Nevertheless, a beam-quality ranking may be accurate for a detected vehicle yet
+be unusable if it is applied to another UE.  The problem is therefore not merely
+to predict promising beams from a road scene.  It is to use distributed
+multimodal sensing to generate beam hints that are associated with, and remain
+applicable to, the correct communication user.
 
 \section{Challenges}
 \label{sec:introduction-challenges}
 
-The first challenge is \emph{condition-aware distributed multimodal BEV
-perception}. A single sensing modality or sensing site has unavoidable blind
-spots. Camera observations are affected by field of view, illumination, weather,
-and occlusion; point-cloud observations can be sparse or incomplete; and the
-serving BS may not observe all relevant road segments. The technical issue is
-therefore not simply to aggregate additional inputs. It is to align the semantic
-information from multiview images, the geometric information from ISAC sensing,
-and the complementary spatial coverage of neighbouring SNs in a target-BS local
-representation. That representation must remain informative for vehicle
+The first challenge is \emph{condition-aware distributed multimodal
+perception}.  A single sensing modality or sensing site has unavoidable blind
+spots.  Camera observations are affected by field of view, illumination,
+weather, and occlusion; point-cloud observations can be sparse or incomplete;
+and the serving BS may not observe all relevant road segments.  The technical
+issue is therefore not simply to aggregate additional inputs.  It is to align
+semantic information from multiview images, geometric information from ISAC
+sensing, and complementary coverage from neighbouring SNs in a target-BS local
+representation.  That representation must remain informative for vehicle
 detection and conditional beam-quality ranking across variations in visibility,
 blockage, traffic configuration, and weather.
 
-The second challenge is \emph{sensing target-to-user association}. Existing
-sensing-aided beam-prediction studies commonly evaluate samples for which the
-sensing observation and communication link are already paired. In an operational
-multi-vehicle V2I scene, however, the perception module returns a set of
-physical targets while SSB and CSI-RS measurements are indexed by UEs. These
-sets may differ because a visible vehicle need not be an active UE, an active UE
-may be temporarily unobserved, and nearby vehicles may have similar spatial or
-beam characteristics. A correct beam ranking assigned to the wrong UE is an
-incorrect beam-alignment action. Sensing target-to-user association is therefore
-the essential interface between environment perception and user-specific
-communication, rather than a post-processing detail. This interface constitutes
-a substantive distinction from beam-alignment formulations that presuppose link
-correspondence at the sensing input \cite{charan2023camerabasedmmwavebeam,imran2024environmentsemanticcommunicationenabling}.
+The second challenge is \emph{target-to-user association and temporal
+maintenance}.  In an operational multi-vehicle V2I scene, a perception module
+returns a set of physical targets, whereas SSB and CSI-RS measurements are
+indexed by UEs.  A visible vehicle need not be an active UE, an active UE can
+be temporarily unobserved, and nearby vehicles can have similar spatial or beam
+characteristics.  Hence, a correct beam ranking assigned to the wrong UE still
+produces an incorrect beam-alignment action.  Communication measurements must
+therefore anchor the initial association between a perception track and a UE.
+That association can subsequently be weakened by mobility, short-term
+occlusion, missed detection, or close interactions among vehicles.  Multi-object
+state estimation and gated data association must maintain its temporal validity
+and trigger measurement-assisted re-association when the available evidence is
+no longer credible.  Tracking thus maintains a user association; it is not a
+visual mechanism for inferring UE identity.
 
-The third challenge is \emph{temporal correspondence maintenance}. The
-association established at an access instant can be invalidated by mobility,
-short-term occlusion, missed detection, and close interactions among vehicles.
-The required mechanism is not visual recognition of a UE identity. Instead, it
-must preserve the correspondence between an unbound perception track and a
-communication UE through multi-object state estimation and gated data
-association, while invoking a new communication measurement when the evidence
-is no longer credible. This interpretation places tracking on a precise academic
-footing: it is a mechanism for maintaining the validity of the target-to-user
-correspondence on which a beam hint relies. It is related to both multi-object
-tracking and predictive beamforming, but is evaluated here through its effect on
-identity-consistent beam alignment \cite{zhou2020trackingobjectspoints,yuan2020bayesianpredictivebeamformingvehicular,liu2022deepclstmpredictivebeamforming}.
+The third challenge is \emph{association-aware candidate reduction and
+evaluation}.  Sensing should not replace communication measurement whenever a
+predicted Top-$K$ list is available.  A candidate set can be misleading when
+the current target is poorly observed, the target-to-user association is
+ambiguous, or the predicted beam distribution is diffuse.  A valid
+sensing-assisted policy must use a beam hint only under credible association
+and current sensing evidence, and must otherwise fall back to conventional
+refinement.  Its merit must be assessed jointly through candidate recall,
+CSI-RS overhead, effective rate, lower-tail rate, and outage.  This evaluation
+must expose how an incorrect association, re-association, or fallback event
+propagates to the final user outcome; Top-$K$ accuracy alone cannot establish a
+communication benefit.
 
-The final challenge is \emph{reliability-aware candidate reduction}. Sensing
-should not replace communication measurement whenever a predicted Top-\(K\)
-list is available. A candidate set can be misleading when the current target is
-poorly observed, the target-to-user association is ambiguous, or the predicted
-beam distribution is diffuse. Conversely, reducing the CSI-RS candidate set is
-valuable only when the retained beams preserve sufficient quality for the
-intended UE. A valid sensing-assisted policy must therefore accept a beam hint
-only under credible correspondence and current sensing evidence, and otherwise
-fall back to conventional refinement. Its merit must be established jointly by
-candidate recall, CSI-RS overhead, effective rate, lower-tail rate, and outage;
-Top-\(K\) accuracy alone cannot establish a communication benefit. This also
-requires a system-level simulator that applies the same 5G NR-oriented
-beam-management events and resource accounting to every policy under comparison.
-
-Together, these challenges define the scope of this thesis: broad and
-condition-aware environmental perception is necessary to generate useful beam
-hints, while sensing target-to-user association and temporal correspondence
-maintenance are necessary to apply those hints to the correct communication
-links.
+Together, these challenges define the scope of this thesis: distributed
+multimodal perception provides target-level beam evidence, target-to-user
+association determines its user-level applicability, and association-aware
+evaluation determines whether its use is worthwhile under a common resource
+model.
 
 \section{Research Objective}
 \label{sec:introduction-objective}
 
 This thesis addresses the foregoing challenges through an integrated,
-BS-centric sensing-to-communication framework. Its objective is to transform
+BS-centric sensing-to-communication framework.  Its objective is to transform
 distributed multimodal observations into beam-management information that is
 useful for the correct communication UE, and to determine the communication
-value of that information under a common measurement model. The framework is
+value of that information under a common measurement model.  The framework is
 organised around three connected objectives, which directly motivate the three
 contributions of this thesis.
 
 The first objective is to establish \emph{distributed multimodal BEV perception
-for joint vehicle detection and beam prediction}. The target BS combines its
+for joint vehicle detection and beam prediction}.  The target BS combines its
 local sensing with complementary observations from neighbouring SNs in a common
-BEV representation. This objective addresses the limited observability of a
-single sensing site or modality: vehicle detection identifies where relevant
-physical targets are located, while beam prediction estimates how the beam
-energy is distributed across the available beams for each target. The resulting beam
-distribution is used as a candidate-ranking signal, rather than as a direct
-replacement for communication measurement.
+BEV representation.  This objective addresses the limited observability of a
+single sensing site or modality: vehicle detection identifies relevant physical
+targets, while beam prediction estimates the distribution of beam quality for
+each target.  The resulting distribution ranks candidates for communication
+measurement; it does not replace communication measurement.
 
 The second objective is to realise \emph{target-to-user association with
-IMM-based tracking}. It addresses the fact that a physical sensing target and a
-communication UE are distinct entities whose relationship cannot be assumed in
-a multi-vehicle scene. Communication-side measurements provide the evidence for
-establishing an initial target-to-user association, while IMM-based tracking
-maintains the association as vehicles move and observations evolve. The purpose
-is to preserve the applicability of a beam hint to its intended UE, not to infer
-communication identity from perception alone.
+IMM-based tracking}.  It addresses the fact that a physical sensing target and
+a communication UE are distinct entities whose relationship cannot be assumed
+in a multi-vehicle scene.  Communication-side measurements establish or recover
+the association, while IMM-based tracking maintains its validity as vehicles
+move and observations evolve.  The purpose is to preserve the applicability of
+a beam hint to its intended UE, not to infer communication identity from
+perception alone.
 
 The third objective is to construct a \emph{Multimodal V2I Simulator and 5G
-NR-Oriented Beam-Management Evaluation Framework}. Built on the available
-multimodal V2I data assets, this system-level environment evaluates how
-distributed perception and target-to-user association affect beam-management
-decisions when sensing evidence is reliable or unreliable. It provides a common
-setting for comparing candidate measurement, conventional fallback, and their
-respective communication consequences. The aim is to expose the trade-off among
-measurement overhead, link reliability, and communication performance, rather
-than to equate a beam-prediction accuracy metric with an end-to-end system gain.
+NR-Oriented Beam-Management Evaluation Framework}.  Built on the available
+multimodal V2I data assets, this system-level environment compares candidate
+measurement and conventional fallback under a common measurement and resource
+model.  It evaluates how perception and association quality affect measurement
+overhead, link reliability, and communication performance, rather than equating
+a beam-prediction accuracy metric with an end-to-end system gain.
 
-The framework is scoped to a target-BS-centered local service region. A vehicle
+The framework is scoped to a target-BS-centered local service region.  A vehicle
 entering a new serving cell establishes a new local association; no global
-multi-BS identity is assumed. Likewise, ground-truth identities and detections
+multi-BS identity is assumed.  Likewise, ground-truth identities and detections
 are reserved for diagnostic or upper-bound analyses, whereas the formal decision
-path uses sensing and communication information available to the BS. Detailed
-radio configurations, channel assumptions, scheduling rules, and physical-
-layer metrics are specified in the system model and experimental evaluation.
+path uses sensing and communication information available to the BS.  Detailed
+radio configurations, channel assumptions, scheduling rules, and physical-layer
+metrics are specified in the system model and experimental evaluation.
 
 \section{Contributions}
 \label{sec:introduction-contributions}
 
 The foregoing challenges require an integrated sensing-to-communication design,
-rather than a collection of independent prediction modules. Accordingly, this
-thesis contributes three mutually reinforcing research components that turn
-environmental observations into identity-consistent beam-alignment decisions:
+rather than a collection of independent prediction modules.  Accordingly, this
+thesis contributes three mutually reinforcing research components for
+user-specific beam-alignment decisions:
 
 \begin{enumerate}
     \item \textbf{Distributed Multimodal BEV Perception for Joint Vehicle
-    Detection and Beam Prediction.} A target-BS-centered BEV perception model is
-    developed to fuse camera observations from the target BS and neighbouring
-    SNs with a BS-local ISAC point cloud. The model jointly detects vehicles and
-    predicts the CSI beam-quality distribution associated with each target. Its
-    distributional beam-prediction output represents the energy ranking across
-    codebook beams, providing a candidate-ranking interface for uncertainty
-    characterisation and subsequent communication decisions.
+    Detection and Beam Prediction.} A target-BS-centered BEV perception model
+    jointly detects vehicles and estimates a per-target CSI beam-quality
+    distribution from multiview cameras at the target BS and neighbouring SNs,
+    together with a BS-local ISAC point cloud.  The model provides target-level
+    beam evidence that can rank candidate measurements under complementary
+    sensing conditions.
 
-    \item \textbf{Target-to-User Association with IMM-Based Tracking.} An
-    identity-consistent association mechanism is introduced to connect unbound
-    perception targets with communication UEs. Conventional measurements support
-    initial and recovery target-to-user association, while an interacting
-    multiple-model (IMM) tracker maintains the association as targets evolve
-    over time. One-to-one matching, SSB-parent consistency, and reliability
-    assessment determine whether a sensing-derived beam hint remains applicable
-    to its intended UE.
+    \item \textbf{Target-to-User Association with IMM-Based Tracking.} A
+    measurement-anchored association mechanism connects unbound perception
+    targets with communication UEs.  Conventional measurements establish or
+    recover the association, while an interacting multiple-model (IMM) tracker
+    maintains it as targets evolve over time.  Reliability assessment determines
+    whether a sensing-derived beam hint can be applied to a UE or whether the
+    procedure should revert to conventional refinement.
 
     \item \textbf{Multimodal V2I Simulator and 5G NR-Oriented Beam-Management
-    Evaluation Framework.} A system-level simulator is established on the
-    existing multimodal V2I data assets to evaluate sensing-assisted policies
-    under a common 5G NR-oriented measurement and resource model. It relates
+    Evaluation Framework.} A system-level simulator is established on existing
+    multimodal V2I data assets to evaluate sensing-assisted policies under a
+    common 5G NR-oriented measurement and resource model.  It connects
     perception and association quality to candidate recall, CSI-RS overhead,
-    RZF-based effective rate, lower-tail rate, and outage, thereby distinguishing
-    a useful beam ranking from a correctly attributed hint that provides a
-    communication benefit.
+    effective rate, lower-tail rate, and outage, thereby distinguishing a useful
+    target-level beam ranking from a user-specific beam-management benefit.
 \end{enumerate}
 
 The contributions are stated at the formulation, method, and evaluation levels.
@@ -213,18 +203,18 @@ corresponding frozen protocol and held-out evaluation.
 \section{Thesis Organization}
 \label{sec:introduction-organization}
 
-The remainder of this thesis is organised as follows. Chapter~\ref{ch:background}
+The remainder of this thesis is organised as follows.  Chapter~\ref{ch:background}
 reviews beam alignment in high-mobility V2I networks, sensing-assisted beam
 prediction, distributed cooperative perception in V2X networks, and
-target-to-user association in multi-candidate scenarios. It uses the latter
+target-to-user association in multi-candidate scenarios.  It uses the latter
 topic to connect temporal tracking and association-aware beam-management
-evaluation, thereby establishing the related-work basis for identity-consistent
-beam alignment.
+evaluation, thereby establishing the related-work basis for user-specific beam
+alignment.
 
 Chapter~\ref{ch:system-model} defines the target-BS local coordinate system,
 the multimodal observations, the physical-target, perception-track, and
-communication-UE identities, the target-to-user correspondence, and the
-codebook, candidate-measurement, and resource models. Chapter~\ref{ch:methodology}
+communication-UE identities, the target-to-user association state, and the
+codebook, candidate-measurement, and resource models.  Chapter~\ref{ch:methodology}
 then presents the proposed framework, including distributed multimodal BEV
 perception, joint vehicle detection and beam prediction, target-to-user
 association with IMM-based tracking, reliability-aware candidate scanning, and
@@ -232,11 +222,10 @@ the communication interface.
 
 Chapter~\ref{ch:experiments} describes the data protocol, comparison methods,
 layered metrics, and the Multimodal V2I Simulator with its 5G NR-oriented
-beam-management evaluation framework. It examines how distributed multimodal
+beam-management evaluation framework.  It examines how distributed multimodal
 perception, target-to-user association with IMM-based tracking, and candidate
 measurement decisions affect communication performance under common resource
-assumptions. Finally, Chapter~\ref{ch:conclusion} summarises the findings
+assumptions.  Finally, Chapter~\ref{ch:conclusion} summarises the findings
 supported by the evaluation, discusses the limitations of the local BS scope and
-communication abstraction, and outlines extensions towards cross-BS
-correspondence, measurement calibration, and more detailed protocol-level
-assessment.
+communication abstraction, and outlines extensions towards cross-BS association,
+measurement calibration, and more detailed protocol-level assessment.

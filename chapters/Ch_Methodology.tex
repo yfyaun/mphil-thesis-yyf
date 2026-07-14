@@ -324,184 +324,368 @@ only \(K_{\mathrm{scan}}\) beams after a binding is accepted.  Preserving this
 distinction prevents an information-rich prediction from being interpreted as
 an equally large measurement budget.
 
-\section{Target-to-User Association and Track Maintenance}
-\label{sec:method-association-tracking}
+\section{IMM-Based Multi-Object Tracking}
+\label{sec:method-imm-tracking}
 
-The sensing network observes physical targets, whereas the communication system
-measures and schedules VUEs.  The two domains are connected without requiring
-the perception model to recognise a VUE identity.  Track maintenance first
-provides temporally coherent target-level evidence; measurement-assisted
-association then anchors that evidence to a VUE when the conventional
-beam-management procedure provides the required communication observation.
+The perception network produces an unbound detection whenever a vehicle is
+visible, but a beam hint also requires temporal continuity when vehicles move,
+turn, or are intermittently observed.  This section therefore estimates the
+state of physical targets only.  Each target BS maintains an independent track
+set for each data split and weather condition; a track is neither a recognised
+VUE nor a cross-cell identity.  The interacting multiple model (IMM) filter
+combines a constant-velocity (CV) hypothesis with a coordinated-turn (CT)
+hypothesis, allowing the motion estimate to adapt to the local vehicle
+trajectory.
 
-\subsection{Perception Track Maintenance}
-\label{subsec:method-track-maintenance}
+\subsection{Motion Models}
+\label{subsec:method-motion-models}
 
-Tracks are maintained independently for each split, weather condition, and
-target BS.  Let \(r\in\mathcal{R}_{b,n}\) denote a perception track with
-kinematic state
+For the CV model, the state of track \(r\) is represented in Cartesian BEV
+coordinates as
 \begin{equation}
-    \mathbf{x}_{r,n}
+    \mathbf{x}^{\mathrm{CV}}_{r,n}
     =
-    [x_{r,n},y_{r,n},v_{x,r,n},v_{y,r,n}]^{\mathsf{T}}.
-    \label{eq:method-track-state}
+    [x_{r,n},y_{r,n},v_{x,r,n},v_{y,r,n}]^{\mathsf T}.
+    \label{eq:method-cv-state}
 \end{equation}
-The state describes the BEV motion of a physical vehicle.  CV Kalman filtering,
-constant-turn extended Kalman filtering, and an interacting multiple model
-(IMM) combining CV and constant-turn modes provide the tracking comparators.
-For the IMM, the mode-conditioned predictions are mixed as
+With sensing interval \(\Delta t\), its linear process and position-measurement
+models are
 \begin{equation}
-    \widehat{\mathbf{x}}_{r,n|n-1}
+    \mathbf{x}^{\mathrm{CV}}_{r,n}
     =
-    \sum_{q\in\{\mathrm{CV},\mathrm{CT}\}}
-    \mu^{(q)}_{r,n|n-1}
-    \widehat{\mathbf{x}}^{(q)}_{r,n|n-1},
+    \mathbf{F}_{\mathrm{CV}}\mathbf{x}^{\mathrm{CV}}_{r,n-1}
+    +\mathbf{w}^{\mathrm{CV}}_{r,n},
     \qquad
-    \sum_q\mu^{(q)}_{r,n|n-1}=1,
-    \label{eq:method-imm-state}
-\end{equation}
-which accommodates both approximately straight and turning vehicle motion.  The
-tracker remains independent of VUE identity: it propagates the state of a
-physical target between sensing observations.
-
-At epoch \(n\), predicted tracks and current detections are paired using a
-gated one-to-one assignment.  A generic cost is
-\begin{equation}
-    c^{\mathrm{trk}}_{r,i,n}
+    \mathbf{z}_{i,n}
     =
-    \Psi_{\mathrm{trk}}
-    \left(
-    \widehat{\mathbf{x}}_{r,n|n-1},
-    d_{b,i,n},
-    \mathbf{p}_{b,i,n}
-    \right),
-    \label{eq:method-track-cost}
+    \mathbf{H}_{\mathrm{CV}}\mathbf{x}^{\mathrm{CV}}_{r,n}
+    +\mathbf{v}_{i,n},
+    \label{eq:method-cv-model}
 \end{equation}
-where \(\Psi_{\mathrm{trk}}\) is based primarily on spatial innovation and
-motion consistency and can incorporate detection confidence and
-beam-distribution consistency.  Pairs outside the motion gate are discarded
-before the Hungarian assignment.  A matched detection updates the state,
-confidence, observation count, beam distribution, and hint age of the
-corresponding track.  An unmatched track may remain in the state estimator, but
-its predicted location never generates a formal beam candidate; only a current
-observation can provide the beam evidence used by the candidate policy.
+where
+\begin{equation}
+    \mathbf{F}_{\mathrm{CV}}
+    =
+    \begin{bmatrix}
+        1&0&\Delta t&0\\
+        0&1&0&\Delta t\\
+        0&0&1&0\\
+        0&0&0&1
+    \end{bmatrix},
+    \qquad
+    \mathbf{H}_{\mathrm{CV}}
+    =
+    \begin{bmatrix}
+        1&0&0&0\\
+        0&1&0&0
+    \end{bmatrix}.
+    \label{eq:method-cv-matrices}
+\end{equation}
+Here, \(\mathbf{z}_{i,n}=[\widehat{x}_{b,i,n},\widehat{y}_{b,i,n}]^{\mathsf T}\)
+is the BEV centre of detection \(d_{b,i,n}\), and
+\(\mathbf{w}^{\mathrm{CV}}_{r,n}\sim\mathcal{N}(\mathbf{0},\mathbf{Q}_{\mathrm{CV}})\)
+and \(\mathbf{v}_{i,n}\sim\mathcal{N}(\mathbf{0},\mathbf{R}_{i,n})\) represent
+process and detection uncertainty.  The CV model is appropriate when target
+motion is locally close to rectilinear.  In particular, the observation model
+is defined by the BEV detection interface of the present framework; it is not
+identified with the measurement model of a radar- or communication-based
+tracker.
 
-\subsection{Measurement-Assisted Association}
-\label{subsec:method-measurement-association}
+The CT model uses the speed--heading representation
+\begin{equation}
+    \mathbf{x}^{\mathrm{CT}}_{r,n}
+    =
+    [x_{r,n},y_{r,n},v_{r,n},\psi_{r,n},\omega_{r,n}]^{\mathsf T},
+    \label{eq:method-ct-state}
+\end{equation}
+where \(v_{r,n}\), \(\psi_{r,n}\), and \(\omega_{r,n}\) denote speed, heading,
+and turn rate.  For \(|\omega_{r,n-1}|>0\), the coordinated-turn state evolution
+is
+\begin{equation}
+    \mathbf{x}^{\mathrm{CT}}_{r,n}
+    =
+    \begin{bmatrix}
+        x_{r,n-1}+\dfrac{v_{r,n-1}}{\omega_{r,n-1}}
+        \left[\sin(\psi_{r,n-1}+\omega_{r,n-1}\Delta t)-\sin\psi_{r,n-1}\right]\\[3pt]
+        y_{r,n-1}+\dfrac{v_{r,n-1}}{\omega_{r,n-1}}
+        \left[\cos\psi_{r,n-1}-\cos(\psi_{r,n-1}+\omega_{r,n-1}\Delta t)\right]\\[3pt]
+        v_{r,n-1}\\
+        \psi_{r,n-1}+\omega_{r,n-1}\Delta t\\
+        \omega_{r,n-1}
+    \end{bmatrix}
+    +\mathbf{w}^{\mathrm{CT}}_{r,n}
+    \triangleq
+    f_{\mathrm{CT}}\!\left(\mathbf{x}^{\mathrm{CT}}_{r,n-1}\right)
+    +\mathbf{w}^{\mathrm{CT}}_{r,n}.
+    \label{eq:method-ct-model}
+\end{equation}
+The zero-turn-rate limit gives
+\(x_{r,n}=x_{r,n-1}+v_{r,n-1}\Delta t\cos\psi_{r,n-1}\) and
+\(y_{r,n}=y_{r,n-1}+v_{r,n-1}\Delta t\sin\psi_{r,n-1}\), recovering local
+straight-line motion without a numerical singularity.  The CT measurement
+function extracts position, \(h_{\mathrm{CT}}(\mathbf{x})=[x,y]^{\mathsf T}\),
+and its EKF transition and measurement matrices are the corresponding Jacobians
+\(\mathbf{F}_{\mathrm{CT}}=\partial f_{\mathrm{CT}}/\partial\mathbf{x}\) and
+\(\mathbf{H}_{\mathrm{CT}}=\partial h_{\mathrm{CT}}/\partial\mathbf{x}\),
+evaluated at the predicted state.  Thus, the CT kinematics describe vehicle
+motion, whereas the update remains conditioned on the position observations
+and effective detection uncertainty produced by the multimodal BEV detector.
 
-An association event is triggered at initial access, after a serving-cell
-change, or following a loss of binding reliability.  Conventional SSB and
-CSI-RS measurements then supply VUE-indexed evidence.  Let \(s_{b,u,n}\)
-denote the serving SSB of VUE \(u\), and let \(\kappa_{b,u,n}\) denote a CSI-RS
-beam selected from the conventional measurement.  For a currently observed
-track \(r\) carrying beam distribution \(\mathbf{p}_{r,n}\), the association
-cost is
+The two model states use different coordinates.  Let
+\(\mathcal{T}_{q\rightarrow \ell}(\cdot)\) denote the deterministic conversion
+between their Cartesian and speed--heading forms, and let
+\(\mathbf{J}_{q\rightarrow \ell}\) be its Jacobian.  These transformations are
+applied whenever states or covariances are exchanged between models, allowing
+the IMM to retain a consistent uncertainty representation.
+In particular, the state components are converted according to
+\begin{equation}
+    \mathcal{T}_{\mathrm{CV}\rightarrow\mathrm{CT}}
+    \left([x,y,v_x,v_y]^{\mathsf T}\right)
+    =
+    [x,y,\sqrt{v_x^2+v_y^2},\operatorname{atan2}(v_y,v_x),0]^{\mathsf T},
+    \label{eq:method-cv-to-ct}
+\end{equation}
+and
+\begin{equation}
+    \mathcal{T}_{\mathrm{CT}\rightarrow\mathrm{CV}}
+    \left([x,y,v,\psi,\omega]^{\mathsf T}\right)
+    =
+    [x,y,v\cos\psi,v\sin\psi]^{\mathsf T}.
+    \label{eq:method-ct-to-cv}
+\end{equation}
+The corresponding Jacobians propagate covariance through these transformations;
+the zero turn-rate component in the CV-to-CT conversion expresses the absence
+of turn-rate information in the CV state rather than a permanent motion
+constraint.
+
+\subsection{IMM Filtering and Track Management}
+\label{subsec:method-imm-filtering}
+
+Let \(\mathcal{Q}=\{\mathrm{CV},\mathrm{CT}\}\) be the set of motion models and
+\(\pi_{q\ell}=\Pr(m_n=\ell\mid m_{n-1}=q)\) the Markov transition probability
+from model \(q\) to model \(\ell\).  Given posterior mode probabilities
+\(\mu^{(q)}_{r,n-1}\), the predicted probability and mixing probability for
+model \(\ell\) are
+\begin{equation}
+    \bar{\mu}^{(\ell)}_{r,n}
+    =
+    \sum_{q\in\mathcal{Q}}\pi_{q\ell}\mu^{(q)}_{r,n-1},
+    \qquad
+    \mu^{(q\mid\ell)}_{r,n-1}
+    =
+    \frac{\pi_{q\ell}\mu^{(q)}_{r,n-1}}
+    {\bar{\mu}^{(\ell)}_{r,n}}.
+    \label{eq:method-imm-mixing-probability}
+\end{equation}
+The state and covariance supplied to model \(\ell\) are consequently
+\begin{align}
+    \widehat{\mathbf{x}}^{(\ell)}_{r,0,n-1}
+    &=
+    \sum_{q\in\mathcal{Q}}
+    \mu^{(q\mid\ell)}_{r,n-1}
+    \mathcal{T}_{q\rightarrow\ell}
+    \left(\widehat{\mathbf{x}}^{(q)}_{r,n-1}\right),
+    \label{eq:method-imm-mixed-state}\\
+    \mathbf{P}^{(\ell)}_{r,0,n-1}
+    &=
+    \sum_{q\in\mathcal{Q}}
+    \mu^{(q\mid\ell)}_{r,n-1}
+    \left[
+    \mathbf{J}_{q\rightarrow\ell}\mathbf{P}^{(q)}_{r,n-1}
+    \mathbf{J}_{q\rightarrow\ell}^{\mathsf T}
+    +\mathbf{e}^{(q,\ell)}_{r,n-1}
+    \left(\mathbf{e}^{(q,\ell)}_{r,n-1}\right)^{\mathsf T}
+    \right],
+    \label{eq:method-imm-mixed-covariance}
+\end{align}
+where \(\mathbf{e}^{(q,\ell)}_{r,n-1}\) is the difference between the
+transformed state of mode \(q\) and the mixed state of mode \(\ell\).
+
+Each mixed state is propagated and corrected by its model-conditioned filter.
+With \(f_{\ell}\) denoting either the CV or CT transition, the filtering
+recursion is
+\begin{align}
+    \widehat{\mathbf{x}}^{(\ell)-}_{r,n}
+    &=f_{\ell}\!\left(\widehat{\mathbf{x}}^{(\ell)}_{r,0,n-1}\right),
+    &
+    \mathbf{P}^{(\ell)-}_{r,n}
+    &=\mathbf{F}_{\ell}\mathbf{P}^{(\ell)}_{r,0,n-1}
+    \mathbf{F}_{\ell}^{\mathsf T}+\mathbf{Q}_{\ell},
+    \label{eq:method-imm-prediction}\\
+    \boldsymbol{\nu}^{(\ell)}_{r,i,n}
+    &=\mathbf{z}_{i,n}-h_{\ell}\!\left(\widehat{\mathbf{x}}^{(\ell)-}_{r,n}\right),
+    &
+    \mathbf{S}^{(\ell)}_{r,i,n}
+    &=\mathbf{H}_{\ell}\mathbf{P}^{(\ell)-}_{r,n}
+    \mathbf{H}_{\ell}^{\mathsf T}+\mathbf{R}_{i,n},
+    \label{eq:method-imm-innovation}\\
+    \mathbf{K}^{(\ell)}_{r,i,n}
+    &=\mathbf{P}^{(\ell)-}_{r,n}\mathbf{H}_{\ell}^{\mathsf T}
+    \left(\mathbf{S}^{(\ell)}_{r,i,n}\right)^{-1},
+    &
+    \widehat{\mathbf{x}}^{(\ell)}_{r,n}
+    &=\widehat{\mathbf{x}}^{(\ell)-}_{r,n}
+    +\mathbf{K}^{(\ell)}_{r,i,n}\boldsymbol{\nu}^{(\ell)}_{r,i,n},
+    \label{eq:method-imm-state-update}\\
+    \mathbf{P}^{(\ell)}_{r,n}
+    &=(\mathbf{I}-\mathbf{K}^{(\ell)}_{r,i,n}\mathbf{H}_{\ell})
+    \mathbf{P}^{(\ell)-}_{r,n}
+    (\mathbf{I}-\mathbf{K}^{(\ell)}_{r,i,n}\mathbf{H}_{\ell})^{\mathsf T}
+    +\mathbf{K}^{(\ell)}_{r,i,n}\mathbf{R}_{i,n}
+    \left(\mathbf{K}^{(\ell)}_{r,i,n}\right)^{\mathsf T}.
+    \label{eq:method-imm-covariance-update}
+\end{align}
+For the CV branch, \(\mathbf{F}_{\ell}\) and \(\mathbf{H}_{\ell}\) are the
+linear matrices in Equation~\eqref{eq:method-cv-matrices}; for the CT branch,
+they are the EKF Jacobians.  The innovation likelihood updates the model weight:
+\begin{equation}
+    \Lambda^{(\ell)}_{r,i,n}
+    =
+    \frac{\exp\!\left[-\tfrac{1}{2}
+    \boldsymbol{\nu}^{(\ell)\mathsf T}_{r,i,n}
+    \left(\mathbf{S}^{(\ell)}_{r,i,n}\right)^{-1}
+    \boldsymbol{\nu}^{(\ell)}_{r,i,n}\right]}
+    {\sqrt{(2\pi)^2\left|\mathbf{S}^{(\ell)}_{r,i,n}\right|}},
+    \qquad
+    \mu^{(\ell)}_{r,n}
+    =
+    \frac{\Lambda^{(\ell)}_{r,i,n}\bar{\mu}^{(\ell)}_{r,n}}
+    {\sum_{j\in\mathcal{Q}}
+    \Lambda^{(j)}_{r,i,n}\bar{\mu}^{(j)}_{r,n}}.
+    \label{eq:method-imm-mode-update}
+\end{equation}
+Let \(\mathcal{T}_{\ell\rightarrow\mathrm{c}}\) map a mode-conditioned estimate
+to a common output coordinate.  The IMM estimate is obtained by moment matching:
+\begin{align}
+    \widehat{\mathbf{x}}_{r,n}
+    &=
+    \sum_{\ell\in\mathcal{Q}}
+    \mu^{(\ell)}_{r,n}
+    \mathcal{T}_{\ell\rightarrow\mathrm{c}}
+    \left(\widehat{\mathbf{x}}^{(\ell)}_{r,n}\right),
+    \label{eq:method-imm-fused-state}\\
+    \mathbf{P}_{r,n}
+    &=
+    \sum_{\ell\in\mathcal{Q}}
+    \mu^{(\ell)}_{r,n}
+    \left[
+    \mathbf{J}_{\ell\rightarrow\mathrm{c}}
+    \mathbf{P}^{(\ell)}_{r,n}
+    \mathbf{J}_{\ell\rightarrow\mathrm{c}}^{\mathsf T}
+    +\boldsymbol{\delta}^{(\ell)}_{r,n}
+    \left(\boldsymbol{\delta}^{(\ell)}_{r,n}\right)^{\mathsf T}
+    \right],
+    \label{eq:method-imm-fused-covariance}
+\end{align}
+where \(\boldsymbol{\delta}^{(\ell)}_{r,n}\) is the displacement between the
+transformed mode-conditioned estimate and the fused state.  IMM thus adjusts the
+relative weight of straight and turning motion from the current innovation,
+rather than permanently assigning a vehicle to either model.
+
+Before an update, predicted tracks and current detections are screened by the
+squared Mahalanobis innovation distance
+\begin{equation}
+    D^2_{r,i,n}
+    =
+    \left(\mathbf{z}_{i,n}-\widehat{\mathbf{z}}_{r,n|n-1}\right)^{\mathsf T}
+    \mathbf{S}^{-1}_{r,n}
+    \left(\mathbf{z}_{i,n}-\widehat{\mathbf{z}}_{r,n|n-1}\right)
+    \leq \gamma_{\mathrm{trk}}.
+    \label{eq:method-track-gate}
+\end{equation}
+The surviving pairs are resolved by one-to-one Hungarian assignment using their
+innovation costs.  A matched detection updates the kinematic state, mode
+probabilities, track confidence, observation history, and current beam-quality
+distribution \(\mathbf{p}^{\mathrm{obs}}_{r,n}\).  An unmatched track can be
+retained temporarily, but its predicted location alone never produces a formal
+beam candidate.  Tracking consequently maintains temporal continuity without
+substituting for a communication measurement or target-to-user association.
+
+\section{Measurement-Assisted Target-to-User Association}
+\label{sec:method-measurement-association}
+
+The distribution learned in Section~\ref{sec:method-perception-learning} is indexed by a currently observed physical track, whereas beam management acts on a VUE.  This section uses conventional beam measurements to bridge the two indices.  It first establishes a partial UE--track mapping in a multi-candidate scene and then determines whether the accepted mapping is sufficiently reliable to reduce the CSI-RS measurement set.
+
+\subsection{Association from Beam Measurements}
+\label{subsec:method-beam-measurement-association}
+
+An association event occurs at initial access, after a serving-cell change, or when an existing binding no longer has adequate support.  The conventional SSB and CSI-RS procedure provides the serving SSB \(s_{b,u,n}\) and a VUE-indexed CSI-RS beam measurement \(\kappa_{b,u,n}\) for every affected VUE \(u\).  In contrast, a currently observed track \(r\) provides the normalised beam-quality distribution \(\mathbf{p}^{\mathrm{obs}}_{r,n}\) from the joint perception network.  Its entry \(p^{\mathrm{obs}}_{r,n}(k)\) is interpreted as the relative compatibility of beam \(k\) with the physical target represented by track \(r\).
+
+The compatibility between a VUE measurement and a track is quantified by the normalised negative log likelihood
 \begin{equation}
     c^{\mathrm{bind}}_{u,r,n}
     =
-    -\frac{
-    \log p_{r,n}\bigl(\kappa_{b,u,n}\bigr)}
-    {\log M_{\mathrm{CSI}}}.
+    -\frac{\log\!\left(p^{\mathrm{obs}}_{r,n}\bigl(\kappa_{b,u,n}\bigr)+\epsilon\right)}{\log M_{\mathrm{CSI}}},
     \label{eq:method-binding-cost}
 \end{equation}
-The cost treats the target-level distribution as a beam likelihood: a lower
-value indicates stronger agreement between the communication measurement and
-the sensing evidence.
+where \(\epsilon>0\) is a numerical constant.  A smaller value means that the beam selected by conventional measurement is assigned higher quality by the track-level prediction.  This converts the distributional output of the beam-quality-learning task into a communication-grounded association score, without requiring the perception network to classify a VUE identity.
 
-The parent relation between CSI-RS and SSB beams first determines the feasible
-edge set:
+The parent relation between CSI-RS and SSB beams and the current-observation requirement define the feasible edge set
 \begin{equation}
     \mathcal{E}^{\mathrm{bind}}_{b,n}
     =
-    \left\{
-    (u,r):
-    \varphi_b(\kappa_{b,u,n})=s_{b,u,n},\
-    r\ \text{is currently observed}
-    \right\}.
+    \left\{(u,r):\varphi_b\bigl(\kappa_{b,u,n}\bigr)=s_{b,u,n},\ r\ \text{is currently observed}\right\}.
     \label{eq:method-binding-feasibility}
 \end{equation}
-The restricted cost matrix is augmented with dummy unmatched columns and solved
-by a one-to-one Hungarian assignment.  A proposed match is accepted only if its
-likelihood cost, assignment margin, and non-ground-truth reliability evidence
-satisfy the association rule.  Otherwise, \(\pi_{b,n}(u)=\varnothing\) and
-conventional refinement remains in force.  The unmatched alternative is
-essential in a multi-candidate scene because it prevents a forced and
-potentially incorrect VUE--track binding.
-
-The association rule excludes ground-truth identities from the cost matrix,
-does not invert a predicted BEV location into a codebook beam, and does not
-treat a perception track as a recognised VUE.  Direction-only and
-Top-\(K\)-membership matching serve as association ablations; the proposed rule
-instead combines the predicted beam distribution with communication-side
-measurements.  Once accepted, a binding is propagated with the matched
-perception track and is reassessed whenever tracking or reliability evidence no
-longer supports it.
-
-\section{Reliability-Gated Candidate Selection}
-\label{sec:method-candidate-selection}
-
-A valid UE--track association alone is insufficient to justify CSI-RS candidate
-reduction.  Let \(G_{u,n}\in\{0,1\}\) be the reliability gate for VUE \(u\).
-Its decision uses only information available to the BS: binding confidence,
-assignment margin, current detection and track confidence, hint age, SSB-parent
-consistency, observation history, and beam-score concentration.  Denoting these
-quantities collectively by \(\boldsymbol{\xi}_{u,n}\), the gate is written as
+Let \(\sigma\) assign each affected VUE either to one feasible track or to a dummy unmatched column with cost \(c_{\emptyset}\).  The one-to-one association is obtained from
 \begin{equation}
-    G_{u,n}=\Gamma(\boldsymbol{\xi}_{u,n}).
+    \widehat{\sigma}
+    =
+    \underset{\sigma}{\arg\min}
+    \sum_{u\in\mathcal{U}^{\mathrm{evt}}_b[n]}c^{\mathrm{bind}}_{u,\sigma(u),n},
+    \qquad
+    \sigma(u)\in\mathcal{R}^{\mathrm{obs}}_{b,n}\cup\{\emptyset\},
+    \label{eq:method-binding-assignment}
+\end{equation}
+subject to the feasible edges and the one-to-one constraint on real tracks.  It is solved by the Hungarian algorithm after augmentation with dummy columns.  For a real assigned pair, let \(\Delta_{u,r,n}\) denote the gap between its cost and the best competing feasible cost.  The binding is accepted only when
+\begin{equation}
+    A_{u,r,n}
+    =
+    \mathbf{1}\!\left\{c^{\mathrm{bind}}_{u,r,n}\leq\tau_{\mathrm{bind}},\ \Delta_{u,r,n}\geq\tau_{\mathrm{margin}}\right\}=1.
+    \label{eq:method-binding-acceptance}
+\end{equation}
+Accordingly, \(\pi_{b,n}(u)=r\) for an accepted pair and \(\pi_{b,n}(u)=\varnothing\) otherwise.  The unmatched option is essential: it prevents an ambiguous multi-candidate scene from forcing a sensing target onto the wrong communication user.
+
+The association procedure excludes ground-truth identities and never maps a predicted BEV position directly to a codebook beam.  Direction-only and Top-\(K\)-membership rules are retained as association ablations; the proposed rule instead uses agreement between a learned beam-quality distribution and a VUE-indexed conventional measurement.  Once accepted, a binding follows the corresponding perception track and is reassessed when the supporting sensing or communication evidence changes.
+
+\subsection{Reliability-Aware Candidate Selection}
+\label{subsec:method-reliability-aware-selection}
+
+An accepted binding is necessary but insufficient for reducing CSI-RS measurements.  Let \(G_{u,n}\in\{0,1\}\) denote the candidate-use decision for VUE \(u\).  It combines the accepted binding with non-ground-truth evidence available at the BS,
+\begin{equation}
+    G_{u,n}
+    =
+    \begin{cases}
+        \Gamma\!\left(\boldsymbol{\xi}_{u,n}\right),&
+        \pi_{b,n}(u)=r\in\mathcal{R}^{\mathrm{obs}}_{b,n}\ \text{and}\ A_{u,r,n}=1,\\
+        0,& \text{otherwise},
+    \end{cases}
     \label{eq:method-reliability-gate}
 \end{equation}
-This formulation separates the calibration of decision thresholds from
-held-out system evaluation and excludes ground-truth information from the
-online decision.
+where \(\boldsymbol{\xi}_{u,n}\) includes binding confidence, assignment margin, current detection and track confidence, hint age, SSB-parent consistency, observation history, and beam-score concentration.  The function \(\Gamma(\cdot)\) represents a calibrated threshold rule.  It separates association correctness from the more conservative question of whether the current sensing hint is suitable for candidate reduction.
 
-When the gate accepts a current observation, the associated target distribution
-defines the sensing-assisted candidate set:
+When \(G_{u,n}=1\), the current observation refreshes the track distribution and supplies a sensing-assisted candidate set; otherwise conventional refinement remains active:
 \begin{equation}
     \mathcal{C}_{b,u,n}
     =
     \begin{cases}
-        \operatorname{TopK}_{K_{\mathrm{scan}}}
-        \left(
-        \mathbf{p}^{\mathrm{obs}}_{\pi_{b,n}(u),n}
-        \right),&
-        G_{u,n}=1,\\
-        \mathcal{C}^{\mathrm{conv}}_{b,u,n},&
-        G_{u,n}=0,
+        \operatorname{TopK}_{K_{\mathrm{scan}}}\left(\mathbf{p}^{\mathrm{obs}}_{\pi_{b,n}(u),n}\right),& G_{u,n}=1,\\
+        \mathcal{C}^{\mathrm{conv}}_{b,u,n},& G_{u,n}=0.
     \end{cases}
     \label{eq:method-candidate-policy}
 \end{equation}
-where \(\mathbf{p}^{\mathrm{obs}}_{\pi_{b,n}(u),n}\) is refreshed by the current
-matched detection.  A prediction-only track therefore cannot generate a
-CSI-RS candidate set.
+Thus, a predicted-only track can preserve state-estimation continuity but cannot alone initiate a reduced CSI-RS scan.
 
-The candidate width can also adapt to the concentration of the current
-distribution.  Let \(s_1\geq\cdots\geq s_{K_{\max}}\) denote the leading beam
-scores.  For a minimum scan width \(K_{\min}\) and score-mass target \(\zeta\),
-the selected width is
+The measurement width can adapt to the concentration of the current distribution.  Let \(s_1\geq\cdots\geq s_{K_{\max}}\) be its leading scores.  For minimum width \(K_{\min}\) and score-mass target \(\zeta\), the selected width is
 \begin{equation}
     K^{\star}_{\mathrm{scan}}
     =
-    \min\left\{
-    k:
-    k\geq K_{\min},\
-    \frac{\sum_{j=1}^{k}s_j}
-    {\sum_{j=1}^{K_{\max}}s_j}
-    \geq\zeta
-    \right\}.
+    \min\left\{k:k\geq K_{\min},\ \frac{\sum_{j=1}^{k}s_j}{\sum_{j=1}^{K_{\max}}s_j}\geq\zeta\right\}.
     \label{eq:method-adaptive-scan}
 \end{equation}
-This rule assigns more CSI-RS candidates to diffuse distributions and fewer to
-concentrated ones.  It controls measurement width rather than selecting the
-service beam.  After CSI-RS measurements are collected, the service beam is
-selected from the measured candidate set as in
-Equation~\eqref{eq:system-service-beam}.  When the gate rejects a hint, the
-conventional procedure supplies both the candidate set and the recovery path.
+Diffuse distributions consequently retain more CSI-RS candidates, whereas concentrated distributions permit a narrower scan.  In both cases, the distribution determines only which beams are measured.  The service beam is selected from the measured candidate set according to Equation~\eqref{eq:system-service-beam}; a rejected hint reverts to conventional refinement and provides a recovery path.
 
-The gate enforces a conservative use of sensing by exposing association errors,
-missed detections, and stale predictions to conventional recovery rather than
-allowing them to determine a reduced measurement set.  Accordingly, the
-evaluation reports hint usage, fallback frequency, association coverage,
-candidate recall, CSI-RS overhead, and post-RZF rate jointly.
+This association-to-candidate interface prevents association errors, missed detections, and stale target evidence from directly constraining a VUE's measurement set.  Its system consequences are evaluated jointly through association coverage, hint usage, fallback frequency, candidate recall, CSI-RS overhead, and post-RZF rate.
 
 \section{Algorithm Summary and Complexity}
 \label{sec:method-algorithm}
@@ -513,7 +697,7 @@ VUE--track mapping; maintenance epochs retain that mapping only when current
 sensing evidence and the reliability gate support it.
 
 \begin{algorithm}[t]
-\caption{Reliability-gated sensing-assisted beam management at target BS \(b\)}
+\caption{Measurement-assisted sensing beam management at target BS \(b\)}
 \label{alg:method-framework}
 \begin{algorithmic}[1]
 \REQUIRE Multimodal observation \(\mathcal{O}_{b,n}\), active VUE set
@@ -525,15 +709,15 @@ CSI-RS candidate sets \(\{\mathcal{C}_{b,u,n}\}_{u\in\mathcal{U}_b[n]}\)
 \STATE Construct the distributed multimodal BEV feature \(\mathbf{F}_{b,n}\).
 \STATE Decode unbound detections and target-level distributions
 \(\{(d_{b,i,n},\mathbf{p}_{b,i,n})\}_i\).
-\STATE Predict existing perception tracks and associate them with current
-detections using gated Hungarian assignment.
-\STATE Update matched tracks, their confidence, observation history, hint age,
-and current beam distributions.
+    \STATE Mix CV and CT hypotheses, then predict existing tracks using the IMM.
+    \STATE Gate and assign current detections to tracks, then update the matched
+    states, mode probabilities, confidence, observation history, hint age, and
+    current beam distributions.
 \IF{an initial-access, serving-cell-change, or reassociation event occurs}
     \STATE Obtain conventional SSB/CSI-RS measurements for the affected VUEs.
     \STATE Form feasible UE--track pairs using SSB-parent consistency.
     \STATE Solve the beam-likelihood assignment with unmatched alternatives.
-    \STATE Accept only reliable matches and update \(\pi_{b,n}\).
+    \STATE Apply association acceptance tests and update \(\pi_{b,n}\).
 \ENDIF
 \FOR{each \(u\in\mathcal{U}_b[n]\)}
     \IF{\(\pi_{b,n}(u)\) is accepted, currently observed, and \(G_{u,n}=1\)}

@@ -145,14 +145,22 @@ q(k)=\operatorname{softmax}\!\left(
 
 感知输出描述当前 target BS 视角下的未绑定车辆观测，至少包含时间、BS、confidence、BEV 中心、尺寸、朝向、速度、坐标系以及按分数排序的 beam IDs/scores；其语义中不包含 `ue_id` 或 `track_id`。`diagnostic_gt_track_id` 只用于离线评估。
 
-对每个 `(split, weather_id, bs_id)` 独立构造时序轨迹。CV Kalman filter、constant-turn EKF 和 IMM(CV+CT) 构成可比较的状态估计方案，并共享 Hungarian 一对一分配与合理的中心距离 gating。以 CV 为例，状态与观测为
+对每个 `(split, weather_id, bs_id)` 独立构造时序轨迹。CV Kalman filter、coordinated-turn (CT) EKF 和
+IMM(CV+CT) 构成可比较的状态估计方案，并共享 innovation gating 与 Hungarian 一对一分配。CV 模型在
+Cartesian 坐标中使用
 
 \[
 \mathbf{x}_t=[p_x,p_y,v_x,v_y]^{\mathsf T},\qquad
 \mathbf{z}_t=[p_x,p_y]^{\mathsf T}.
 \]
 
-tracking 在本文中用于维持 beam hint 所属感知对象的时间连续性，而不是声称某一滤波器本身构成主要创新。GT/noisy-GT 结果仅用于运动模型和数据关联的受控诊断，不能替代 predicted-detection 的端到端主结果。
+CT 模型使用 \([p_x,p_y,v,\psi,\omega]^{\mathsf T}\)，以速度、航向与转向角速度描述曲线运动；在
+\(\omega\rightarrow0\) 时退化为直线运动。IMM 以 Markov model-transition probabilities 混合 CV 与 CT 的
+初始 state/covariance，分别执行 KF/EKF prediction--update，再依据 measurement likelihood 更新 mode
+probabilities 并融合状态。不同坐标的 state/covariance 在 mixing 与 fusion 时通过确定性 state transformation
+及其 Jacobian 保持一致。
+
+tracking 在本文中用于维持 beam hint 所属感知对象的时间连续性，而不是声称某一滤波器本身构成主要创新。匹配检测更新 track motion state、mode probability、confidence、observation history、beam distribution 和 hint age；未匹配轨迹可短时保留，但纯预测状态不生成正式 beam candidate。GT/noisy-GT 结果仅用于运动模型和数据关联的受控诊断，不能替代 predicted-detection 的端到端主结果。
 
 ### 3.4 测量辅助 UE--track binding
 

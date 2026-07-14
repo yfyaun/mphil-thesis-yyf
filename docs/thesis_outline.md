@@ -426,7 +426,7 @@ state fusion 递推说明两种运动假设如何协作；最后给出 detection
 一个明确的 UE--track matching problem，并在同一节内说明何时可以安全地将匹配结果用于 CSI-RS candidate
 reduction。可靠度是 association-to-candidate interface 的判断条件，而非额外独立贡献模块。
 
-#### 4.4.1 Association from Beam Measurements
+#### 4.4.1 Initial Association from Beam Measurements
 
 - 在 initial access、new serving cell、binding failure 或 sensing evidence 不可靠时执行 conventional
   SSB/CSI-RS measurement。重申 4.2 导出的 \(\mathbf p_{r,n}\) 是当前 observed physical track 对各 CSI beam

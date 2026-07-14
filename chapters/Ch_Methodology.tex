@@ -13,56 +13,63 @@ supported by a current observation.  Sensing therefore ranks measurements; it
 does not replace CSI-RS-based service-beam selection.
 
 The proposed method comprises four coupled functions: distributed multimodal
-BEV representation, joint vehicle detection and beam-quality learning,
-perception-track maintenance with measurement-assisted target-to-user
-association, and reliability-gated candidate selection.  The sensing functions
-operate on unbound physical targets, whereas the association and candidate
-selection functions connect their outputs to the NR-oriented beam-management
+BEV perception and beam-quality learning, IMM-based multi-object tracking,
+measurement-assisted target-to-user association, and reliability-aware
+candidate selection.  The first two functions operate in the sensing domain and
+retain unbound physical-target evidence.  The latter two use conventional beam
+measurements to connect that evidence to an NR-oriented beam-management
 procedure.  The resource model and system-level evaluation of this procedure
 are specified in Chapter~\ref{ch:experiments}.
 
 \section{Framework Architecture}
 \label{sec:method-framework}
 
-For each target BS \(b\) and sensing epoch \(n\), the framework proceeds
-through four ordered stages.  This ordering makes explicit how unbound sensing
-evidence becomes a communication decision without treating a physical target
-as though it were already a known VUE.
+For each target BS \(b\) and sensing epoch \(n\), the framework follows four
+ordered stages.  The first two stages run on the sensing time line and produce
+temporally coherent evidence for physical vehicles.  The remaining stages are
+invoked when this evidence must support a VUE-specific measurement decision.
+This ordering makes explicit how an unbound sensing target can assist beam
+management without being treated as an already identified VUE.
 
 \begin{enumerate}
-    \item \emph{Multimodal perception and beam prediction.}  The sensing
-    network processes the observation \(\mathcal{O}_{b,n}\) defined in
-    Section~\ref{sec:system-sensing} and outputs a set of vehicle detections.
-    For every detected target, the output includes its BEV location, available
-    attributes and detection confidence, together with a normalised 192-way
-    CSI beam-quality distribution.  This distribution ranks beams that are
-    promising to measure for that physical target; it is neither a VUE
-    identifier nor a declaration of the service beam.
+    \item \emph{Distributed multimodal perception and beam-quality
+    prediction.}  The network processes \(\mathcal{O}_{b,n}\), defined in
+    Section~\ref{sec:system-sensing}, in a target-BS-centred BEV frame.  It
+    outputs a set of unbound vehicle detections
+    \(\{(d_{b,i,n},\mathbf{p}_{b,i,n})\}_i\).  Each \(d_{b,i,n}\) contains a
+    BEV position, available attributes, and detection confidence, while
+    \(\mathbf{p}_{b,i,n}\) is a normalised 192-way CSI beam-quality
+    distribution.  The distribution ranks beams that are promising to measure
+    for that physical target; it is neither a VUE identifier nor a service-beam
+    decision.
 
-    \item \emph{Perception-track maintenance.}  An IMM-based multi-object
-    tracker predicts and updates the state of each physical target over
-    successive sensing epochs.  Gated one-to-one matching links the current
-    detections to existing tracks, so that a track carries temporally coherent
-    target-level position, motion, confidence and beam-quality evidence.  The
-    tracker therefore maintains the identity of an observed vehicle in the
-    sensing domain; it does not infer the identity by which that vehicle is
-    addressed in the communication domain.
+    \item \emph{IMM-based multi-object tracking.}  The CV and CT branches of
+    the IMM predict the motion of each physical target and update their model
+    probabilities from the current BEV detection.  Innovation gating and
+    one-to-one detection--track assignment associate current observations with
+    predicted tracks.  The resulting track set \(\mathcal{R}_{b,n}\) maintains
+    target position, motion state, uncertainty, confidence, observation
+    history, and the current beam-quality distribution.  It establishes sensing
+    continuity only: a perception track remains distinct from a communication
+    UE.
 
-    \item \emph{Measurement-assisted target-to-user association.}  At initial
-    access, after entry into a new serving cell, or whenever an accepted
-    association becomes unreliable, conventional SSB and CSI-RS measurements
-    provide VUE-indexed beam evidence.  The method compares this evidence with
-    the beam likelihoods of currently observed tracks.  SSB-parent consistency
-    and one-to-one assignment then determine whether a UE--track association
-    can be accepted; an ambiguous match remains unbound and is handled by the
-    conventional procedure.
+    \item \emph{Initial or renewed target-to-user association.}  At initial
+    access, after a serving-cell change, or when an existing binding loses
+    support, conventional SSB and CSI-RS measurements provide VUE-indexed beam
+    evidence.  The measured CSI-RS beam of each affected VUE is evaluated under
+    the beam-quality distributions of currently observed tracks.  SSB-parent
+    consistency first excludes infeasible pairs; a one-to-one assignment with
+    an unmatched alternative then determines whether the measurement evidence
+    supports an accepted UE--track mapping \(\pi_{b,n}\).  Ambiguous pairs
+    remain unbound rather than being forced to a sensing target.
 
-    \item \emph{Reliability-gated candidate selection.}  Only an accepted,
-    current and reliable UE--track association allows the corresponding
-    beam-quality distribution to form a compact CSI-RS candidate set.  The UE
-    is subsequently served using the best beam among those actually measured.
-    If the track is not currently observed or the association evidence is
-    insufficient, the framework reverts to conventional refinement.
+    \item \emph{Reliability-aware candidate selection.}  An accepted mapping
+    is used only when its track is currently observed and its binding,
+    detection, and beam-distribution evidence jointly support candidate use.
+    The corresponding current distribution then defines a fixed or adaptive
+    CSI-RS candidate set.  Otherwise, conventional refinement is retained.
+    In either case, the service beam is chosen only after CSI-RS quality has
+    been measured over the selected candidate set.
 \end{enumerate}
 
 The resulting information flow is concisely represented by
@@ -79,21 +86,25 @@ The resulting information flow is concisely represented by
     \label{eq:method-decision-path}
 \end{equation}
 where \(\mathcal{R}_{b,n}\) is the set of perception tracks,
-\(\pi_{b,n}\) denotes the accepted UE--track associations, and
-\(\mathcal{C}_{b,u,n}\) is either a sensing-derived CSI-RS candidate set or a
-conventional refinement set.  The compact sequence is intended to accompany
-the overview figure; the associated models are developed in the subsequent
-sections.
+\(\pi_{b,n}\) denotes the partial mapping formed from accepted UE--track
+associations, and \(\mathcal{C}_{b,u,n}\) is either a sensing-derived CSI-RS
+candidate set or a conventional refinement set.  This sequence provides the
+logical structure for the overview figure; Sections~\ref{sec:method-perception-learning},
+\ref{sec:method-imm-tracking}, and \ref{sec:method-measurement-association}
+develop the corresponding models.
 
-The framework is further defined by three information boundaries.  First, the
-perception network uses only calibrated camera and point-cloud observations;
-link coordinates, VUE identities, and oracle beam labels are excluded from its
-forward input.  Second, the tracker maintains the temporal identity of a
-physical target rather than inferring a communication identity.  Third, the
-beam-management module uses a prediction only to select CSI-RS measurements;
-the measured CSI-RS quality selects the service beam.  These boundaries make
-the contributions of perception, association, and measurement reduction
-separately identifiable in the evaluation.
+Four information boundaries define the decision path.  First, the perception
+network receives calibrated camera and point-cloud observations only; link
+coordinates, VUE identities, and oracle beam labels are excluded from its
+forward input.  Second, the IMM propagates BEV target states and uncertainty,
+not communication identities.  Third, initial or renewed association uses
+conventional SSB/CSI-RS evidence together with predicted beam likelihoods,
+without ground-truth IDs or a geometric inversion from position to beam index.
+Finally, a sensing distribution may reduce CSI-RS measurements only for a
+currently observed, reliable association; the measured CSI-RS quality, rather
+than the neural prediction, selects the service beam.  These boundaries make
+the distinct consequences of perception, tracking, association, and candidate
+reduction identifiable in the evaluation.
 
 \section{Distributed Multimodal BEV Perception and Beam-Quality Learning}
 \label{sec:method-perception-learning}
@@ -507,22 +518,19 @@ recursion is
 \begin{align}
     \widehat{\mathbf{x}}^{(\ell)-}_{r,n}
     &=f_{\ell}\!\left(\widehat{\mathbf{x}}^{(\ell)}_{r,0,n-1}\right),
-    &
+    \label{eq:method-imm-prediction}\\
     \mathbf{P}^{(\ell)-}_{r,n}
     &=\mathbf{F}_{\ell}\mathbf{P}^{(\ell)}_{r,0,n-1}
-    \mathbf{F}_{\ell}^{\mathsf T}+\mathbf{Q}_{\ell},
-    \label{eq:method-imm-prediction}\\
+    \mathbf{F}_{\ell}^{\mathsf T}+\mathbf{Q}_{\ell},\\
     \boldsymbol{\nu}^{(\ell)}_{r,i,n}
     &=\mathbf{z}_{i,n}-h_{\ell}\!\left(\widehat{\mathbf{x}}^{(\ell)-}_{r,n}\right),
-    &
+    \label{eq:method-imm-innovation}\\
     \mathbf{S}^{(\ell)}_{r,i,n}
     &=\mathbf{H}_{\ell}\mathbf{P}^{(\ell)-}_{r,n}
-    \mathbf{H}_{\ell}^{\mathsf T}+\mathbf{R}_{i,n},
-    \label{eq:method-imm-innovation}\\
+    \mathbf{H}_{\ell}^{\mathsf T}+\mathbf{R}_{i,n},\\
     \mathbf{K}^{(\ell)}_{r,i,n}
     &=\mathbf{P}^{(\ell)-}_{r,n}\mathbf{H}_{\ell}^{\mathsf T}
-    \left(\mathbf{S}^{(\ell)}_{r,i,n}\right)^{-1},
-    &
+    \left(\mathbf{S}^{(\ell)}_{r,i,n}\right)^{-1},\\
     \widehat{\mathbf{x}}^{(\ell)}_{r,n}
     &=\widehat{\mathbf{x}}^{(\ell)-}_{r,n}
     +\mathbf{K}^{(\ell)}_{r,i,n}\boldsymbol{\nu}^{(\ell)}_{r,i,n},
@@ -606,7 +614,7 @@ substituting for a communication measurement or target-to-user association.
 
 The distribution learned in Section~\ref{sec:method-perception-learning} is indexed by a currently observed physical track, whereas beam management acts on a VUE.  This section uses conventional beam measurements to bridge the two indices.  It first establishes a partial UE--track mapping in a multi-candidate scene and then determines whether the accepted mapping is sufficiently reliable to reduce the CSI-RS measurement set.
 
-\subsection{Association from Beam Measurements}
+\subsection{Initial Association from Beam Measurements}
 \label{subsec:method-beam-measurement-association}
 
 An association event occurs at initial access, after a serving-cell change, or when an existing binding no longer has adequate support.  The conventional SSB and CSI-RS procedure provides the serving SSB \(s_{b,u,n}\) and a VUE-indexed CSI-RS beam measurement \(\kappa_{b,u,n}\) for every affected VUE \(u\).  In contrast, a currently observed track \(r\) provides the normalised beam-quality distribution \(\mathbf{p}^{\mathrm{obs}}_{r,n}\) from the joint perception network.  Its entry \(p^{\mathrm{obs}}_{r,n}(k)\) is interpreted as the relative compatibility of beam \(k\) with the physical target represented by track \(r\).

@@ -138,15 +138,13 @@ beamforming, predict Top-$K$ beams, and report power-loss, latency, and
 beam-search-overhead measures \cite{mollah2026multimodalsensingfusionmmwave}.
 
 The output representation determines how a prediction can be consumed by beam
-management.  A single-beam classifier is adequate when the task is defined as
-one immediate codebook decision.  A ranked Top-$K$ output instead supports a
-candidate set.  A beam-quality or power distribution retains both the candidate
-ordering and the concentration of model evidence, which can be used to assess
-whether a small candidate set is credible enough to measure.  Most of the
-studies above, however, use a sensing sample that is already paired with a
-communication link or a known transmitter.  In a multi-candidate scene, even a
-correct target-level ranking does not establish that the ranking belongs to the
-UE whose link will be measured.
+management.  A strongest-beam classifier produces a score for every codebook
+entry, from which a ranked Top-$K$ candidate set can be formed.  Such a list is
+useful only when its target-level scores can be assigned to the intended
+communication user.  Most of the studies above, however, use a sensing sample
+that is already paired with a communication link or a known transmitter.  In a
+multi-candidate scene, even a correct target-level ranking does not establish
+that the ranking belongs to the UE whose link will be measured.
 
 \section{Distributed Cooperative Perception in V2X Networks}
 \label{sec:background-cooperative-perception}
@@ -228,7 +226,7 @@ plausible.
 
 Target-to-user association is a data-association problem spanning sensing and
 communication evidence.  Sensing can provide a target location, motion state,
-and beam likelihood, while communication measurements provide UE-indexed link
+and beam-class score, while communication measurements provide UE-indexed link
 evidence.  A valid assignment must compare those sources, permit a target or UE
 to remain unmatched, and be reconsidered when its support becomes unreliable.
 This differs fundamentally from treating a detector output as a UE identity.

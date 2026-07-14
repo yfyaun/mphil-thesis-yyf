@@ -1,0 +1,20 @@
+{
+  "format": "paper_tracker_top1ce_raw_v1",
+  "completed_suite": "C:\\Users\\user\\Documents\\mmbeam-experiments\\mmbeam-tracking\\artifacts\\v9_paper\\top1ce_tracker_completion",
+  "imm_summary_sources": {
+    "clear_day": "C:\\Users\\user\\Documents\\mmbeam-experiments\\mmbeam-tracking\\artifacts\\v9_paper\\beam_management\\final_test_9p9s_v7_training_latency_weather_tuned_tracker_bm_v2\\loss_ablation\\csi5ms",
+    "rain_fog_day": "C:\\Users\\user\\Documents\\mmbeam-experiments\\mmbeam-tracking\\artifacts\\v9_paper\\r9m010\\loss_ablation\\csi5ms",
+    "night": "C:\\Users\\user\\Documents\\mmbeam-experiments\\mmbeam-tracking\\artifacts\\v9_paper\\beam_management\\final_test_9p9s_v7_training_latency_weather_tuned_tracker_bm_v2\\loss_ablation\\csi5ms"
+  },
+  "detector": "v3_rt_anchor_beam_top1_ce_cross_agent",
+  "trackers": [
+    "imm_bm_v2",
+    "kf_cv_bm_v2",
+    "kf_ct_bm_v2"
+  ],
+  "weathers": [
+    "clear_day",
+    "rain_fog_day",
+    "night"
+  ]
+}

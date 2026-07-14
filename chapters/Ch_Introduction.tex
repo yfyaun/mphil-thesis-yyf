@@ -62,7 +62,7 @@ prediction to multi-candidate V2I scenes
 \cite{charan2023camerabasedmmwavebeam}.  Imran \emph{et al.} include transmitter
 identification and object-association-based tracking in a distributed semantic
 communication framework \cite{imran2024environmentsemanticcommunicationenabling}.
-Nevertheless, a beam-quality ranking may be accurate for a detected vehicle yet
+Nevertheless, a beam-class ranking may be accurate for a detected vehicle yet
 be unusable if it is applied to another UE.  The problem is therefore not merely
 to predict promising beams from a road scene.  It is to use distributed
 multimodal sensing to generate beam hints that are associated with, and remain
@@ -80,7 +80,7 @@ issue is therefore not simply to aggregate additional inputs.  It is to align
 semantic information from multiview images, geometric information from ISAC
 sensing, and complementary coverage from neighbouring SNs in a target-BS local
 representation.  That representation must remain informative for vehicle
-detection and conditional beam-quality ranking across variations in visibility,
+detection and conditional beam prediction across variations in visibility,
 blockage, traffic configuration, and weather.
 
 The second challenge is \emph{target-to-user association and temporal
@@ -102,7 +102,7 @@ The third challenge is \emph{association-aware candidate reduction and
 evaluation}.  Sensing should not replace communication measurement whenever a
 predicted Top-$K$ list is available.  A candidate set can be misleading when
 the current target is poorly observed, the target-to-user association is
-ambiguous, or the predicted beam distribution is diffuse.  A valid
+ambiguous, or the predicted beam-class posterior is diffuse.  A valid
 sensing-assisted policy must use a beam hint only under credible association
 and current sensing evidence, and must otherwise fall back to conventional
 refinement.  Its merit must be assessed jointly through candidate recall,
@@ -133,9 +133,9 @@ for joint vehicle detection and beam prediction}.  The target BS combines its
 local sensing with complementary observations from neighbouring SNs in a common
 BEV representation.  This objective addresses the limited observability of a
 single sensing site or modality: vehicle detection identifies relevant physical
-targets, while beam prediction estimates the distribution of beam quality for
-each target.  The resulting distribution ranks candidates for communication
-measurement; it does not replace communication measurement.
+targets, while a Top-1 beam classifier produces a per-target beam-class
+posterior.  Its ranked scores identify candidates for communication measurement;
+they do not replace communication measurement.
 
 The second objective is to realise \emph{target-to-user association with
 IMM-based tracking}.  It addresses the fact that a physical sensing target and
@@ -173,11 +173,11 @@ user-specific beam-alignment decisions:
 \begin{enumerate}
     \item \textbf{Distributed Multimodal BEV Perception for Joint Vehicle
     Detection and Beam Prediction.} A target-BS-centered BEV perception model
-    jointly detects vehicles and estimates a per-target CSI beam-quality
-    distribution from multiview cameras at the target BS and neighbouring SNs,
-    together with a BS-local ISAC point cloud.  The model provides target-level
-    beam evidence that can rank candidate measurements under complementary
-    sensing conditions.
+    jointly detects vehicles and produces a per-target CSI beam-class posterior
+    from multiview cameras at the target BS and neighbouring SNs, together with
+    a BS-local ISAC point cloud.  The posterior is learned with a strongest-beam
+    Top-1 objective and provides target-level scores for ranking candidate
+    measurements under complementary sensing conditions.
 
     \item \textbf{Target-to-User Association with IMM-Based Tracking.} A
     measurement-anchored association mechanism connects unbound perception

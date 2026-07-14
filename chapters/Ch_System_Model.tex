@@ -163,7 +163,7 @@ loss of reliable sensing evidence.
 
 Sensing assistance changes only the CSI-RS candidate-selection step.  If a
 currently observed target has been reliably associated with VUE \(u\), its
-predicted beam distribution can rank the CSI-RS beams that should be measured.
+predicted beam-class posterior can rank the CSI-RS beams that should be measured.
 If the association is unavailable or fails its reliability test, the procedure
 reverts to conventional refinement.  Hence, sensing never replaces the
 communication measurement that selects the final service beam.
@@ -182,22 +182,16 @@ VUE \(u\), the narrow-beam quality at epoch \(n\) is
     \left|\mathbf{h}^{\mathrm{H}}_{b,u,n}
     \mathbf{f}^{\mathrm{CSI}}_{b,k}\right|^2,
     \qquad k\in\{1,\ldots,M_{\mathrm{CSI}}\},
-    \label{eq:system-beam-quality}
+    \label{eq:system-beam-gain}
 \end{equation}
 where \(\mathbf{h}_{b,u,n}\) is the downlink channel and
 \(\mathbf{f}^{\mathrm{CSI}}_{b,k}\) is the corresponding beamforming vector.
-The associated normalised vector is the CSI beam-quality distribution used as
-the supervision target for prediction.
-
-Three beam-list sizes play different roles.  \(K_{\mathrm{model}}\) is the
-length of the distribution produced by the perception model,
-\(K_{\mathrm{bind}}\) is the number of high-ranked entries inspected when
-forming a target-to-user association, and \(K_{\mathrm{scan}}\) is the number
-of CSI-RS beams actually measured for a beam-management decision.  In the
-present formulation, \(K_{\mathrm{model}}=M_{\mathrm{CSI}}\), whereas
-\(K_{\mathrm{bind}}\) and \(K_{\mathrm{scan}}\) are protocol-level choices.
-Keeping them separate prevents a rich predictive output from being mistaken for
-an equally large pilot budget.
+The strongest physical beam, \(\arg\max_k g_{b,u,n}(k)\), supplies the Top-1
+supervision label for the beam classifier.  The classifier exports a score for
+every CSI-RS beam, whereas \(K_{\mathrm{scan}}\) alone specifies the number of
+beams actually measured for a beam-management decision.  This distinction
+prevents a 192-class predictive output from being mistaken for an equally large
+pilot budget.
 
 Let \(\mathcal{C}_{b,u,n}\) be the CSI-RS candidate set selected for VUE \(u\).
 After CSI-RS measurements \(\widetilde{g}_{b,u,n}(k)\) are obtained over this
@@ -236,7 +230,7 @@ connected objectives that make these interfaces explicit.
 \label{subsec:system-sensing-problem}
 
 From \(\mathcal{O}_{b,n}\), the sensing model \(\mathcal{G}_{\theta}\) produces
-a set of unbound target detections and beam distributions,
+a set of unbound target detections and beam-class posteriors,
 \begin{equation}
     \mathcal{G}_{\theta}(\mathcal{O}_{b,n})
     \longmapsto
@@ -248,13 +242,13 @@ a set of unbound target detections and beam distributions,
     \label{eq:system-perception-mapping}
 \end{equation}
 Here, \(d_{b,i,n}\) contains the estimated vehicle extent and confidence in the
-BEV frame, while \(\mathbf{p}_{b,i,n}\) estimates the energy distribution over
-CSI-RS beams for that physical target.  The objective is joint vehicle detection
-and conditional beam-quality prediction: a useful distribution should rank the
-beams that are strong for the detected target, but it does not itself identify a
-communication user or declare a service beam.  Detection quality and
-beam-ranking quality consequently characterise complementary, rather than
-interchangeable, aspects of the sensing output.
+BEV frame, while \(\mathbf{p}_{b,i,n}\) is the 192-class posterior produced by a
+Top-1 beam classifier for that physical target.  The objective is joint vehicle
+detection and conditional beam prediction: the posterior orders beams for
+candidate measurement, but it neither identifies a communication user nor
+declares a service beam.  Detection quality and beam-prediction accuracy
+therefore characterise complementary, rather than interchangeable, aspects of
+the sensing output.
 
 \subsection{Association and Tracking}
 \label{subsec:system-association-problem}
@@ -276,8 +270,8 @@ communication-side evidence.
 
 Specifically, let \(s_{b,u,n}\) be the serving SSB and let
 \(\kappa_{b,u,n}\) be a CSI-RS beam selected by a communication measurement
-for VUE \(u\).  If track \(r\) carries the predicted distribution
-\(\mathbf{p}_{r,n}\), a beam-likelihood matching cost can be written as
+for VUE \(u\).  If track \(r\) carries the predicted beam-class posterior
+\(\mathbf{p}_{r,n}\), a beam-posterior matching cost can be written as
 \begin{equation}
     c_{u,r,n}= -\frac{\log p_{r,n}\bigl(\kappa_{b,u,n}\bigr)}
     {\log M_{\mathrm{CSI}}}.

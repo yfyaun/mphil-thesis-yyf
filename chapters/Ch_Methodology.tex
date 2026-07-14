@@ -13,7 +13,7 @@ supported by a current observation.  Sensing therefore ranks measurements; it
 does not replace CSI-RS-based service-beam selection.
 
 The proposed method comprises four coupled functions: distributed multimodal
-BEV perception and beam-quality learning, IMM-based multi-object tracking,
+BEV perception and beam prediction, IMM-based multi-object tracking,
 measurement-assisted target-to-user association, and reliability-aware
 candidate selection.  The first two functions operate in the sensing domain and
 retain unbound physical-target evidence.  The latter two use conventional beam
@@ -32,16 +32,15 @@ This ordering makes explicit how an unbound sensing target can assist beam
 management without being treated as an already identified VUE.
 
 \begin{enumerate}
-    \item \emph{Distributed multimodal perception and beam-quality
+    \item \emph{Distributed multimodal perception and beam
     prediction.}  The network processes \(\mathcal{O}_{b,n}\), defined in
     Section~\ref{sec:system-sensing}, in a target-BS-centred BEV frame.  It
     outputs a set of unbound vehicle detections
     \(\{(d_{b,i,n},\mathbf{p}_{b,i,n})\}_i\).  Each \(d_{b,i,n}\) contains a
     BEV position, available attributes, and detection confidence, while
-    \(\mathbf{p}_{b,i,n}\) is a normalised 192-way CSI beam-quality
-    distribution.  The distribution ranks beams that are promising to measure
-    for that physical target; it is neither a VUE identifier nor a service-beam
-    decision.
+    \(\mathbf{p}_{b,i,n}\) is a 192-way beam-class posterior.  Its ranked
+    entries provide candidate scores for that physical target; they are neither
+    a VUE identifier nor a service-beam decision.
 
     \item \emph{IMM-based multi-object tracking.}  The CV and CT branches of
     the IMM predict the motion of each physical target and update their model
@@ -49,7 +48,7 @@ management without being treated as an already identified VUE.
     one-to-one detection--track assignment associate current observations with
     predicted tracks.  The resulting track set \(\mathcal{R}_{b,n}\) maintains
     target position, motion state, uncertainty, confidence, observation
-    history, and the current beam-quality distribution.  It establishes sensing
+    history, and the current beam-class posterior.  It establishes sensing
     continuity only: a perception track remains distinct from a communication
     UE.
 
@@ -57,7 +56,7 @@ management without being treated as an already identified VUE.
     access, after a serving-cell change, or when an existing binding loses
     support, conventional SSB and CSI-RS measurements provide VUE-indexed beam
     evidence.  The measured CSI-RS beam of each affected VUE is evaluated under
-    the beam-quality distributions of currently observed tracks.  SSB-parent
+    the beam-class posteriors of currently observed tracks.  SSB-parent
     consistency first excludes infeasible pairs; a one-to-one assignment with
     an unmatched alternative then determines whether the measurement evidence
     supports an accepted UE--track mapping \(\pi_{b,n}\).  Ambiguous pairs
@@ -65,8 +64,8 @@ management without being treated as an already identified VUE.
 
     \item \emph{Reliability-aware candidate selection.}  An accepted mapping
     is used only when its track is currently observed and its binding,
-    detection, and beam-distribution evidence jointly support candidate use.
-    The corresponding current distribution then defines a fixed or adaptive
+    detection, and beam-prediction evidence jointly support candidate use.
+    The corresponding current posterior then defines a fixed or adaptive
     CSI-RS candidate set.  Otherwise, conventional refinement is retained.
     In either case, the service beam is chosen only after CSI-RS quality has
     been measured over the selected candidate set.
@@ -98,31 +97,32 @@ network receives calibrated camera and point-cloud observations only; link
 coordinates, VUE identities, and oracle beam labels are excluded from its
 forward input.  Second, the IMM propagates BEV target states and uncertainty,
 not communication identities.  Third, initial or renewed association uses
-conventional SSB/CSI-RS evidence together with predicted beam likelihoods,
+conventional SSB/CSI-RS evidence together with predicted beam-class posterior
+scores,
 without ground-truth IDs or a geometric inversion from position to beam index.
-Finally, a sensing distribution may reduce CSI-RS measurements only for a
+Finally, a sensing prediction may reduce CSI-RS measurements only for a
 currently observed, reliable association; the measured CSI-RS quality, rather
 than the neural prediction, selects the service beam.  These boundaries make
 the distinct consequences of perception, tracking, association, and candidate
 reduction identifiable in the evaluation.
 
-\section{Distributed Multimodal BEV Perception and Beam-Quality Learning}
+\section{Distributed Multimodal BEV Perception and Beam Prediction}
 \label{sec:method-perception-learning}
 
 This section develops the perception-and-learning pipeline that implements the
 first stage of the framework.  It first constructs a target-BS-centred BEV
 representation from distributed visual observations and BS-local ISAC sensing,
-then decodes vehicle-level outputs and their beam-quality distributions from
-the shared representation.  The final subsection specifies the distributional
-supervision that makes these outputs suitable for candidate ranking rather than
-for direct service-beam declaration.
+then decodes vehicle-level detections and beam-class scores from the shared
+representation.  The final subsection defines the Top-1 classification
+supervision used to learn beam prediction without treating the prediction as a
+direct service-beam declaration.
 
 \subsection{Multimodal BEV Representation}
 \label{subsec:method-bev-representation}
 
 The BEV representation provides a common spatial interface for distributed
-visual observations, BS-local ISAC sensing, vehicle detection, and beam-quality
-learning.  Let \(\mathcal{J}_b=\{b\}\cup\mathcal{N}_b\) denote the target BS
+visual observations, BS-local ISAC sensing, vehicle detection, and beam
+prediction.  Let \(\mathcal{J}_b=\{b\}\cup\mathcal{N}_b\) denote the target BS
 and its neighbouring SNs.  For each node \(j\in\mathcal{J}_b\), calibrated
 multiview images are encoded and lifted into the BEV frame of BS \(b\):
 \begin{equation}
@@ -187,18 +187,18 @@ aggregation preserves complementary visual observations.  Neither operation is
 used to infer a communication identity; their role is to construct a
 target-level scene representation with improved observability.
 
-The shared BEV representation aligns a detected vehicle and its beam-quality
+The shared BEV representation aligns a detected vehicle and its beam-prediction
 supervision with the local service region of BS \(b\).  It also enables
-cross-view evidence to influence both detection and beam-quality prediction
+cross-view evidence to influence both detection and beam prediction
 before target-level outputs are decoded.  The resulting feature map
 \(\mathbf{F}_{b,n}\) is therefore shared by the two prediction tasks described
 next.
 
-\subsection{Joint Detection and Beam-Quality Prediction}
+\subsection{Joint Detection and Beam Prediction}
 \label{subsec:method-target-prediction}
 
 The joint prediction head maps \(\mathbf{F}_{b,n}\) to a vehicle-centre
-heatmap, target attributes, and a spatially dense CSI beam-quality map:
+heatmap, target attributes, and spatially dense CSI beam-class logits:
 \begin{equation}
     \left(
     \mathbf{H}_{b,n},
@@ -212,7 +212,7 @@ heatmap, target attributes, and a spatially dense CSI beam-quality map:
 \end{equation}
 where \(\mathbf{H}_{b,n}\) is the centre heatmap, \(\mathbf{A}_{b,n}\)
 contains geometric or motion-related attributes, and
-\(\mathbf{P}_{b,n}\) contains \(M_{\mathrm{CSI}}=192\) beam scores at every BEV
+\(\mathbf{P}_{b,n}\) contains \(M_{\mathrm{CSI}}=192\) class logits at every BEV
 location.  Local maxima of \(\mathbf{H}_{b,n}\) define the vehicle centres.  At
 the \(i\)-th decoded centre, the target-level output is
 \begin{equation}
@@ -225,20 +225,22 @@ the \(i\)-th decoded centre, the target-level output is
     \right),\qquad
     \mathbf{p}_{b,i,n}
     =
+    \operatorname{softmax}\!\left(
     \operatorname{Sample}
     \left(
     \mathbf{P}_{b,n},
     \widehat{\mathbf{r}}_{b,i,n}
+    \right)
     \right).
     \label{eq:method-target-output}
 \end{equation}
 Here, \(\widehat{\mathbf{r}}_{b,i,n}\) is the estimated BEV centre,
 \(\widehat{\mathbf{a}}_{b,i,n}\) contains available size, heading, and velocity
 attributes, and \(\widehat{c}_{b,i,n}\) is the detection confidence.  Sampling
-\(\mathbf{P}_{b,n}\) at the decoded centre converts the dense map into a
-distribution specific to the corresponding physical target.  Consequently,
-several simultaneously visible vehicles can receive distinct candidate rankings
-from a single shared BEV representation.
+\(\mathbf{P}_{b,n}\) at the decoded centre converts the dense logits into a
+beam-class posterior specific to the corresponding physical target.
+Consequently, several simultaneously visible vehicles can receive distinct
+candidate rankings from a single shared BEV representation.
 
 During training, the BS--UE link coordinate identifies the BEV location at
 which beam supervision is sampled.  It acts solely as a supervision index: it
@@ -248,69 +250,37 @@ an oracle track identity.  Equation~\eqref{eq:method-target-output} therefore
 defines an unbound target-level output that remains suitable for the subsequent
 association stage.
 
-\subsection{Distributional Beam Supervision}
-\label{subsec:method-distributional-supervision}
+\subsection{Top-1 Beam Classification}
+\label{subsec:method-top1-beam-classification}
 
-For a supervised BS--UE link, let \(g_{b,u,n}(k)\) be the CSI beam quality in
-Equation~\eqref{eq:system-beam-quality}.  The physical power vector is
-converted to a soft target distribution,
+For a supervised BS--UE link, let \(g_{b,u,n}(k)\) be the physical CSI beam gain
+in Equation~\eqref{eq:system-beam-gain}.  The beam-prediction label
+is the strongest CSI beam,
 \begin{equation}
-    q_{b,u,n}(k)
+    k^\star_{b,u,n}
     =
-    \operatorname{softmax}\!\left(
-    \frac{
-    10\log_{10}g_{b,u,n}(k)
-    -
-    \max_j 10\log_{10}g_{b,u,n}(j)}
-    {T}
-    \right),
-    \qquad
-    k=1,\ldots,M_{\mathrm{CSI}},
-    \label{eq:method-soft-beam-target}
+    \underset{k\in\{1,\ldots,M_{\mathrm{CSI}}\}}{\arg\max}
+    g_{b,u,n}(k).
+    \label{eq:method-top1-beam-label}
 \end{equation}
-where \(T\) controls the concentration of the target distribution.  In contrast
-to a strongest-beam label, \(q_{b,u,n}\) preserves the relative usefulness of
-multiple beams.  This information is required by CSI-RS candidate selection,
-for which a predicted list can be useful even when its leading entry is not the
-unique strongest physical beam.
-
-Let \(\mathbf{z}_{b,i,n}\) be the unnormalised prediction logits at a supervised
-target location, and let
-\(\mathbf{p}_{b,i,n}=\operatorname{softmax}(\mathbf{z}_{b,i,n})\).  The beam
-loss is
+At the corresponding supervised BEV location, let \(\mathbf{z}_{b,i,n}\) be
+the predicted logits and
+\(\mathbf{p}_{b,i,n}=\operatorname{softmax}(\mathbf{z}_{b,i,n})\) the
+beam-class posterior.  The beam-prediction loss is the standard Top-1
+cross-entropy objective,
 \begin{equation}
     \mathcal{L}_{\mathrm{beam}}
     =
-    D_{\mathrm{KL}}
-    \left(
-    \mathbf{q}_{b,u,n}\Vert\mathbf{p}_{b,i,n}
-    \right)
-    +
-    \lambda_{\mathrm{rank}}
-    \mathcal{L}_{\mathrm{hard-rank}}.
+    -\log p_{b,i,n}\!\left(k^\star_{b,u,n}\right).
     \label{eq:method-beam-loss}
 \end{equation}
-The first term matches the predicted and physical quality distributions.  The
-second penalises ranking violations between the strongest physical beam and a
-set \(\mathcal{H}^{-}_{b,u,n}\) of substantially weaker hard-negative beams:
-\begin{equation}
-    \mathcal{L}_{\mathrm{hard-rank}}
-    =
-    \frac{1}{|\mathcal{H}^{-}_{b,u,n}|}
-    \sum_{k\in\mathcal{H}^{-}_{b,u,n}}
-    \ell_{\mathrm{rank}}
-    \left(
-    z_{b,i,n}(k^\star_{b,u,n}),
-    z_{b,i,n}(k)
-    \right),
-    \label{eq:method-hard-rank-loss}
-\end{equation}
-where \(k^\star_{b,u,n}\) is the strongest physical CSI beam and
-\(\ell_{\mathrm{rank}}(\cdot,\cdot)\) is a pairwise ranking penalty.  The
-ranking term suppresses score inversions in which a substantially weaker beam
-outranks the strongest beam in the exported candidate list.
+This supervision trains the network to identify the strongest codebook beam for
+each target-level sample.  The full posterior remains available at inference to
+order candidate beams, but it is not interpreted as a prediction of the
+physical CSI power distribution.
 
-The complete training objective combines the detection and beam terms,
+The complete training objective combines the detection and beam-classification
+terms,
 \begin{equation}
     \mathcal{L}_{\mathrm{joint}}
     =
@@ -323,17 +293,12 @@ The complete training objective combines the detection and beam terms,
 \end{equation}
 where \(\mathcal{L}_{\mathrm{hm}}\) and
 \(\mathcal{L}_{\mathrm{attr}}\) supervise the vehicle-centre and target-attribute
-outputs, respectively.  The objective learns a calibrated, candidate-oriented
-quality distribution rather than an unmeasured service-beam decision.  Its
-effect is assessed through detection-conditioned beam ranking, power retention,
-and calibration metrics.
-
-Three list lengths serve distinct functions.  The model exports the full
-\(K_{\mathrm{model}}=M_{\mathrm{CSI}}\)-entry distribution.  Association may
-inspect a ranked subset of length \(K_{\mathrm{bind}}\), whereas CSI-RS measures
-only \(K_{\mathrm{scan}}\) beams after a binding is accepted.  Preserving this
-distinction prevents an information-rich prediction from being interpreted as
-an equally large measurement budget.
+outputs, respectively.  The training target is a beam class rather than a
+soft CSI-power distribution.  Candidate recall and the physical power retained
+by a predicted Top-\(K\) list are therefore evaluation measures; they are not
+additional supervision terms.  The network exports scores for all
+\(M_{\mathrm{CSI}}\) beams, whereas \(K_{\mathrm{scan}}\) alone specifies the
+number of CSI-RS beams actually measured after a candidate-use decision.
 
 \section{IMM-Based Multi-Object Tracking}
 \label{sec:method-imm-tracking}
@@ -603,8 +568,8 @@ squared Mahalanobis innovation distance
 \end{equation}
 The surviving pairs are resolved by one-to-one Hungarian assignment using their
 innovation costs.  A matched detection updates the kinematic state, mode
-probabilities, track confidence, observation history, and current beam-quality
-distribution \(\mathbf{p}^{\mathrm{obs}}_{r,n}\).  An unmatched track can be
+probabilities, track confidence, observation history, and current beam-class
+posterior \(\mathbf{p}^{\mathrm{obs}}_{r,n}\).  An unmatched track can be
 retained temporarily, but its predicted location alone never produces a formal
 beam candidate.  Tracking consequently maintains temporal continuity without
 substituting for a communication measurement or target-to-user association.
@@ -612,12 +577,12 @@ substituting for a communication measurement or target-to-user association.
 \section{Measurement-Assisted Target-to-User Association}
 \label{sec:method-measurement-association}
 
-The distribution learned in Section~\ref{sec:method-perception-learning} is indexed by a currently observed physical track, whereas beam management acts on a VUE.  This section uses conventional beam measurements to bridge the two indices.  It first establishes a partial UE--track mapping in a multi-candidate scene and then determines whether the accepted mapping is sufficiently reliable to reduce the CSI-RS measurement set.
+The beam-class posterior learned in Section~\ref{sec:method-perception-learning} is indexed by a currently observed physical track, whereas beam management acts on a VUE.  This section uses conventional beam measurements to bridge the two indices.  It first establishes a partial UE--track mapping in a multi-candidate scene and then determines whether the accepted mapping is sufficiently reliable to reduce the CSI-RS measurement set.
 
 \subsection{Initial Association from Beam Measurements}
 \label{subsec:method-beam-measurement-association}
 
-An association event occurs at initial access, after a serving-cell change, or when an existing binding no longer has adequate support.  The conventional SSB and CSI-RS procedure provides the serving SSB \(s_{b,u,n}\) and a VUE-indexed CSI-RS beam measurement \(\kappa_{b,u,n}\) for every affected VUE \(u\).  In contrast, a currently observed track \(r\) provides the normalised beam-quality distribution \(\mathbf{p}^{\mathrm{obs}}_{r,n}\) from the joint perception network.  Its entry \(p^{\mathrm{obs}}_{r,n}(k)\) is interpreted as the relative compatibility of beam \(k\) with the physical target represented by track \(r\).
+An association event occurs at initial access, after a serving-cell change, or when an existing binding no longer has adequate support.  The conventional SSB and CSI-RS procedure provides the serving SSB \(s_{b,u,n}\) and a VUE-indexed CSI-RS beam measurement \(\kappa_{b,u,n}\) for every affected VUE \(u\).  In contrast, a currently observed track \(r\) provides the beam-class posterior \(\mathbf{p}^{\mathrm{obs}}_{r,n}\) from the joint perception network.  Its entry \(p^{\mathrm{obs}}_{r,n}(k)\) is the classifier score assigned to beam \(k\) for the physical target represented by track \(r\).
 
 The compatibility between a VUE measurement and a track is quantified by the normalised negative log likelihood
 \begin{equation}
@@ -626,7 +591,7 @@ The compatibility between a VUE measurement and a track is quantified by the nor
     -\frac{\log\!\left(p^{\mathrm{obs}}_{r,n}\bigl(\kappa_{b,u,n}\bigr)+\epsilon\right)}{\log M_{\mathrm{CSI}}},
     \label{eq:method-binding-cost}
 \end{equation}
-where \(\epsilon>0\) is a numerical constant.  A smaller value means that the beam selected by conventional measurement is assigned higher quality by the track-level prediction.  This converts the distributional output of the beam-quality-learning task into a communication-grounded association score, without requiring the perception network to classify a VUE identity.
+where \(\epsilon>0\) is a numerical constant.  A smaller value means that the beam selected by conventional measurement receives a higher posterior probability from the track-level classifier.  This turns the beam-prediction output into a communication-grounded association score, without requiring the perception network to classify a VUE identity.
 
 The parent relation between CSI-RS and SSB beams and the current-observation requirement define the feasible edge set
 \begin{equation}
@@ -654,7 +619,7 @@ subject to the feasible edges and the one-to-one constraint on real tracks.  It 
 \end{equation}
 Accordingly, \(\pi_{b,n}(u)=r\) for an accepted pair and \(\pi_{b,n}(u)=\varnothing\) otherwise.  The unmatched option is essential: it prevents an ambiguous multi-candidate scene from forcing a sensing target onto the wrong communication user.
 
-The association procedure excludes ground-truth identities and never maps a predicted BEV position directly to a codebook beam.  Direction-only and Top-\(K\)-membership rules are retained as association ablations; the proposed rule instead uses agreement between a learned beam-quality distribution and a VUE-indexed conventional measurement.  Once accepted, a binding follows the corresponding perception track and is reassessed when the supporting sensing or communication evidence changes.
+The association procedure excludes ground-truth identities and never maps a predicted BEV position directly to a codebook beam.  Direction-only and Top-\(K\)-membership rules are retained as association ablations; the proposed rule instead uses agreement between a predicted beam-class posterior and a VUE-indexed conventional measurement.  Once accepted, a binding follows the corresponding perception track and is reassessed when the supporting sensing or communication evidence changes.
 
 \subsection{Reliability-Aware Candidate Selection}
 \label{subsec:method-reliability-aware-selection}
@@ -672,7 +637,7 @@ An accepted binding is necessary but insufficient for reducing CSI-RS measuremen
 \end{equation}
 where \(\boldsymbol{\xi}_{u,n}\) includes binding confidence, assignment margin, current detection and track confidence, hint age, SSB-parent consistency, observation history, and beam-score concentration.  The function \(\Gamma(\cdot)\) represents a calibrated threshold rule.  It separates association correctness from the more conservative question of whether the current sensing hint is suitable for candidate reduction.
 
-When \(G_{u,n}=1\), the current observation refreshes the track distribution and supplies a sensing-assisted candidate set; otherwise conventional refinement remains active:
+When \(G_{u,n}=1\), the current observation refreshes the track-level posterior and supplies a sensing-assisted candidate set; otherwise conventional refinement remains active:
 \begin{equation}
     \mathcal{C}_{b,u,n}
     =
@@ -684,14 +649,14 @@ When \(G_{u,n}=1\), the current observation refreshes the track distribution and
 \end{equation}
 Thus, a predicted-only track can preserve state-estimation continuity but cannot alone initiate a reduced CSI-RS scan.
 
-The measurement width can adapt to the concentration of the current distribution.  Let \(s_1\geq\cdots\geq s_{K_{\max}}\) be its leading scores.  For minimum width \(K_{\min}\) and score-mass target \(\zeta\), the selected width is
+The measurement width can adapt to the concentration of the current posterior.  Let \(s_1\geq\cdots\geq s_{K_{\max}}\) be its leading scores.  For minimum width \(K_{\min}\) and score-mass target \(\zeta\), the selected width is
 \begin{equation}
     K^{\star}_{\mathrm{scan}}
     =
     \min\left\{k:k\geq K_{\min},\ \frac{\sum_{j=1}^{k}s_j}{\sum_{j=1}^{K_{\max}}s_j}\geq\zeta\right\}.
     \label{eq:method-adaptive-scan}
 \end{equation}
-Diffuse distributions consequently retain more CSI-RS candidates, whereas concentrated distributions permit a narrower scan.  In both cases, the distribution determines only which beams are measured.  The service beam is selected from the measured candidate set according to Equation~\eqref{eq:system-service-beam}; a rejected hint reverts to conventional refinement and provides a recovery path.
+Diffuse posteriors consequently retain more CSI-RS candidates, whereas concentrated posteriors permit a narrower scan.  In both cases, the posterior determines only which beams are measured.  The service beam is selected from the measured candidate set according to Equation~\eqref{eq:system-service-beam}; a rejected hint reverts to conventional refinement and provides a recovery path.
 
 This association-to-candidate interface prevents association errors, missed detections, and stale target evidence from directly constraining a VUE's measurement set.  Its system consequences are evaluated jointly through association coverage, hint usage, fallback frequency, candidate recall, CSI-RS overhead, and post-RZF rate.
 
@@ -715,22 +680,22 @@ event occurs
 \ENSURE Updated tracks \(\mathcal{R}_{b,n}\), binding map \(\pi_{b,n}\), and
 CSI-RS candidate sets \(\{\mathcal{C}_{b,u,n}\}_{u\in\mathcal{U}_b[n]}\)
 \STATE Construct the distributed multimodal BEV feature \(\mathbf{F}_{b,n}\).
-\STATE Decode unbound detections and target-level distributions
+\STATE Decode unbound detections and target-level beam-class posteriors
 \(\{(d_{b,i,n},\mathbf{p}_{b,i,n})\}_i\).
     \STATE Mix CV and CT hypotheses, then predict existing tracks using the IMM.
     \STATE Gate and assign current detections to tracks, then update the matched
     states, mode probabilities, confidence, observation history, hint age, and
-    current beam distributions.
+    current beam-class posteriors.
 \IF{an initial-access, serving-cell-change, or reassociation event occurs}
     \STATE Obtain conventional SSB/CSI-RS measurements for the affected VUEs.
     \STATE Form feasible UE--track pairs using SSB-parent consistency.
-    \STATE Solve the beam-likelihood assignment with unmatched alternatives.
+    \STATE Solve the beam-posterior assignment with unmatched alternatives.
     \STATE Apply association acceptance tests and update \(\pi_{b,n}\).
 \ENDIF
 \FOR{each \(u\in\mathcal{U}_b[n]\)}
     \IF{\(\pi_{b,n}(u)\) is accepted, currently observed, and \(G_{u,n}=1\)}
         \STATE Derive fixed or adaptive sensing candidates from the current
-        target distribution.
+        target posterior.
     \ELSE
         \STATE Use conventional refinement candidates.
     \ENDIF
@@ -743,7 +708,7 @@ CSI-RS candidate sets \(\{\mathcal{C}_{b,u,n}\}_{u\in\mathcal{U}_b[n]}\)
 The principal computational terms have distinct scaling behaviour.  BEV feature
 construction depends on the number of camera views, point-cloud observations,
 and BEV resolution.  Joint inference produces one \(M_{\mathrm{CSI}}\)-way
-distribution per decoded target; its target-level output therefore scales with
+beam-class posterior per decoded target; its target-level output therefore scales with
 the number of detections and the 192-beam codebook.  Detection--track and
 UE--track assignments operate on their respective gated candidate sets, and a
 standard Hungarian solver has cubic complexity in the larger side of each

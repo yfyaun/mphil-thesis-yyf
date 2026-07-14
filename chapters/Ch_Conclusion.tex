@@ -12,15 +12,15 @@ measurement can consume non-negligible radio resources. To address this
 setting, the thesis considered a BS-centric sensing infrastructure in which the
 serving base station (BS) and nearby sensing nodes (SNs) provide multiview
 camera observations, and the BS also provides an ISAC point cloud. These
-observations are organized through a bird's-eye-view (BEV) representation so
+observations are organised through a bird's-eye-view (BEV) representation so
 that vehicle detection, per-target beam prediction, and communication-oriented
 evaluation can be studied within a common spatial frame.
 
 The first part of the work formulated a multimodal distributed
 sensing-assisted beam management framework. In this framework, camera modality
 and ISAC modality are fused in BEV space to detect vehicle targets and estimate
-their per-beam power distributions. The resulting Top-K candidate beams provide
-a sensing-driven interface between the perception system and the subsequent
+per-target beam-class posteriors. The resulting ranked Top-K candidate beams
+provide a sensing-driven interface between the perception system and the subsequent
 communication evaluation. The objective of this design is not to replace
 communication measurements entirely, but to use sensing observations to reduce
 the frequency and scope of expensive beam measurements when the sensing output
@@ -58,7 +58,7 @@ environment. Such a setting is necessary for controlled access to camera
 observations, ISAC-like point clouds, vehicle trajectories, beam labels, and
 channel data, but it may introduce a domain gap relative to real road-side
 deployments. The appearance of vehicles, sensing noise, calibration quality,
-traffic behavior, occlusion patterns, and propagation conditions in real
+traffic behaviour, occlusion patterns, and propagation conditions in real
 networks may differ from those represented by the simulation pipeline.
 
 Second, the communication evaluation is a simplified and interpretable
@@ -66,7 +66,7 @@ abstraction rather than a complete 5G NR protocol stack. The thesis models
 beam management, beam mismatch, ZF precoding SINR, spectral efficiency, and
 overhead-adjusted throughput at a system level, but it does not fully model
 protocol-level details such as SSB and CSI-RS scheduling, feedback latency,
-control signaling, HARQ behavior, scheduler interaction, or mobility management
+control signaling, HARQ behaviour, scheduler interaction, or mobility management
 procedures. As a result, throughput-related quantities should be interpreted as
 evaluation indicators under the stated abstraction, not as direct predictions
 of deployment-level 5G NR performance.
@@ -110,9 +110,9 @@ prediction and target-user association.
 \label{subsec:future-5g-nr}
 
 The communication abstraction can be extended toward a fuller 5G NR
-protocol-level simulation. Future work may incorporate more detailed modeling
+protocol-level simulation. Future work may incorporate more detailed modelling
 of SSB and CSI-RS timing, beam reporting, feedback delay, scheduling, control
-overhead, retransmission behavior, and mobility procedures. This would allow
+overhead, retransmission behaviour, and mobility procedures. This would allow
 sensing-assisted beam management to be evaluated not only through simplified
 SINR and throughput indicators, but also through protocol-aware latency,
 resource utilization, and service continuity metrics.

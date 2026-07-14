@@ -1,0 +1,69 @@
+{
+  "format": "mmbeam_tracker_paper_results_v1",
+  "created_utc": "2026-07-14T11:26:45.375760+00:00",
+  "source_root": "C:\\Users\\user\\Documents\\mmbeam-experiments\\mmbeam-tracking\\artifacts\\v8_paper\\tracking_metrics\\primary_detector_test_bm_v2_matched",
+  "detector": {
+    "coordinate_frame": "target_bs_sionna",
+    "optional_fields": [
+      "velocity",
+      "beam_topk_ids",
+      "beam_topk_scores",
+      "beam_score_type",
+      "beam_distribution_class_count",
+      "beam_distribution_retained_mass"
+    ],
+    "path": "artifacts\\v3_paper\\detections\\test\\v3_rt_anchor_beam_power_kl_ranking_cross_agent.jsonl",
+    "required_fields": [
+      "weather_id",
+      "frame_id",
+      "bs_id",
+      "score",
+      "center",
+      "size",
+      "yaw"
+    ],
+    "score_threshold": 0.05,
+    "source": "jsonl"
+  },
+  "protocol": {
+    "split": [
+      "test"
+    ],
+    "weather_ids": [
+      "clear_day",
+      "rain_fog_day",
+      "night"
+    ],
+    "bs_ids": [
+      "bs_ne",
+      "bs_nw",
+      "bs_se",
+      "bs_sw"
+    ],
+    "sequence_count": 12,
+    "match_distance_m": 2.0,
+    "tracker_configs": {
+      "imm_bm_v2": "configs/tracker/imm_cv_ct_beam_management_v2.yaml",
+      "ct_bm_v2": "configs/tracker/kf_ct_beam_management_v2.yaml",
+      "cv_bm_v2": "configs/tracker/kf_cv_beam_management_v2.yaml"
+    }
+  },
+  "source_sha256": {
+    "comparison.json": "2cad88afdd0aa14c7f7619f05a8d06987e445a0d8ed71944306fcaf377207eb1",
+    "imm_bm_v2\\aggregate_metrics.json": "69cfb991399ff99deed1f5687cb2f567b95d02572702230dbf01a90b25d989b2",
+    "imm_bm_v2\\sequence_metrics.jsonl": "794be99a6744cbe196613eff82c7317ecef3679701be1ad471b648d1aa23a468",
+    "ct_bm_v2\\aggregate_metrics.json": "0dac7e73ea5e75f3af51569e82151e40f2e868d1a52980c5df4bbaa23771067d",
+    "ct_bm_v2\\sequence_metrics.jsonl": "27557eb4ee8fa139f9540fac42742fd7525a52367160b292e27507a23b201400",
+    "cv_bm_v2\\aggregate_metrics.json": "935d748eaf81253f3998ed35c90d194438c58b7febdb596d5dd2d8ddd8c66c0f",
+    "cv_bm_v2\\sequence_metrics.jsonl": "da84fcbda0e3f4b2f5d113df3170d709edee220ad0c43f42df82a9b238b0b7ec"
+  },
+  "tables": [
+    "t1_tracker_aggregate_test",
+    "t2_tracker_by_weather_test",
+    "t3_tracker_delta_vs_kf_cv"
+  ],
+  "figures": [
+    "fig_t1_tracker_aggregate_quality",
+    "fig_t2_tracker_weather_quality"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "center_error_sum": 8815.120521443661,
+  "false_negative_count": 2286.0,
+  "false_positive_count": 3216.0,
+  "fragmentation_count": 395.0,
+  "gt_object_count": 11296.0,
+  "gt_track_count": 133.0,
+  "id_maintenance_rate": 0.9607103218645949,
+  "id_switch_count": 354.0,
+  "match_count": 9010.0,
+  "mean_center_error_m": 0.9783707570969657,
+  "mostly_lost_count": 7.0,
+  "mostly_tracked_count": 85.0,
+  "mota": 0.4815864022662889,
+  "motp": 0.9783707570969657,
+  "precision": 0.7369540323899886,
+  "recall": 0.7976274787535411,
+  "sequence_count": 12.0,
+  "track_count": 332.0,
+  "tracker": "cv_bm_v2",
+  "tracker_output_count": 12226.0
+}

@@ -1,0 +1,51 @@
+{
+  "format": "paper_results_asset_export_v2",
+  "generated_utc": "2026-07-14T14:22:19.513804+00:00",
+  "raw_inputs": [
+    "raw/learning/v3_rt_anchor_paper_test/summary.json",
+    "raw/learning/v3_rt_anchor_node_fusion_sn_count_test/summary.json",
+    "raw/beam_management/v9/core_comparison.json",
+    "raw/beam_management/v9/tracker_top1ce/tracker_ablation_comparison.json",
+    "raw/tracking/visualizations/test_clear_day_bs_ne_three_trackers_noise_1_0m.png"
+  ],
+  "paper_core_primary_detector": "v3_rt_anchor_beam_top1_ce_cross_agent",
+  "paper_user_rate_metric": "mean_system_rate_bps / unique_ue_count",
+  "paper_user_rate_definition": "All-UE time-average effective throughput; CSI-RS training, non-data overhead, and unscheduled intervals contribute zero throughput.",
+  "excluded_from_paper": [
+    "beam-supervision ablation",
+    "historical end-to-end tracker ablation"
+  ],
+  "generated_tables": [
+    "table_01_learning_modalities_overall.csv",
+    "table_01_learning_modalities_overall.md",
+    "table_01_learning_modalities_overall.tex",
+    "table_02_learning_modalities_by_weather.csv",
+    "table_02_learning_modalities_by_weather.md",
+    "table_02_learning_modalities_by_weather.tex",
+    "table_03_node_count_overall.csv",
+    "table_03_node_count_overall.md",
+    "table_03_node_count_overall.tex",
+    "table_04_core_by_weather.csv",
+    "table_04_core_by_weather.md",
+    "table_04_core_by_weather.tex",
+    "table_05_core_macro_average.csv",
+    "table_05_core_macro_average.md",
+    "table_05_core_macro_average.tex",
+    "table_06_tracker_macro_average.csv",
+    "table_06_tracker_macro_average.md",
+    "table_06_tracker_macro_average.tex"
+  ],
+  "generated_figures": [
+    "fig_01_node_count_ap.pdf",
+    "fig_01_node_count_ap.png",
+    "fig_02_node_count_recall.pdf",
+    "fig_02_node_count_recall.png",
+    "fig_03_node_count_beam.pdf",
+    "fig_03_node_count_beam.png",
+    "fig_04_core_user_rate_by_weather.pdf",
+    "fig_04_core_user_rate_by_weather.png",
+    "fig_05_core_user_rate_hint_overhead.pdf",
+    "fig_05_core_user_rate_hint_overhead.png",
+    "fig_06_tracker_gt_noise_test.png"
+  ]
+}

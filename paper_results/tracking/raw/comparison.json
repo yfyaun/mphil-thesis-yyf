@@ -1,0 +1,120 @@
+{
+  "algorithms": {
+    "ct_bm_v2": {
+      "aggregate": {
+        "center_error_sum": 8692.951174246635,
+        "false_negative_count": 2270.0,
+        "false_positive_count": 3200.0,
+        "fragmentation_count": 387.0,
+        "gt_object_count": 11296.0,
+        "gt_track_count": 133.0,
+        "id_maintenance_rate": 0.9639929093729227,
+        "id_switch_count": 325.0,
+        "match_count": 9026.0,
+        "mean_center_error_m": 0.9631011715318674,
+        "mostly_lost_count": 8.0,
+        "mostly_tracked_count": 87.0,
+        "mota": 0.4869865439093485,
+        "motp": 0.9631011715318674,
+        "precision": 0.7382627187960085,
+        "recall": 0.7990439093484419,
+        "sequence_count": 12.0,
+        "track_count": 332.0,
+        "tracker": "ct_bm_v2",
+        "tracker_output_count": 12226.0
+      },
+      "tracker_config": "configs\\tracker\\kf_ct_beam_management_v2.yaml"
+    },
+    "cv_bm_v2": {
+      "aggregate": {
+        "center_error_sum": 8815.120521443661,
+        "false_negative_count": 2286.0,
+        "false_positive_count": 3216.0,
+        "fragmentation_count": 395.0,
+        "gt_object_count": 11296.0,
+        "gt_track_count": 133.0,
+        "id_maintenance_rate": 0.9607103218645949,
+        "id_switch_count": 354.0,
+        "match_count": 9010.0,
+        "mean_center_error_m": 0.9783707570969657,
+        "mostly_lost_count": 7.0,
+        "mostly_tracked_count": 85.0,
+        "mota": 0.4815864022662889,
+        "motp": 0.9783707570969657,
+        "precision": 0.7369540323899886,
+        "recall": 0.7976274787535411,
+        "sequence_count": 12.0,
+        "track_count": 332.0,
+        "tracker": "cv_bm_v2",
+        "tracker_output_count": 12226.0
+      },
+      "tracker_config": "configs\\tracker\\kf_cv_beam_management_v2.yaml"
+    },
+    "imm_bm_v2": {
+      "aggregate": {
+        "center_error_sum": 8764.802247779966,
+        "false_negative_count": 2144.0,
+        "false_positive_count": 3074.0,
+        "fragmentation_count": 389.0,
+        "gt_object_count": 11296.0,
+        "gt_track_count": 133.0,
+        "id_maintenance_rate": 0.9645979020979021,
+        "id_switch_count": 324.0,
+        "match_count": 9152.0,
+        "mean_center_error_m": 0.9576925532976361,
+        "mostly_lost_count": 7.0,
+        "mostly_tracked_count": 88.0,
+        "mota": 0.5093838526912181,
+        "motp": 0.9576925532976361,
+        "precision": 0.7485686242434156,
+        "recall": 0.8101983002832861,
+        "sequence_count": 12.0,
+        "track_count": 329.0,
+        "tracker": "imm_bm_v2",
+        "tracker_output_count": 12226.0
+      },
+      "tracker_config": "configs\\tracker\\imm_cv_ct_beam_management_v2.yaml"
+    }
+  },
+  "input": {
+    "bs_ids": [
+      "bs_ne",
+      "bs_nw",
+      "bs_se",
+      "bs_sw"
+    ],
+    "detections": {
+      "coordinate_frame": "target_bs_sionna",
+      "optional_fields": [
+        "velocity",
+        "beam_topk_ids",
+        "beam_topk_scores",
+        "beam_score_type",
+        "beam_distribution_class_count",
+        "beam_distribution_retained_mass"
+      ],
+      "path": "artifacts\\v3_paper\\detections\\test\\v3_rt_anchor_beam_power_kl_ranking_cross_agent.jsonl",
+      "required_fields": [
+        "weather_id",
+        "frame_id",
+        "bs_id",
+        "score",
+        "center",
+        "size",
+        "yaw"
+      ],
+      "score_threshold": 0.05,
+      "source": "jsonl"
+    },
+    "match_distance_m": 2.0,
+    "sequence_count": 12,
+    "splits": [
+      "test"
+    ],
+    "weather_ids": [
+      "clear_day",
+      "rain_fog_day",
+      "night"
+    ]
+  }
+}

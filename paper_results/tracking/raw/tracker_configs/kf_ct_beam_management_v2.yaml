@@ -1,0 +1,12 @@
+# Beam-management tracker ablation: all lifecycle and association settings
+# match CV/IMM V2, so this configuration isolates the CT motion model.
+tracker:
+  name: kf_ct_beam_management_v2
+  model: constant_turn
+  process_noise_accel: 6.0
+  process_noise_yaw_rate: 1.0
+  measurement_noise_xy: 1.0
+  association_distance_m: 8.0
+  max_age_frames: 3
+  min_hits: 1
+  init_velocity_from_detection: true

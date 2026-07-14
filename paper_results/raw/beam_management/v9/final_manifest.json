@@ -1,0 +1,96 @@
+{
+  "format": "v9_weather_tuned_beam_management_suite_v1",
+  "split": "test",
+  "weather_ids": [
+    "clear_day",
+    "rain_fog_day",
+    "night"
+  ],
+  "csi_periods_ms": [
+    5.0
+  ],
+  "bs_ids": "all",
+  "max_frames": 100,
+  "seed": 2026,
+  "physical_model": "v7_per_ue_training_latency_static_rt_anchor",
+  "threshold_selection": "C:\\Users\\user\\Documents\\mmbeam-experiments\\mmbeam-tracking\\artifacts\\v9_paper\\beam_management\\final_test_9p9s_v7_training_latency_weather_tuned_tracker_bm_v2\\final_weather_gate_selection\\selection_by_weather.json",
+  "weather_specific_thresholds": {
+    "clear_day": {
+      "min_confidence": 0.0,
+      "min_association_margin": 0.0,
+      "min_binding_confidence": 0.0,
+      "min_track_observations": 1
+    },
+    "rain_fog_day": {
+      "min_confidence": 0.0,
+      "min_association_margin": 0.0,
+      "min_binding_confidence": 0.0,
+      "min_track_observations": 1
+    },
+    "night": {
+      "min_confidence": 0.4,
+      "min_association_margin": 0.2,
+      "min_binding_confidence": 0.2,
+      "min_track_observations": 2
+    }
+  },
+  "detector_export_manifest": "C:\\Users\\user\\Documents\\mmbeam-experiments\\mmbeam-tracking\\artifacts\\v9_paper\\beam_management\\final_test_9p9s_v7_training_latency_weather_tuned_tracker_bm_v2\\detections\\detection_export_manifest.json",
+  "track_export_manifest": "C:\\Users\\user\\Documents\\mmbeam-experiments\\mmbeam-tracking\\artifacts\\v9_paper\\beam_management\\final_test_9p9s_v7_training_latency_weather_tuned_tracker_bm_v2\\perception_tracks\\test\\track_export_manifest.json",
+  "trackers": [
+    {
+      "name": "kf_cv_bm_v2",
+      "config": "configs/tracker/kf_cv_beam_management_v2.yaml"
+    },
+    {
+      "name": "kf_ct_bm_v2",
+      "config": "configs/tracker/kf_ct_beam_management_v2.yaml"
+    },
+    {
+      "name": "imm_bm_v2",
+      "config": "configs/tracker/imm_cv_ct_beam_management_v2.yaml"
+    }
+  ],
+  "detectors": [
+    {
+      "name": "cross_agent_multimodal",
+      "model_id": "v3_rt_anchor_beam_power_kl_ranking_cross_agent",
+      "checkpoint": "artifacts/checkpoints/v3_rt_anchor_beam_power_kl_ranking_cross_agent/epoch_023.pt",
+      "model_config": "configs/model/bev_centernet_cross_agent_attention.yaml",
+      "modalities": "camera,isac",
+      "comparison": "primary_cross_agent_multimodal"
+    },
+    {
+      "name": "single_station_multimodal",
+      "model_id": "v3_rt_anchor_modalities_multimodal_mean_concat_power_kl_ranking",
+      "checkpoint": "artifacts/checkpoints/v3_rt_anchor_modalities_multimodal_mean_concat_power_kl_ranking/epoch_028.pt",
+      "model_config": "configs/model/bev_centernet.yaml",
+      "modalities": "camera,isac",
+      "comparison": "modality_single_station_multimodal"
+    },
+    {
+      "name": "camera_only",
+      "model_id": "v3_rt_anchor_modalities_camera_concat_power_kl_ranking",
+      "checkpoint": "artifacts/checkpoints/v3_rt_anchor_modalities_camera_concat_power_kl_ranking/epoch_017.pt",
+      "model_config": "configs/model/bev_centernet.yaml",
+      "modalities": "camera",
+      "comparison": "modality_camera_only"
+    },
+    {
+      "name": "isac_only",
+      "model_id": "v3_rt_anchor_modalities_isac_concat_power_kl_ranking",
+      "checkpoint": "artifacts/checkpoints/v3_rt_anchor_modalities_isac_concat_power_kl_ranking/epoch_023.pt",
+      "model_config": "configs/model/bev_centernet.yaml",
+      "modalities": "isac",
+      "comparison": "modality_isac_only"
+    }
+  ],
+  "core_conditions": [
+    "conventional_4beam",
+    "conventional_12beam",
+    "sensing_imm"
+  ],
+  "core_expected_runs": 9,
+  "tracker_physical_runs": 6,
+  "modality_physical_runs": 9,
+  "total_final_physical_runs": 24
+}

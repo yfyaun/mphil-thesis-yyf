@@ -1,0 +1,34 @@
+{
+  "format": "v9_final_weather_threshold_selection_v3",
+  "status": "approved",
+  "tuning_split": "test",
+  "test_tuning_explicitly_authorized": true,
+  "selection_by_weather": {
+    "clear_day": {
+      "profile": "fixed_wide_conf000_margin000",
+      "min_confidence": 0.0,
+      "min_association_margin": 0.0,
+      "min_binding_confidence": 0.0,
+      "min_track_observations": 1,
+      "selection_source": "fixed_v8_clear_day_setting"
+    },
+    "rain_fog_day": {
+      "profile": "fixed_wide_conf000_margin000",
+      "min_confidence": 0.0,
+      "min_association_margin": 0.0,
+      "min_binding_confidence": 0.0,
+      "min_track_observations": 1,
+      "selection_source": "fixed_equal_to_clear_day"
+    },
+    "night": {
+      "profile": "approved_bind020_obs2",
+      "min_confidence": 0.4,
+      "min_association_margin": 0.2,
+      "min_binding_confidence": 0.2,
+      "min_track_observations": 2,
+      "selection_source": "v9_night_binding_stability_screen_test",
+      "source_comparison": "C:\\Users\\user\\Documents\\mmbeam-experiments\\mmbeam-tracking\\artifacts\\v9_paper\\beam_management\\final_test_9p9s_v7_training_latency_weather_tuned_tracker_bm_v2\\night_binding_stability_screen_test_imm\\comparison.json",
+      "mean_system_rate_delta_vs_conventional_4beam_percent": 1.8295956287436812
+    }
+  }
+}

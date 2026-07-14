@@ -1,0 +1,20 @@
+{
+  "format": "v9_rain_margin010_refresh_v1",
+  "source_v9_root": "C:\\Users\\user\\Documents\\mmbeam-experiments\\mmbeam-tracking\\artifacts\\v9_paper\\beam_management\\final_test_9p9s_v7_training_latency_weather_tuned_tracker_bm_v2",
+  "refresh_weather": "rain_fog_day",
+  "refresh_gates": {
+    "min_confidence": 0.0,
+    "min_association_margin": 0.1,
+    "min_binding_confidence": 0.0,
+    "min_track_observations": 1
+  },
+  "reused_invariant_results": [
+    "all clear_day",
+    "all night",
+    "rain_fog_day conventional_4beam",
+    "rain_fog_day conventional_12beam"
+  ],
+  "rerun_sensing_results": 8,
+  "seed": 2026,
+  "split": "test"
+}

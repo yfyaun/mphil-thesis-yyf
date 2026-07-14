@@ -1,0 +1,75 @@
+{
+  "format": "v9_loss_ablation_inputs_v1",
+  "split": "test",
+  "weather_ids": [
+    "clear_day",
+    "rain_fog_day",
+    "night"
+  ],
+  "primary_reused_from": "core/csi5ms/<weather>/sensing_imm/summary.json",
+  "selection_metric": "val_beam_top5_dist_2_0m",
+  "controls": [
+    {
+      "loss_variant": "v3_rt_anchor_beam_top1_ce_cross_agent",
+      "detector": "top1_ce_cross_agent",
+      "checkpoint": "C:\\Users\\user\\Documents\\mmbeam-experiments\\mmbeam-learning\\artifacts\\checkpoints\\v3_rt_anchor_beam_top1_ce_cross_agent\\epoch_019.pt",
+      "model_config": "configs/model/bev_centernet_cross_agent_attention.yaml",
+      "modalities": "camera,isac",
+      "detection_jsonl": "C:\\Users\\user\\Documents\\mmbeam-experiments\\mmbeam-tracking\\artifacts\\v9_paper\\beam_management\\final_test_9p9s_v7_training_latency_weather_tuned_tracker_bm_v2\\detections\\v3_rt_anchor_beam_top1_ce_cross_agent.jsonl",
+      "detection_validation": {
+        "record_count": 11284,
+        "weather_counts": {
+          "clear_day": 3833,
+          "rain_fog_day": 3812,
+          "night": 3639
+        },
+        "minimum_beam_topk": 32
+      },
+      "imm_tracks": "C:\\Users\\user\\Documents\\mmbeam-experiments\\mmbeam-tracking\\artifacts\\v9_paper\\beam_management\\final_test_9p9s_v7_training_latency_weather_tuned_tracker_bm_v2\\perception_tracks\\test\\top1_ce_cross_agent\\tracks__imm_bm_v2.jsonl",
+      "track_validation": {
+        "record_count": 13987,
+        "weather_counts": {
+          "clear_day": 4476,
+          "rain_fog_day": 5178,
+          "night": 4333
+        },
+        "observed_counts": {
+          "clear_day": 3833,
+          "rain_fog_day": 3812,
+          "night": 3639
+        }
+      }
+    },
+    {
+      "loss_variant": "v3_rt_anchor_beam_power_kl_only_cross_agent",
+      "detector": "power_kl_only_cross_agent",
+      "checkpoint": "C:\\Users\\user\\Documents\\mmbeam-experiments\\mmbeam-learning\\artifacts\\checkpoints\\v3_rt_anchor_beam_power_kl_only_cross_agent\\epoch_020.pt",
+      "model_config": "configs/model/bev_centernet_cross_agent_attention.yaml",
+      "modalities": "camera,isac",
+      "detection_jsonl": "C:\\Users\\user\\Documents\\mmbeam-experiments\\mmbeam-tracking\\artifacts\\v9_paper\\beam_management\\final_test_9p9s_v7_training_latency_weather_tuned_tracker_bm_v2\\detections\\v3_rt_anchor_beam_power_kl_only_cross_agent.jsonl",
+      "detection_validation": {
+        "record_count": 15482,
+        "weather_counts": {
+          "clear_day": 4702,
+          "rain_fog_day": 5897,
+          "night": 4883
+        },
+        "minimum_beam_topk": 32
+      },
+      "imm_tracks": "C:\\Users\\user\\Documents\\mmbeam-experiments\\mmbeam-tracking\\artifacts\\v9_paper\\beam_management\\final_test_9p9s_v7_training_latency_weather_tuned_tracker_bm_v2\\perception_tracks\\test\\power_kl_only_cross_agent\\tracks__imm_bm_v2.jsonl",
+      "track_validation": {
+        "record_count": 22619,
+        "weather_counts": {
+          "clear_day": 6117,
+          "rain_fog_day": 8943,
+          "night": 7559
+        },
+        "observed_counts": {
+          "clear_day": 4702,
+          "rain_fog_day": 5897,
+          "night": 4883
+        }
+      }
+    }
+  ]
+}

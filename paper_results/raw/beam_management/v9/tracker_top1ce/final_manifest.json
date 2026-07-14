@@ -1,0 +1,58 @@
+{
+  "format": "top1ce_tracker_completion_v1",
+  "split": "test",
+  "weather_ids": [
+    "clear_day",
+    "rain_fog_day",
+    "night"
+  ],
+  "bs_ids": "all",
+  "max_frames": 100,
+  "seed": 2026,
+  "csi_rs_period_ms": 5.0,
+  "physical_model": "v7_per_ue_training_latency_static_rt_anchor",
+  "detector": {
+    "name": "top1_ce_cross_agent",
+    "model_id": "v3_rt_anchor_beam_top1_ce_cross_agent",
+    "checkpoint": "artifacts/checkpoints/v3_rt_anchor_beam_top1_ce_cross_agent/epoch_019.pt",
+    "model_config": "configs/model/bev_centernet_cross_agent_attention.yaml",
+    "modalities": "camera,isac",
+    "comparison": "loss_top1_ce_cross_agent"
+  },
+  "trackers": [
+    {
+      "name": "kf_cv_bm_v2",
+      "config": "configs/tracker/kf_cv_beam_management_v2.yaml"
+    },
+    {
+      "name": "kf_ct_bm_v2",
+      "config": "configs/tracker/kf_ct_beam_management_v2.yaml"
+    },
+    {
+      "name": "imm_bm_v2",
+      "config": "configs/tracker/imm_cv_ct_beam_management_v2.yaml"
+    }
+  ],
+  "weather_specific_thresholds": {
+    "clear_day": {
+      "min_confidence": 0.0,
+      "min_association_margin": 0.0,
+      "min_binding_confidence": 0.0,
+      "min_track_observations": 1
+    },
+    "rain_fog_day": {
+      "min_confidence": 0.0,
+      "min_association_margin": 0.1,
+      "min_binding_confidence": 0.0,
+      "min_track_observations": 1
+    },
+    "night": {
+      "min_confidence": 0.4,
+      "min_association_margin": 0.2,
+      "min_binding_confidence": 0.2,
+      "min_track_observations": 2
+    }
+  },
+  "reused_imm_summary_root": "C:\\Users\\user\\Documents\\mmbeam-experiments\\mmbeam-tracking\\artifacts\\v9_paper\\r9m010\\loss_ablation\\csi5ms",
+  "new_physical_runs": 6
+}

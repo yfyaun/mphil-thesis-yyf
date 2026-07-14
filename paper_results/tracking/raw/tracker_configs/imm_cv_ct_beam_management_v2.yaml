@@ -1,0 +1,15 @@
+# Beam-management primary tracker. Parameters are selected on the fixed
+# real-detector protocol and match the CV/CT V2 association/lifecycle setup.
+tracker:
+  name: imm_cv_ct_beam_management_v2
+  model: imm
+  models: [cv, ct]
+  mode_probabilities: [0.5, 0.5]
+  transition_matrix: [[0.95, 0.05], [0.05, 0.95]]
+  process_noise_accel: 6.0
+  process_noise_yaw_rate: 1.0
+  measurement_noise_xy: 1.0
+  association_distance_m: 8.0
+  max_age_frames: 3
+  min_hits: 1
+  init_velocity_from_detection: true

@@ -406,6 +406,17 @@ and its EKF transition and measurement matrices are the corresponding Jacobians
 evaluated at the predicted state.  Thus, the CT kinematics describe vehicle
 motion, whereas the update remains conditioned on the position observations
 and effective detection uncertainty produced by the multimodal BEV detector.
+Figure~\ref{fig:method-ct-model} depicts the speed--heading and turn-rate
+parameterisation used by the CT branch.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.66\textwidth]{figures/ct_model.pdf}
+    \caption{Coordinated-turn motion model in the local BEV plane.  The state
+    comprises position, speed, heading, and turn rate; the latter determines
+    the local turning radius under nonzero angular velocity.}
+    \label{fig:method-ct-model}
+\end{figure}
 
 The two model states use different coordinates.  Let
 \(\mathcal{T}_{q\rightarrow \ell}(\cdot)\) denote the deterministic conversion
@@ -436,6 +447,22 @@ constraint.
 
 \subsection{IMM Filtering and Track Management}
 \label{subsec:method-imm-filtering}
+
+Figure~\ref{fig:method-imm-flow} summarises the IMM recursion and its
+connection to detection-to-track management.  Each model first receives a
+mixed state, then performs its own prediction and measurement update; the
+innovation likelihood updates the mode probabilities before the branch states
+are fused.  The equations below formalise this sequence.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.92\textwidth]{figures/diagram_imm.pdf}
+    \caption{IMM filtering and track-management flow.  CV and CT hypotheses
+    are mixed, propagated, and corrected using the current detection
+    observation; their likelihood-weighted estimates are then fused to update
+    the physical-target track.}
+    \label{fig:method-imm-flow}
+\end{figure}
 
 Let \(\mathcal{Q}=\{\mathrm{CV},\mathrm{CT}\}\) be the set of motion models and
 \(\pi_{q\ell}=\Pr(m_n=\ell\mid m_{n-1}=q)\) the Markov transition probability

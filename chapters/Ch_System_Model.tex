@@ -40,7 +40,7 @@ anchored at the target BS and covers its local service region.  A VUE entering a
 new serving cell establishes a new local association there; no global identity
 is assumed to persist across BSs.  The relation between sensing epochs and the
 radio timing used for beam management is specified in
-Section~\ref{subsec:system-timing}.
+Section~\ref{subsec:system-beam-management}.
 
 \section{Multimodal and Distributed Sensing Model}
 \label{sec:system-sensing}
@@ -126,111 +126,221 @@ cloud, without claiming a complete ISAC waveform or radar signal-processing
 implementation.  The point-cloud data used in the evaluation are treated as the
 available output of this sensing stage.
 
-\section{Communication and Beam Management}
+\section{Communication Model}
 \label{sec:system-communication}
 
-The communication model captures the measurement and decision interfaces needed
-to assess sensing-assisted beam management.  It follows the main separation in
-5G NR beam management between coarse synchronisation using synchronisation
-signal blocks (SSBs), refinement using channel-state-information reference
-signals (CSI-RSs), and downlink transmission based on the resulting channel
-information.  It is an NR-oriented abstraction of these functions, rather than
-a full protocol-stack model.
+The communication model describes how a target BS converts measured beam and
+channel information into multi-user downlink transmission.  It retains the
+three functions that are material to the proposed framework: SSB-based coarse
+beam identification, CSI-RS-based refinement, and precoded data transmission.
+The model is NR-oriented and resource-aware, but it abstracts away detailed
+physical-resource-block and control-channel mappings.
 
-\subsection{Timing and Measurements}
-\label{subsec:system-timing}
+\subsection{Downlink Signal and Channel Model}
+\label{subsec:system-downlink-model}
+
+Let \(N_b\) denote the number of transmit-antenna elements at BS \(b\), and
+let \(\mathcal{U}^{\mathrm{sch}}_b[n]\subseteq\mathcal{U}_b[n]\) be the VUEs
+scheduled for downlink transmission in beam-management cycle \(n\).  The
+downlink channel from BS \(b\) to VUE \(u\) is denoted by
+\(\mathbf{h}_{b,u,n}\in\mathbb{C}^{N_b}\).  Consistent with the ray-tracing
+and Doppler abstraction used in the evaluation, it can be represented by a
+time-varying geometric channel
+\begin{equation}
+    \mathbf{h}_{b,u,n}
+    =
+    \sum_{\ell=1}^{L_{b,u,n}}
+    \alpha_{b,u,\ell,n}
+    e^{\mathrm{j}2\pi\nu_{b,u,\ell,n}t_n}
+    \mathbf{a}_b(\vartheta_{b,u,\ell,n}),
+    \label{eq:system-geometric-channel}
+\end{equation}
+where \(L_{b,u,n}\) is the number of resolved paths,
+\(\alpha_{b,u,\ell,n}\), \(\nu_{b,u,\ell,n}\), and
+\(\vartheta_{b,u,\ell,n}\) are the complex gain, Doppler frequency, and
+departure angle of path \(\ell\), respectively; \(t_n\) is the reference time
+of cycle \(n\); and
+\(\mathbf{a}_b(\cdot)\) is the transmit-array response.  The system model does
+not require a particular channel-estimation implementation; it requires only
+that the resulting channel evolution be common to all compared policies.
+
+After beam selection and CSI feedback, let
+\(\mathbf{h}^{\mathrm{eff}}_{b,u,n}\in\mathbb{C}^{N_b^{\mathrm{eff}}}\)
+denote the effective channel presented to the digital precoder.  With unit-power
+data symbol \(s_{b,u,n}\), transmit power \(P_{b,u,n}\), and precoding vector
+\(\mathbf{w}_{b,u,n}\), the received signal is
+\begin{equation}
+    y_{b,u,n}
+    =
+    \sqrt{P_{b,u,n}}
+    \bigl(\mathbf{h}^{\mathrm{eff}}_{b,u,n}\bigr)^{\mathrm{H}}
+    \mathbf{w}_{b,u,n}s_{b,u,n}
+    +
+    \sum_{v\in\mathcal{U}^{\mathrm{sch}}_b[n]\setminus\{u\}}
+    \sqrt{P_{b,v,n}}
+    \bigl(\mathbf{h}^{\mathrm{eff}}_{b,u,n}\bigr)^{\mathrm{H}}
+    \mathbf{w}_{b,v,n}s_{b,v,n}
+    +z_{b,u,n},
+    \label{eq:system-downlink-signal}
+\end{equation}
+where \(z_{b,u,n}\sim\mathcal{CN}(0,\sigma^2_{b,u,n})\).  The corresponding
+instantaneous downlink SINR is
+\begin{equation}
+    \gamma_{b,u,n}
+    =
+    \frac{P_{b,u,n}
+    \left|\bigl(\mathbf{h}^{\mathrm{eff}}_{b,u,n}\bigr)^{\mathrm{H}}
+    \mathbf{w}_{b,u,n}\right|^2}
+    {\displaystyle
+    \sum_{v\in\mathcal{U}^{\mathrm{sch}}_b[n]\setminus\{u\}}
+    P_{b,v,n}
+    \left|\bigl(\mathbf{h}^{\mathrm{eff}}_{b,u,n}\bigr)^{\mathrm{H}}
+    \mathbf{w}_{b,v,n}\right|^2
+    +\sigma^2_{b,u,n}}.
+    \label{eq:system-downlink-sinr}
+\end{equation}
+
+\subsection{Beam Management and Precoding}
+\label{subsec:system-beam-management}
 
 The radio-frame duration is \(T_{\mathrm{frame}}=10\,\mathrm{ms}\).  For
-subcarrier spacing numerology \(\mu\), one slot occupies
+subcarrier-spacing numerology \(\mu\), one slot occupies
 \begin{equation}
     T_{\mathrm{slot}}=\frac{1}{2^{\mu}}\,\mathrm{ms}.
     \label{eq:system-slot-duration}
 \end{equation}
 The sensing update interval \(T_{\mathrm{sen}}\), SSB periodicity
 \(T_{\mathrm{SSB}}\), and CSI-RS periodicity \(T_{\mathrm{CSI}}\) need not be
-identical.  Each sensing epoch \(n\) is associated with a radio-time interval
-in which the most recent observation, the available measurements, and the
-beam-management decision are used consistently.  The concrete periodicities and
-resource allocations are fixed uniformly for all policies in the evaluation.
-
-In conventional operation, an SSB sweep provides a coarse serving-beam or
-serving-SSB measurement.  The BS then transmits CSI-RSs over candidate narrow
-beams to refine the choice, and the VUE reports the relevant measurement or
-channel information.  The selected CSI-RS beam supports effective-channel
-estimation and subsequent downlink precoding.  This sequence is also used for
-initial access, recovery after a serving-cell change, and reassociation after a
-loss of reliable sensing evidence.
-
-Sensing assistance changes only the CSI-RS candidate-selection step.  If a
-currently observed target has been reliably associated with VUE \(u\), its
-predicted beam-class posterior can rank the CSI-RS beams that should be measured.
-If the association is unavailable or fails its reliability test, the procedure
-reverts to conventional refinement.  Hence, sensing never replaces the
-communication measurement that selects the final service beam.
-
-\subsection{Beam Selection and Precoding}
-\label{subsec:system-beam-precoding}
+identical.  Each sensing epoch is associated with a beam-management cycle that
+uses the most recent sensing observation and the communication measurements
+available in the corresponding radio interval.  The concrete periodicities are
+fixed consistently across policies in the evaluation.
 
 For BS \(b\), let \(\mathcal{F}^{\mathrm{SSB}}_b\) and
-\(\mathcal{F}^{\mathrm{CSI}}_b\) denote the SSB and CSI-RS beam codebooks,
-with \(M_{\mathrm{SSB}}=48\) and \(M_{\mathrm{CSI}}=192\) entries,
-respectively.  Each CSI-RS beam \(k\in\{1,\ldots,M_{\mathrm{CSI}}\}\) has an
-SSB parent given by \(\varphi_b(k)\in\{1,\ldots,M_{\mathrm{SSB}}\}\).  For a
-VUE \(u\), the narrow-beam quality at epoch \(n\) is
+\(\mathcal{F}^{\mathrm{CSI}}_b\) denote the SSB and CSI-RS beam codebooks, with
+\(M_{\mathrm{SSB}}=48\) and \(M_{\mathrm{CSI}}=192\) entries, respectively.
+Each CSI-RS beam \(k\in\{1,\ldots,M_{\mathrm{CSI}}\}\) has an SSB parent
+\(\varphi_b(k)\in\{1,\ldots,M_{\mathrm{SSB}}\}\).  The physical gain of this
+beam for VUE \(u\) is
 \begin{equation}
-    g_{b,u,n}(k)=
+    g_{b,u,n}(k)
+    =
     \left|\mathbf{h}^{\mathrm{H}}_{b,u,n}
     \mathbf{f}^{\mathrm{CSI}}_{b,k}\right|^2,
     \qquad k\in\{1,\ldots,M_{\mathrm{CSI}}\},
     \label{eq:system-beam-gain}
 \end{equation}
-where \(\mathbf{h}_{b,u,n}\) is the downlink channel and
-\(\mathbf{f}^{\mathrm{CSI}}_{b,k}\) is the corresponding beamforming vector.
+where \(\mathbf{f}^{\mathrm{CSI}}_{b,k}\) is the corresponding codebook vector.
 The strongest physical beam, \(\arg\max_k g_{b,u,n}(k)\), supplies the Top-1
-supervision label for the beam classifier.  The classifier exports a score for
-every CSI-RS beam, whereas \(K_{\mathrm{scan}}\) alone specifies the number of
-beams actually measured for a beam-management decision.  This distinction
-prevents a 192-class predictive output from being mistaken for an equally large
-pilot budget.
+label used by the beam classifier; it is not directly available to the online
+decision procedure.
 
-Let \(\mathcal{C}_{b,u,n}\) be the CSI-RS candidate set selected for VUE \(u\).
-After CSI-RS measurements \(\widetilde{g}_{b,u,n}(k)\) are obtained over this
-set, the service beam is chosen as
+Conventional beam management first obtains an SSB measurement for coarse
+serving-beam identification, then measures a CSI-RS candidate set
+\(\mathcal{C}_{b,u,n}\) for narrow-beam refinement.  Initial access, a
+serving-cell change, and a loss of association reliability all invoke this
+conventional measurement path.  When a current perception track has a credible
+association with VUE \(u\), the track's beam-class posterior may instead order a
+smaller CSI-RS candidate set; the association and candidate constraints are
+formalised in Section~\ref{sec:system-problem}.  In either case, the service beam
+is selected only from measured CSI-RS responses,
 \begin{equation}
-    k^{\star}_{b,u,n}=
+    k^{\star}_{b,u,n}
+    =
     \underset{k\in\mathcal{C}_{b,u,n}}{\arg\max}\;
-    \widetilde{g}_{b,u,n}(k).
+    \widetilde{g}_{b,u,n}(k),
     \label{eq:system-service-beam}
 \end{equation}
-For a scheduled VUE set \(\mathcal{U}^{\mathrm{sch}}_b[n]\), let
-\(\widehat{\mathbf{H}}_b[n]\) collect the effective channel estimates after
-this measurement and reporting procedure.  The BS forms a regularised
-zero-forcing (RZF) precoder according to
+where \(\widetilde{g}_{b,u,n}(k)\) is the measured response.  Thus, the
+192-way classifier output ranks measurement candidates, whereas
+\(K_{\mathrm{scan}}=|\mathcal{C}_{b,u,n}|\) determines the actual narrow-beam
+measurement budget.
+
+Let \(\widehat{\mathbf{H}}_b[n]\) collect the effective-channel estimates of
+the scheduled VUEs after this measurement and feedback procedure.  The BS forms
+the regularised zero-forcing (RZF) precoder
 \begin{equation}
-    \mathbf{W}_b[n]=\widehat{\mathbf{H}}_b^{\mathrm{H}}[n]
-    \left(\widehat{\mathbf{H}}_b[n]\widehat{\mathbf{H}}_b^{\mathrm{H}}[n]
+    \mathbf{W}_b[n]
+    =
+    \widehat{\mathbf{H}}_b^{\mathrm{H}}[n]
+    \left(\widehat{\mathbf{H}}_b[n]
+    \widehat{\mathbf{H}}_b^{\mathrm{H}}[n]
     +\lambda_b\mathbf{I}\right)^{-1}\mathbf{D}_b[n],
     \label{eq:system-rzf-precoder}
 \end{equation}
 where \(\lambda_b\) is the regularisation factor and \(\mathbf{D}_b[n]\)
-normalises the allocated transmit power.  The system-level link model therefore
-retains the effect of candidate selection on both CSI-RS overhead and the
-quality of the channel information used for multi-user transmission.
+normalises the RZF columns.  The columns of \(\mathbf{W}_b[n]\) provide the
+precoding directions in Equation~\eqref{eq:system-downlink-signal}, while
+\(P_{b,u,n}\) specifies their allocated powers; substituting them into
+Equation~\eqref{eq:system-downlink-sinr} yields
+\(\gamma^{\mathrm{RZF}}_{b,u,n}\).
+
+\subsection{Resource Overhead and Effective Rate}
+\label{subsec:system-resource-rate}
+
+Within a beam-management cycle, the normalised downlink resource budget is
+partitioned as
+\begin{equation}
+    \tau_{b,n}^{\mathrm{tot}}
+    =
+    \tau_{b,n}^{\mathrm{SSB}}
+    +\tau_{b,n}^{\mathrm{CSI\text{-}RS}}
+    +\tau_{b,n}^{\mathrm{ctrl}}
+    +\tau_{b,n}^{\mathrm{data}}.
+    \label{eq:system-resource-budget}
+\end{equation}
+For the set \(\mathcal{E}_b[n]\) of beam-acquisition events in the cycle, the
+CSI-RS resource consumption is represented by
+\begin{equation}
+    \tau_{b,n}^{\mathrm{CSI\text{-}RS}}
+    =
+    \sum_{e\in\mathcal{E}_b[n]}
+    \left\lceil\frac{K_e}{M}\right\rceil\delta_{\mathrm{probe}},
+    \qquad
+    \eta_{b,n}^{\mathrm{data}}
+    =
+    \frac{\tau_{b,n}^{\mathrm{data}}}{\tau_{b,n}^{\mathrm{tot}}},
+    \label{eq:system-csirs-overhead}
+\end{equation}
+where \(K_e\) is the total number of CSI-RS beams measured at event \(e\),
+\(M\) is the number of beam measurements that can be multiplexed, and
+\(\delta_{\mathrm{probe}}\) is the normalised cost of one acquisition occasion.
+The SSB, control, and data terms retain their common roles across policies;
+sensing assistance affects the rate only through its effect on the candidate
+width \(K_e\), the selected beam, and the resulting effective channel.
+
+Let \(\chi_{b,u,n}\in\{0,1\}\) denote the scheduling indicator of VUE \(u\),
+and let \(B_b\) and \(\eta_b^{\mathrm{DL}}\) be the allocated bandwidth and
+downlink fraction, respectively.  The overhead-adjusted achievable rate is
+defined as
+\begin{equation}
+    R_{b,u,n}^{\mathrm{ach}}
+    =
+    \chi_{b,u,n}B_b\eta_b^{\mathrm{DL}}
+    \eta_{b,n}^{\mathrm{data}}
+    \log_2\!\left(1+\gamma_{b,u,n}^{\mathrm{RZF}}\right).
+    \label{eq:system-achievable-rate}
+\end{equation}
+This definition assigns zero rate to an active VUE that is not scheduled in a
+cycle, and therefore supports an all-UE time-average performance measure rather
+than a conditional rate over scheduled transmissions alone.
 
 \section{Problem Formulation}
 \label{sec:system-problem}
 
-The proposed system is not posed as a single monolithic optimisation because its
-outputs operate at different interfaces: sensing produces target-indexed
-evidence, communication measurements are VUE-indexed, and the final criterion
-is user-level communication performance.  This section therefore states three
-connected objectives that make these interfaces explicit.
+The sensing, association, and beam-management layers operate on different
+indices, but their purpose is common: to improve the long-term communication
+performance of the active VUE population under a finite measurement budget.  The
+problem is therefore formulated as a constrained, causal rate-maximisation
+problem.  The following subsection first specifies how target-level sensing
+evidence is permitted to enter a VUE-level decision; the final subsection states
+the resulting communication objective.
 
-\subsection{Sensing and Beam Prediction}
-\label{subsec:system-sensing-problem}
+\subsection{Association-Constrained Candidate Selection}
+\label{subsec:system-association-candidate}
 
 From \(\mathcal{O}_{b,n}\), the sensing model \(\mathcal{G}_{\theta}\) produces
-a set of unbound target detections and beam-class posteriors,
+unbound detections and beam-class posteriors,
 \begin{equation}
     \mathcal{G}_{\theta}(\mathcal{O}_{b,n})
     \longmapsto
@@ -241,91 +351,108 @@ a set of unbound target detections and beam-class posteriors,
     \sum_{k=1}^{M_{\mathrm{CSI}}}p_{b,i,n}(k)=1.
     \label{eq:system-perception-mapping}
 \end{equation}
-Here, \(d_{b,i,n}\) contains the estimated vehicle extent and confidence in the
-BEV frame, while \(\mathbf{p}_{b,i,n}\) is the 192-class posterior produced by a
-Top-1 beam classifier for that physical target.  The objective is joint vehicle
-detection and conditional beam prediction: the posterior orders beams for
-candidate measurement, but it neither identifies a communication user nor
-declares a service beam.  Detection quality and beam-prediction accuracy
-therefore characterise complementary, rather than interchangeable, aspects of
-the sensing output.
-
-\subsection{Association and Tracking}
-\label{subsec:system-association-problem}
-
-Let \(\mathcal{R}_{b,n}\) denote the set of active perception tracks.  Each
-track \(r\in\mathcal{R}_{b,n}\) maintains a BEV kinematic state
-\(\mathbf{x}_{r,n}=[x_{r,n},y_{r,n},v_{x,r,n},v_{y,r,n}]^{\mathrm{T}}\).  The
-target-to-user association is a partial mapping
+Here, \(d_{b,i,n}\) is a physical-target detection and
+\(\mathbf{p}_{b,i,n}\) is its 192-class beam posterior.  Neither output carries
+a communication identity.  Let \(\mathcal{R}^{\mathrm{obs}}_{b,n}\) be the set
+of currently observed perception tracks maintained from these detections.  The
+target-to-user association is a partial one-to-one mapping
 \begin{equation}
     \pi_{b,n}:\mathcal{U}_b[n]\longrightarrow
-    \mathcal{R}_{b,n}\cup\{\varnothing\},
+    \mathcal{R}^{\mathrm{obs}}_{b,n}\cup\{\varnothing\},
+    \qquad
+    \sum_{u\in\mathcal{U}_b[n]}
+    \mathbf{1}\!\left\{\pi_{b,n}(u)=r\right\}\leq 1,
+    \quad \forall r\in\mathcal{R}^{\mathrm{obs}}_{b,n},
     \label{eq:system-association-map}
 \end{equation}
 where \(\pi_{b,n}(u)=\varnothing\) means that no sensing-derived hint is
-accepted for VUE \(u\).  The mapping is one-to-one over accepted matches.  It is
-established or recovered at events such as initial access, serving-cell change,
-or loss of association reliability, when conventional measurements provide
-communication-side evidence.
+accepted for VUE \(u\).
 
-Specifically, let \(s_{b,u,n}\) be the serving SSB and let
-\(\kappa_{b,u,n}\) be a CSI-RS beam selected by a communication measurement
-for VUE \(u\).  If track \(r\) carries the predicted beam-class posterior
-\(\mathbf{p}_{r,n}\), a beam-posterior matching cost can be written as
+At an association event, conventional measurements provide a serving SSB
+\(s_{b,u,n}\) and a VUE-indexed CSI-RS measurement \(\kappa_{b,u,n}\).  If
+track \(r\) carries posterior \(\mathbf{p}_{r,n}\), its compatibility with VUE
+\(u\) is measured by
 \begin{equation}
-    c_{u,r,n}= -\frac{\log p_{r,n}\bigl(\kappa_{b,u,n}\bigr)}
-    {\log M_{\mathrm{CSI}}}.
+    c_{u,r,n}
+    =
+    -\frac{\log\!\left(p_{r,n}\bigl(\kappa_{b,u,n}\bigr)+\epsilon\right)}
+    {\log M_{\mathrm{CSI}}},
+    \qquad
+    \varphi_b\bigl(\kappa_{b,u,n}\bigr)=s_{b,u,n},
     \label{eq:system-association-cost}
 \end{equation}
-The pair is feasible only if
-\(\varphi_b(\kappa_{b,u,n})=s_{b,u,n}\), and unmatched choices remain
-available in the assignment.  The intended outcome is therefore not forced
-coverage but a high probability of correct accepted associations.  An
-interacting multiple model (IMM) tracker propagates and updates each track state
-across sensing epochs, allowing the accepted association to be maintained
-through normal vehicle motion.  The tracker preserves the link between an
-established VUE and its perception track; it does not infer a VUE identifier
-from sensing data alone.  Ground-truth identities are reserved for diagnostic
-evaluation of this process.
+where \(\epsilon>0\) is a numerical constant.  The parent condition defines
+the feasible UE--track pairs; a one-to-one assignment with unmatched choices
+determines \(\pi_{b,n}\).  This construction ensures that sensing evidence is
+attached to a VUE through communication-side evidence rather than by a direct
+geometric or identity inference.
 
-\subsection{Rate and Resource Objectives}
-\label{subsec:system-rate-objectives}
-
-The association state determines whether a sensing prediction can constrain the
-CSI-RS scan.  Let \(G_{u,n}\in\{0,1\}\) be a reliability gate derived only from
-available evidence, including association confidence, detection or track
-confidence, hint age, SSB consistency, observation history, and beam-score
-concentration.  A sensing-assisted candidate set is used only for a currently
-observed and reliably associated target:
+Let \(G_{u,n}\in\{0,1\}\) denote the reliability decision derived from the
+accepted association, current track observation, association margin, detection
+and track confidence, hint age, and posterior-score concentration.  The
+candidate policy is
 \begin{equation}
-    \mathcal{C}_{b,u,n}=
+    \mathcal{C}_{b,u,n}
+    =
     \begin{cases}
-        \operatorname{TopK}_{K_{\mathrm{scan}}}(\mathbf{p}_{\pi_{b,n}(u),n}),
-        & G_{u,n}=1,\\
-        \mathcal{C}^{\mathrm{conv}}_{b,u,n}, & G_{u,n}=0,
+        \operatorname{TopK}_{K_{\mathrm{scan}}}
+        \left(\mathbf{p}_{\pi_{b,n}(u),n}\right),
+        &G_{u,n}=1,\ \pi_{b,n}(u)\in\mathcal{R}^{\mathrm{obs}}_{b,n},\\
+        \mathcal{C}^{\mathrm{conv}}_{b,u,n}, &\text{otherwise},
     \end{cases}
     \label{eq:system-candidate-policy}
 \end{equation}
-where \(\mathcal{C}^{\mathrm{conv}}_{b,u,n}\) is supplied by the conventional
-refinement procedure.  In both cases, the measured CSI-RS quality in
-Equation~\eqref{eq:system-service-beam} selects the transmitted beam.
+where \(\mathcal{C}^{\mathrm{conv}}_{b,u,n}\) is supplied by conventional
+refinement.  Thus, a sensing prediction can reduce CSI-RS measurements only for
+a current, accepted UE--track association; the final service beam remains the
+measured choice in Equation~\eqref{eq:system-service-beam}.
 
-Let \(\gamma^{\mathrm{RZF}}_{b,u,n}\) denote the post-precoding downlink SINR
-obtained with Equation~\eqref{eq:system-rzf-precoder}, and let
-\(\rho_{b,u,n}\) be the fraction of available resources consumed by SSBs,
-CSI-RSs, control signalling, and the associated beam-management procedure.  The
-overhead-adjusted effective rate is
+\subsection{Long-Term Average-Rate Maximisation}
+\label{subsec:system-long-term-rate}
+
+For a horizon of \(N\) beam-management cycles, define the all-UE average
+achievable rate of BS \(b\) as
 \begin{equation}
-    R^{\mathrm{eff}}_{b,u,n}=
-    \bigl(1-\rho_{b,u,n}\bigr)B_b
-    \log_2\bigl(1+\gamma^{\mathrm{RZF}}_{b,u,n}\bigr),
-    \label{eq:system-effective-rate}
+    \overline{R}_b[N]
+    =
+    \frac{1}{N}
+    \sum_{n=1}^{N}
+    \frac{1}{\left|\mathcal{U}_b[n]\right|}
+    \sum_{u\in\mathcal{U}_b[n]}
+    R_{b,u,n}^{\mathrm{ach}}.
+    \label{eq:system-average-rate}
 \end{equation}
-where \(B_b\) is the allocated bandwidth.  The framework is assessed through a
-metric vector rather than a surrogate scalar objective: perception and
-beam-ranking quality, accepted-association accuracy and coverage, candidate
-recall, CSI-RS overhead, effective rate, lower-tail rate, and outage.  This
-evaluation structure exposes the full causal chain from distributed sensing to
-the communication benefit available to the intended VUE.  The concrete learning
-objectives, association procedure, and resource-accounting protocol are
-specified in the following chapters.
+The operational objective can then be stated as
+\begin{align}
+    \mathcal{P}_1:\qquad
+    \underset{\{\pi_{b,n},\mathcal{C}_{b,u,n},\mathbf{W}_b[n],
+    \chi_{b,u,n}\}}{\operatorname{maximise}}\quad
+    &\liminf_{N\rightarrow\infty}\overline{R}_b[N]
+    \label{eq:system-rate-maximisation}\\
+    \text{subject to}\quad
+    &\mathcal{C}_{b,u,n}\ \text{satisfies
+    Equation~\eqref{eq:system-candidate-policy}},
+    \label{eq:system-rate-constraint-candidate}\\
+    &k^{\star}_{b,u,n}=\underset{k\in\mathcal{C}_{b,u,n}}{\arg\max}\;
+    \widetilde{g}_{b,u,n}(k),
+    \label{eq:system-rate-constraint-measurement}\\
+    &\tau_{b,n}^{\mathrm{SSB}}+\tau_{b,n}^{\mathrm{CSI\text{-}RS}}
+    +\tau_{b,n}^{\mathrm{ctrl}}+\tau_{b,n}^{\mathrm{data}}
+    =\tau_{b,n}^{\mathrm{tot}},
+    \label{eq:system-rate-constraint-resource}\\
+    &\displaystyle\sum_{u\in\mathcal{U}^{\mathrm{sch}}_b[n]}
+    P_{b,u,n}\left\|\mathbf{w}_{b,u,n}\right\|^2
+    \leq P_b^{\mathrm{max}},
+    \qquad \forall n.
+    \label{eq:system-rate-constraint-power}
+\end{align}
+The optimisation is causal: \(\pi_{b,n}\), \(\mathcal{C}_{b,u,n}\),
+\(\mathbf{W}_b[n]\), and \(\chi_{b,u,n}\) can depend only on sensing outputs,
+track states, and communication measurements available by cycle \(n\).  The
+Top-1 beam classifier and IMM tracker supply the causal sensing and tracking
+states used in these constraints; their learning and filtering recursions are
+specified in Chapter~\ref{ch:methodology}.  Consequently, \(\mathcal{P}_1\)
+does not treat oracle identities, unmeasured beam gains, or future channels as
+decision inputs.  Its purpose is to make explicit that any candidate reduction
+is valuable only insofar as it improves the long-term rate after both
+measurement overhead and multi-user interference have been accounted for.

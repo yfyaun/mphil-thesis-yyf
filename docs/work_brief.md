@@ -176,36 +176,52 @@ k^*=\min\left\{k:\ k\geq K_{\min},
 
 该规则只决定 CSI-RS 测量集合大小；UE 在实测候选中按测得 SNR 选择 beam。正式 policy 仅使用当前 observed detection 的 beam Top-\(K\)，不将 KF/IMM 的纯预测位置映射为正式候选 beam；后者只保留为诊断性几何消融。
 
-### 3.6 资源记账与通信评价
+### 3.6 通信、资源记账与长期速率目标
 
-所有系统比较必须保持 SSB、RT/Doppler、信道估计、RZF、调度与功率设置一致，只改变 CSI-RS candidate set。资源预算采用
+在每个 beam-management cycle \(n\)，target BS 为
+\(\mathcal U_b^{\mathrm{sch}}[n]\subseteq\mathcal U_b[n]\) 中的 VUE 进行下行传输。BS--VUE
+信道采用随 RT reference channel 和 Doppler 演化的多径向量
+\(\mathbf h_{b,u,n}=\sum_{\ell}\alpha_{b,u,\ell,n}e^{\mathrm j2\pi\nu_{b,u,\ell,n}t_n}
+\mathbf a_b(\vartheta_{b,u,\ell,n})\) 表示。完成 service-beam measurement 和 CSI feedback 后，
+effective channel 进入 RZF precoder；对单位功率数据流，post-RZF SINR 由目标流功率、残余多用户干扰和噪声共同决定。本文不把具体 channel-estimation 或完整 NR physical-resource mapping 作为研究对象，但所有对照必须共享同一 RT/Doppler、信道估计、RZF、调度和功率配置。
+
+SSB sweep 提供 coarse beam/serving-SSB evidence；CSI-RS 在实际 candidate set 上完成窄波束测量，实测
+response 决定 service beam。已接受且当前可观测的 UE--track binding 才允许 beam-class posterior 缩减
+CSI-RS candidate width；否则使用 conventional refinement。网络导出的 192-way posterior 不等于 192 次导频测量，实际测量开销仅由每个 event 的 \(K_e\) 决定。
+
+资源预算采用
 
 \[
-\tau_{\mathrm{total}}=\tau_{\mathrm{SSB}}+\tau_{\mathrm{CSI\text{-}RS}}
-+\tau_{\mathrm{ctrl}}+\tau_{\mathrm{data}},
+\tau_{b,n}^{\mathrm{tot}}=\tau_{b,n}^{\mathrm{SSB}}+\tau_{b,n}^{\mathrm{CSI\text{-}RS}}
++\tau_{b,n}^{\mathrm{ctrl}}+\tau_{b,n}^{\mathrm{data}},
 \]
 
 上述资源项在正式系统模型中表示归一化的下行时频资源单元，而非逐 PRB/RE 的标准化 3GPP mapping；TDD 下行占比 \(\eta_{\mathrm{DL}}\) 独立建模。对 event set \(\mathcal E\)，dedicated-per-UE beam acquisition cost 写为
 
 \[
-\tau_{\mathrm{CSI\text{-}RS}}=
+\tau_{b,n}^{\mathrm{CSI\text{-}RS}}=
 \sum_{e\in\mathcal E}
 \left\lceil\frac{K_e}{M}\right\rceil\delta_{\mathrm{probe}},
 \qquad
-\eta_{\mathrm{data}}^{\mathrm{DL}}=
-\frac{\tau_{\mathrm{data}}}{\tau_{\mathrm{total}}},
+\eta_{b,n}^{\mathrm{data}}=
+\frac{\tau_{b,n}^{\mathrm{data}}}{\tau_{b,n}^{\mathrm{tot}}},
 \]
 
-其中 \(K_e\) 是 event \(e\) 中所有 serving UEs 的实际候选 beam 总数，\(M\) 是可正交复用的 UE--beam measurement 数，\(\delta_{\mathrm{probe}}\) 是一次 acquisition 的归一化成本。令 \(\gamma_{u,s}^{\mathrm{post\text{-}RZF}}\) 表示真实 CSI-RS measurement、信道估计与 RZF 后的 SINR，则主速率指标为
+其中 \(K_e\) 是 event \(e\) 中所有 serving UEs 的实际候选 beam 总数，\(M\) 是可正交复用的 UE--beam measurement 数，\(\delta_{\mathrm{probe}}\) 是一次 acquisition 的归一化成本。令 \(\chi_{b,u,n}\) 表示 VUE 是否被调度，\(\gamma_{b,u,n}^{\mathrm{RZF}}\) 表示真实 CSI-RS measurement、信道估计与 RZF 后的 SINR，则主速率指标为
 
 \[
-R_{u,s}^{\mathrm{ach}}=
-\mathbf 1\{u\in\mathcal S(s)\}B\,\eta_{\mathrm{DL}}\,
-\eta_{\mathrm{data}}^{\mathrm{DL}}
-\log_2\!\left(1+\gamma_{u,s}^{\mathrm{post\text{-}RZF}}\right).
+R_{b,u,n}^{\mathrm{ach}}=
+\chi_{b,u,n}B_b\,\eta_b^{\mathrm{DL}}\,
+\eta_{b,n}^{\mathrm{data}}
+\log_2\!\left(1+\gamma_{b,u,n}^{\mathrm{RZF}}\right).
 \]
 
-当前 system-level data block 为 \(1\,\mathrm{ms}\)，其 measurement event、candidate decision 与资源预算与 \(0.125\,\mathrm{ms}\) physical reference 对齐；block 内保持 schedule 和 precoder，并以中点真实信道计算 post-RZF SINR。该模型冻结的是 beam-management event 的 candidate/selected beam，而非整个 RT channel。正式主表报告 all-UE time-average effective throughput、CSI-RS overhead、候选 beam 数、\(\eta_{\mathrm{data}}^{\mathrm{DL}}\) 与 sensing use/fallback；当前正式包不将 p05 rate 或 outage 作为主结果。
+当前 system-level data block 为 \(1\,\mathrm{ms}\)，其 measurement event、candidate decision 与资源预算与 \(0.125\,\mathrm{ms}\) physical reference 对齐；block 内保持 schedule 和 precoder，并以中点真实信道计算 post-RZF SINR。该模型冻结的是 beam-management event 的 candidate/selected beam，而非整个 RT channel。以
+\[
+\overline R_b[N]=\frac{1}{N}\sum_{n=1}^{N}
+\frac{1}{|\mathcal U_b[n]|}\sum_{u\in\mathcal U_b[n]}R_{b,u,n}^{\mathrm{ach}}
+\]
+定义 BS \(b\) 的 all-UE average rate；系统运行目标是在 causal sensing、association、measurement、scheduling 和 power constraints 下最大化其长期极限。正式主表报告 all-UE time-average effective throughput、CSI-RS overhead、候选 beam 数、\(\eta_{b,n}^{\mathrm{data}}\) 与 sensing use/fallback；当前正式包不将 p05 rate 或 outage 作为主结果。
 
 ## 4. 算法整体框架
 
@@ -216,7 +232,7 @@ R_{u,s}^{\mathrm{ach}}=
 3. **per-BS 多目标轨迹维护：** 采用 CV、CT 或 IMM 在相同 BS、天气和 split 的序列内预测轨迹；通过 gated Hungarian assignment 将当前 detections 与预测轨迹关联，更新 track state、confidence 和 hint age。
 4. **初始/重关联 binding：** 在系统触发传统扫描时，将实测 CSI beam 与当前 observed tracks 的 beam-class posterior score 匹配；SSB-parent consistency 先筛除不可能配对，再以 Hungarian assignment 和拒绝门限建立或修复 UE--track binding。
 5. **可靠度门控候选 CSI-RS：** 对已绑定 UE，根据当前检测、track 和 binding 的可信证据判定是否使用感知 hint。通过时从当前 observation 的 beam-class posterior 形成固定或自适应 \(K_{\mathrm{scan}}\) 候选；不通过时使用 conventional refinement。
-6. **实测选择、RZF 与资源评价：** 在真正扫描的 CSI-RS candidates 内根据实测 SNR 选择 beam；在一致的 RT/Doppler、RZF、调度、功率和归一化 \(\tau\) accounting 条件下计算 candidate recall、CSI-RS overhead、\(\eta_{\mathrm{data}}^{\mathrm{DL}}\)、sensing use/fallback 与 all-UE time-average effective throughput。
+6. **实测选择、RZF 与资源评价：** 在真正扫描的 CSI-RS candidates 内根据实测 SNR 选择 beam；在一致的 RT/Doppler、RZF、调度、功率和归一化 \(\tau\) accounting 条件下计算 candidate recall、CSI-RS overhead、\(\eta_{b,n}^{\mathrm{data}}\)、sensing use/fallback 与 all-UE time-average effective throughput。
 
 该算法的关键边界是：网络预测的对象始终是未绑定感知目标；通信身份只经由传统测量辅助的 binding 层进入；感知输出是缩小实测集合的 hint，而不是绕过测量直接确认下行最优 beam。
 
@@ -268,7 +284,7 @@ R_{u,s}^{\mathrm{ach}}=
 
 - 唯一正式定量来源为 paper_results/README.md 及其 figures、tables 子目录。论文 Chapter 5 按“模态与融合—邻近节点—按天气的门控波束管理—宏平均 rate--overhead 权衡—跟踪诊断与端到端比较”呈现，不将历史开发结果混入主表。
 - 学习结果使用 table_01--table_03 与 fig_01--fig_03：总体与天气分层表首先说明不同融合方案在 AP、Recall、Top-1 和 Top-4 指标上不存在统一最优；随后用 fixed-model missing-node curves 表达 nearby-node availability 的影响，而非为每个节点数分别训练模型。
-- 系统结果使用 table_04--table_05 与 fig_04--fig_05：先按天气报告 effective user rate、CSI-RS overhead、sensing use 和 fallback，再报告三天气等权宏平均。data fraction 是冻结资源 profile 的公共项，不作为 policy 独立优化的结果。
+- 系统结果使用 table_04、fig_04 与 fig_05：先按天气报告 effective user rate、CSI-RS overhead、sensing use 和 fallback，再以图形呈现三天气等权宏平均的 rate--overhead 与 sensing/fallback 权衡。data fraction 是冻结资源 profile 的公共项，不作为 policy 独立优化的结果。
 - 跟踪结果使用 fig_06 和 table_06：fig_06 是 GT 加 1.0 m 噪声下的受控轨迹诊断；table_06 是 predicted-detection 正式路径的系统指标，必须避免以该图或单一 rate 数值声称 IMM 普遍优于 KF-CV/KF-CT。
 
 ## 6. 当前进展与证据等级

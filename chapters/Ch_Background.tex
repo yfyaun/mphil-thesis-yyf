@@ -243,7 +243,7 @@ evidence has anchored a perception track to a UE.  It maintains the temporal
 validity of that association; it does not infer a UE identity from visual
 appearance.  When track consistency or association confidence is lost, the
 appropriate action is re-association using communication measurements rather
-than continued use of an old beam hint.
+than continued use of outdated sensing-derived beam information.
 
 \subsection{Association-Aware Beam-Management Evaluation}
 \label{subsec:background-association-aware-evaluation}
@@ -261,7 +261,7 @@ Park \emph{et al.} construct a realistic multimodal simulation framework and
 use cross-modal relational knowledge distillation to transfer a multimodal
 teacher to a radar-only beam-prediction student
 \cite{park2025resourceefficientbeampredictionmmwave}.  Their study illustrates
-how sensing assets and communication labels can be placed in a common
+how sensing observations and communication labels can be placed in a common
 evaluation environment, although its focus is model compression rather than
 target-to-user association.  The ISAC formulation of Liu \emph{et al.}
 optimises predictive beamforming subject to a sensing constraint and evaluates
@@ -272,10 +272,10 @@ an achievable-rate objective \cite{Wang_2023}.  These rate-oriented studies
 are essential, but both assume the link to which the sensing or channel state
 belongs.
 
-An association-aware evaluation must retain the entire decision chain: unbound
-target evidence, target-to-user assignment, tracking or re-association,
-candidate measurement, and data transmission.  A 5G NR-oriented measurement
-abstraction is appropriate because it distinguishes initial access, beam
+An association-aware evaluation must retain the entire decision chain:
+target-indexed sensing evidence, target-to-user association, tracking or
+re-association, candidate measurement, and data transmission.  A 5G NR-oriented
+measurement abstraction is appropriate because it distinguishes initial access, beam
 refinement, candidate measurement, and data resources without claiming to
 reproduce every protocol-level detail.  It can therefore reveal whether a
 reduction in measurement burden remains beneficial after association errors and
@@ -306,11 +306,13 @@ measurement overhead and effective user performance insufficiently
 characterised.
 
 This thesis addresses these gaps with a target-BS-centered framework.  It forms
-unbound target-level beam evidence through distributed multimodal BEV
+target-indexed beam information through distributed multimodal BEV
 perception, uses communication-side evidence and IMM-based tracking to establish
 and maintain target-to-user association, and evaluates the resulting candidate-
 measurement policy under a common resource model.  The framework does not
-equate a sensing prediction with an immediately usable service beam: a hint is
-used only when it has a credible user association, while conventional
-measurement remains available for confirmation and recovery.  Chapter~\ref{ch:system-model}
-formalises the corresponding entities, observations, and decision variables.
+equate a sensing prediction with an immediately usable service beam:
+sensing-derived beam information is used only when it has a credible
+target-to-user association, while conventional measurement remains available
+for confirmation and recovery.  Chapter~\ref{ch:system-model} formalises the
+corresponding sensing observations, communication measurements, and
+resource-aware rate model.

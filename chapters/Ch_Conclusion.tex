@@ -6,83 +6,76 @@
 
 This thesis studied multimodal sensing-assisted user association and tracking
 for beam management in vehicular networks. The motivating problem is that
-vehicle users in road-side communication scenarios experience rapidly changing
+vehicle users in roadside communication scenarios experience rapidly changing
 geometry, blockage, and beam quality, while repeated beam sweeping and channel
 measurement can consume non-negligible radio resources. To address this
 setting, the thesis considered a BS-centric sensing infrastructure in which the
 serving base station (BS) and nearby sensing nodes (SNs) provide multiview
 camera observations, and the BS also provides an ISAC point cloud. These
 observations are organised through a bird's-eye-view (BEV) representation so
-that vehicle detection, per-target beam prediction, and communication-oriented
-evaluation can be studied within a common spatial frame.
+that vehicle detection and per-target beam prediction share a common spatial
+frame.
 
-The first part of the work formulated a multimodal distributed
-sensing-assisted beam management framework. In this framework, camera modality
-and ISAC modality are fused in BEV space to detect vehicle targets and estimate
+The first part of the work formulated a distributed multimodal sensing-assisted
+beam-management framework. In this framework, multiview camera features and
+BS-local ISAC observations are fused in BEV space to detect vehicle targets and estimate
 per-target beam-class posteriors. The resulting ranked Top-K candidate beams
-provide a sensing-driven interface between the perception system and the subsequent
-communication evaluation. The objective of this design is not to replace
+provide a sensing-driven interface between the perception model and the
+beam-management procedure. The objective of this design is not to replace
 communication measurements entirely, but to use sensing observations to reduce
 the frequency and scope of expensive beam measurements when the sensing output
 is sufficiently reliable.
 
 The second part of the work addressed the identity mismatch between sensing
 targets and communication users. Since a detected vehicle target is not
-automatically associated with a communication user identity, the proposed
-workflow uses the initial SSB beam sweep power spectrum to establish
-target-user association. After this initial binding, an interacting multiple
-model (IMM) tracking process maintains the temporal continuity of vehicle
-states and supports beam maintenance in subsequent frames. This association and
-tracking layer is central to the thesis scope because it connects per-frame
-sensing predictions with a persistent communication service process.
+automatically associated with a communication user identity, SSB and CSI-RS
+measurements establish an initial target-to-user association. An interacting
+multiple-model (IMM) tracker subsequently maintains the temporal continuity of
+physical target states and supports the validity of that association as the
+scene evolves. This association and tracking layer connects per-frame sensing
+predictions to user-specific beam-management decisions.
 
-The third part of the work specified a multimodal simulation and system-level
-evaluation methodology. The evaluation connects road traffic
-simulation, multiview sensing data generation, ISAC-like point clouds,
-ray-tracing-based beam labels, and simplified communication metrics. Within
-this abstraction, beam prediction accuracy, target-user association, tracking
-quality, beam training overhead, beam mismatch, zero-forcing (ZF) precoding
-SINR, spectral efficiency, and overhead-adjusted throughput can be considered
-together. This evaluation pipeline makes explicit how errors in sensing and
-identity maintenance may propagate into communication-level performance.
-The overall contribution is therefore a framework-level and evaluation-level
-study of multimodal sensing-assisted beam management rather than a
-protocol-complete 5G NR implementation.
+The third part of the work developed a multimodal simulation framework that
+integrates road traffic, multiview sensing, ISAC point clouds, ray-traced V2I
+channels, and an NR-oriented communication model. This framework relates beam
+prediction, target-to-user association, and tracking to CSI-RS resource
+consumption, RZF precoding, and effective downlink rate. It thereby exposes how
+sensing and association errors propagate to communication performance under a
+common set of system assumptions.
 
 \section{Limitations}
 \label{sec:conclusion-limitations}
 
-Several limitations follow from the current scope of the thesis. First, the
-evaluation relies on a simulated or generated multimodal
-environment. Such a setting is necessary for controlled access to camera
-observations, ISAC-like point clouds, vehicle trajectories, beam labels, and
+Several limitations follow from the scope of the thesis. First, the analysis
+relies on a simulated multimodal environment. Such a setting enables controlled
+access to camera observations, ISAC point clouds, vehicle trajectories, beam labels, and
 channel data, but it may introduce a domain gap relative to real road-side
 deployments. The appearance of vehicles, sensing noise, calibration quality,
 traffic behaviour, occlusion patterns, and propagation conditions in real
-networks may differ from those represented by the simulation pipeline.
+networks may differ from those represented by the simulation model.
 
-Second, the communication evaluation is a simplified and interpretable
+Second, the communication model is a simplified and interpretable
 abstraction rather than a complete 5G NR protocol stack. The thesis models
-beam management, beam mismatch, ZF precoding SINR, spectral efficiency, and
+beam management, beam mismatch, RZF precoding SINR, spectral efficiency, and
 overhead-adjusted throughput at a system level, but it does not fully model
 protocol-level details such as SSB and CSI-RS scheduling, feedback latency,
 control signaling, HARQ behaviour, scheduler interaction, or mobility management
 procedures. As a result, throughput-related quantities should be interpreted as
-evaluation indicators under the stated abstraction, not as direct predictions
-of deployment-level 5G NR performance.
+model-based performance measures under the stated abstraction, not as direct
+predictions of deployment-level 5G NR performance.
 
 Third, the proposed sensing-assisted workflow depends on the reliability of
 multimodal sensing and cross-modal alignment. Camera calibration errors,
 time-synchronization errors, sparse or noisy ISAC point clouds, missing
 modalities, and severe occlusion can degrade BEV detection, beam prediction,
-target-user association, and tracking. The framework includes partial beam
-measurement and re-association as possible recovery mechanisms, but the precise
+target-to-user association, and tracking. Reliability gating, conventional
+refinement, and re-association provide recovery mechanisms, but the precise
 robustness limits and failure thresholds remain important factors for
 system-level evaluation and deployment-oriented future work.
 
 Fourth, the thesis focuses primarily on a BS-centric local service region.
 This choice keeps the problem tractable and allows the relationship between
-multimodal sensing, target-user association, tracking, and beam management to
+multimodal sensing, target-to-user association, tracking, and beam management to
 be studied clearly. However, it leaves broader network-level questions only
 partially addressed, including cooperative multi-BS beam management,
 inter-cell interference, load-aware service selection, and handover decisions
@@ -102,9 +95,9 @@ and communication data. This may include collecting synchronized multiview
 camera observations, ISAC or radar-like point clouds, vehicle trajectories, and
 communication beam measurements from instrumented road-side infrastructure.
 Such data would make it possible to quantify the domain gap between simulation
-and deployment, validate the assumptions used in the BEV fusion pipeline, and
+and deployment, validate the assumptions used in the BEV fusion model, and
 study whether synthetic-to-real adaptation is necessary for reliable beam
-prediction and target-user association.
+prediction and target-to-user association.
 
 \subsection{Protocol-Level 5G NR Simulation}
 \label{subsec:future-5g-nr}

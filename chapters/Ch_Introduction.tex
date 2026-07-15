@@ -65,8 +65,8 @@ communication framework \cite{imran2024environmentsemanticcommunicationenabling}
 Nevertheless, a beam-class ranking may be accurate for a detected vehicle yet
 be unusable if it is applied to another UE.  The problem is therefore not merely
 to predict promising beams from a road scene.  It is to use distributed
-multimodal sensing to generate beam hints that are associated with, and remain
-applicable to, the correct communication user.
+multimodal sensing to generate target-level beam information that is associated
+with, and remains applicable to, the correct communication user.
 
 \section{Challenges}
 \label{sec:introduction-challenges}
@@ -103,11 +103,11 @@ evaluation}.  Sensing should not replace communication measurement whenever a
 predicted Top-$K$ list is available.  A candidate set can be misleading when
 the current target is poorly observed, the target-to-user association is
 ambiguous, or the predicted beam-class posterior is diffuse.  A valid
-sensing-assisted policy must use a beam hint only under credible association
-and current sensing evidence, and must otherwise fall back to conventional
-refinement.  Its merit must be assessed jointly through candidate recall,
-CSI-RS overhead, effective rate, lower-tail rate, and outage.  This evaluation
-must expose how an incorrect association, re-association, or fallback event
+sensing-assisted policy must use sensing-derived beam information only under a
+credible association and current sensing evidence, and must otherwise fall back
+to conventional refinement.  Its merit must be assessed jointly through candidate recall,
+CSI-RS overhead, sensing-use and fallback behaviour, and all-UE effective rate.
+This evaluation must expose how an incorrect association, re-association, or fallback event
 propagates to the final user outcome; Top-$K$ accuracy alone cannot establish a
 communication benefit.
 
@@ -143,22 +143,23 @@ a communication UE are distinct entities whose relationship cannot be assumed
 in a multi-vehicle scene.  Communication-side measurements establish or recover
 the association, while IMM-based tracking maintains its validity as vehicles
 move and observations evolve.  The purpose is to preserve the applicability of
-a beam hint to its intended UE, not to infer communication identity from
-perception alone.
+sensing-derived beam information to its intended UE, not to infer communication
+identity from perception alone.
 
 The third objective is to construct a \emph{Multimodal V2I Simulator and 5G
-NR-Oriented Beam-Management Evaluation Framework}.  Built on the available
-multimodal V2I data assets, this system-level environment compares candidate
-measurement and conventional fallback under a common measurement and resource
-model.  It evaluates how perception and association quality affect measurement
+NR-Oriented Beam-Management Evaluation Framework}.  The framework integrates
+multimodal roadside sensing, time-varying V2I channels, and an NR-oriented
+measurement and resource model.  It quantifies how perception and association
+quality affect measurement
 overhead, link reliability, and communication performance, rather than equating
 a beam-prediction accuracy metric with an end-to-end system gain.
 
 The framework is scoped to a target-BS-centered local service region.  A vehicle
 entering a new serving cell establishes a new local association; no global
 multi-BS identity is assumed.  Likewise, ground-truth identities and detections
-are reserved for diagnostic or upper-bound analyses, whereas the formal decision
-path uses sensing and communication information available to the BS.  Detailed
+are used only to quantify association performance and diagnostic upper bounds;
+online decisions rely exclusively on sensing outputs and communication
+measurements available to the BS.  Detailed
 radio configurations, channel assumptions, scheduling rules, and physical-layer
 metrics are specified in the system model and experimental evaluation.
 
@@ -180,25 +181,26 @@ user-specific beam-alignment decisions:
     measurements under complementary sensing conditions.
 
     \item \textbf{Target-to-User Association with IMM-Based Tracking.} A
-    measurement-anchored association mechanism connects unbound perception
-    targets with communication UEs.  Conventional measurements establish or
-    recover the association, while an interacting multiple-model (IMM) tracker
+    measurement-anchored association mechanism connects target-indexed
+    perception outputs with communication UEs.  Conventional measurements
+    establish or recover the association, while an interacting multiple-model (IMM) tracker
     maintains it as targets evolve over time.  Reliability assessment determines
-    whether a sensing-derived beam hint can be applied to a UE or whether the
+    whether sensing-derived beam information can be applied to a UE or whether the
     procedure should revert to conventional refinement.
 
     \item \textbf{Multimodal V2I Simulator and 5G NR-Oriented Beam-Management
-    Evaluation Framework.} A system-level simulator is established on existing
-    multimodal V2I data assets to evaluate sensing-assisted policies under a
-    common 5G NR-oriented measurement and resource model.  It connects
+    Evaluation Framework.} A system-level framework integrates multimodal
+    roadside sensing, time-varying V2I channels, and an NR-oriented measurement
+    and resource model.  It connects
     perception and association quality to candidate recall, CSI-RS overhead,
-    effective rate, lower-tail rate, and outage, thereby distinguishing a useful
-    target-level beam ranking from a user-specific beam-management benefit.
+    sensing-assisted operation, conventional fallback, and effective rate,
+    thereby distinguishing a useful target-level beam ranking from a
+    user-specific beam-management benefit.
 \end{enumerate}
 
-The contributions are stated at the formulation, method, and evaluation levels.
-Quantitative comparative claims are restricted to results obtained under the
-corresponding frozen protocol and held-out evaluation.
+The contributions span the formulation, methodology, and system evaluation of
+multimodal sensing-assisted beam management.  Quantitative comparisons are
+reported under a common experimental protocol on held-out test data.
 
 \section{Thesis Organization}
 \label{sec:introduction-organization}
@@ -212,10 +214,11 @@ evaluation, thereby establishing the related-work basis for user-specific beam
 alignment.
 
 Chapter~\ref{ch:system-model} establishes the local V2I network architecture,
-the distributed multimodal sensing model, and the NR-oriented communication and
-beam-management procedure.  It then formulates the sensing, target-to-user
-association, and rate--resource objectives that connect target-level evidence to
-VUE-level performance.  Chapter~\ref{ch:methodology} presents the proposed
+the distributed multimodal sensing model, and the multi-user downlink model.  It
+then relates CSI-RS acquisition and feedback, RZF precoding, beam-management
+overhead, and effective rate, establishing the communication interface through
+which target-level evidence affects VUE-level performance.
+Chapter~\ref{ch:methodology} presents the proposed
 framework, including distributed multimodal BEV perception, joint vehicle
 detection and beam prediction, target-to-user association with IMM-based
 tracking, reliability-aware candidate scanning, and the communication interface.

@@ -2,7 +2,7 @@
 \label{ch:experiments}
 
 This chapter evaluates the proposed multimodal sensing-assisted beam-management
-framework using the frozen evaluation results.  The evaluation follows the information flow of the
+framework.  The analysis follows the information flow of the
 framework: multimodal observations first support target-level detection and beam
 prediction; a reliability-gated target-to-user association then determines
 whether a sensing-derived candidate set is used; and the resulting measurement
@@ -17,26 +17,24 @@ rate result.
 \subsection{Multimodal Simulation and Data Generation}
 \label{subsec:experiments-data-generation}
 
-The experiments use the existing \texttt{mmbeam\_town05\_3weather\_v1}
-multimodal V2I data asset.  In this chapter, \emph{data generation} denotes the
-construction of paired learning records and beam-management episodes from this
-asset; it does not denote the regeneration of road traffic, images, point
-clouds, ray-tracing channels, or other raw simulation outputs.  This distinction
-keeps the experimental claims aligned with the available evidence.
+The experiments use a simulated multimodal V2I dataset comprising synchronised
+multiview camera images, BS-local ISAC point clouds, vehicle annotations,
+trajectories, and ray-traced channels.  These observations are organised into
+target-BS-centred sensing samples and temporally aligned beam-management
+episodes.
 
 At a sensing epoch, the target BS receives its local camera observation, camera
-observations from the available neighbouring sensing nodes, and a BS-local ISAC
-point cloud.  These inputs form the target-BS-centred multimodal observation used
-by the perception network.  The subsequent evaluator replays the corresponding
-link evolution, beam labels, and trajectory information to form a local
-beam-management episode.  Thus, the perception, association, measurement, and
-resource-accounting stages operate on a common scene instance without exposing
-ground-truth user identity to the formal decision path.
+observations from neighbouring sensing nodes, and a BS-local ISAC point cloud.
+These inputs form the target-BS-centred multimodal observation used by the
+perception network.  Each beam-management episode couples these observations to
+the corresponding link evolution, beam labels, and vehicle trajectories.  The
+perception, association, measurement, and resource-accounting stages therefore
+operate on a common scene instance, while online decisions exclude ground-truth
+VUE identities.
 
-A sensing sample is indexed by
-\((\mathit{weather\_id},\mathit{frame\_id},\mathit{bs\_id})\), where the BS
-identifier specifies the target BS.  A link-supervision sample additionally
-contains \(\mathit{ue\_id}\).  The 48-beam SSB codebook and 192-beam CSI
+A sensing sample is indexed by environmental condition, sensing instant, and
+target BS.  Link-level labels additionally identify the corresponding VUE for
+supervision and evaluation.  The 48-beam SSB codebook and 192-beam CSI
 codebook are linked through their parent relation.  The perception network
 produces a 192-way beam-class posterior for an observed physical target.  Its
 ranking is used to score association hypotheses and to reduce the CSI-RS
@@ -48,20 +46,22 @@ candidate set; it is neither a UE identifier nor a direct service-beam decision.
 The data contain a four-BS roadside scenario under the \emph{Clear},
 \emph{Rain/Fog}, and \emph{Night} conditions.  Each target BS serves a local
 region and receives complementary observations from neighbouring sensing nodes.
-The manifest-defined training, validation, and test splits are retained
-throughout the learning and system-level evaluations.  Target tracks and
+Mutually disjoint training, validation, and test partitions are used throughout
+the learning and system-level evaluations.  Target tracks and
 target-to-user associations are maintained locally at each target BS; the
 experiments do not assume a global identity that persists across serving cells.
 
-All reported system results use one frozen radio profile: a 100-ms SSB
+All system-level comparisons use a common radio configuration: a 100-ms SSB
 periodicity, a 20-ms CSI-RS periodicity, a four-beam conventional refinement
-within each SSB parent, and common RT-segment, Doppler, power, noise, scheduling,
+within each SSB parent, and common ray-tracing segment, Doppler, power, noise,
+scheduling,
 regularised zero-forcing (RZF), and resource-accounting assumptions.  The
 resource model is a 5G NR-oriented abstraction rather than a full PRB- and
-RE-level protocol implementation.  In the Rain/Fog condition,
-\(\mathit{min\_association\_margin}=0.10\) is a fixed operating point for the
-reported experiments.  It is reported as a configuration of this
-evaluation, not as a separate held-out generalisation result.
+RE-level protocol implementation.  In the Rain/Fog condition, the
+association-margin threshold is fixed at \(\tau_{\mathrm{margin}}=0.10\).
+Because this operating point was selected for the Rain/Fog test condition, the
+corresponding results characterise that operating point rather than independent
+out-of-sample generalisation.
 
 \section{Evaluation Metrics and Protocol}
 \label{sec:experiments-metrics}
@@ -81,7 +81,7 @@ the beam-class posterior as a physical power distribution.
 The reported learning schemes differ in modality and fusion mechanism:
 Camera, ISAC, single-station multimodal, mean-gated multimodal, node-mean
 fusion, and cross-agent multimodal.  They are compared under the same
-target-level task and the frozen Top-1 cross-entropy beam supervision.  These
+target-level task and Top-1 cross-entropy beam supervision.  These
 comparisons identify how different observations affect detection and ranked beam
 candidates; they do not, by themselves, establish a communication-rate gain.
 
@@ -110,11 +110,12 @@ conventional-fallback ratio, and the mean number of measured candidates.  A
 sensing-use event requires a currently observed target and a credible
 target-to-user association.  Fallback is therefore an observable consequence of
 the association and reliability gate, but it is not a substitute for a
-standalone binding-accuracy metric, which is not reported separately here.
+standalone target-to-user association-accuracy metric, which is not reported
+separately here.
 
 The system comparison contains conventional four-beam refinement, conventional
 twelve-beam refinement, and the perception-assisted policy.  All three use the
-same codebooks, scheduling, RZF processing, and frozen resource profile.  The
+same codebooks, scheduling, RZF processing, and resource configuration.  The
 perception-assisted policy scans a sensing-derived candidate set only after the
 reliability test; otherwise, it executes conventional refinement.  The tracker
 comparison applies IMM, KF-CV, and KF-CT to the same Top-1 CE detector and
@@ -136,7 +137,7 @@ that improves target availability need not improve the exact strongest-beam
 class by the same margin, and candidate quality is therefore assessed using
 both Top-1 and Top-4 measures.
 
-\begin{table}[t]
+\begin{table}[H]
     \centering
     \caption{Overall detection and beam-prediction results.  Beam metrics are
     evaluated for detections matched within 2~m.}
@@ -146,8 +147,11 @@ both Top-1 and Top-4 measures.
     }
 \end{table}
 
-The weather-stratified results in Table~\ref{tab:experiments-weather-learning}
-expose the conditional nature of modality complementarity.  Under Clear
+The weather-stratified results are separated into the detection and
+beam-prediction panels in Tables~\ref{tab:experiments-weather-detection} and
+\ref{tab:experiments-weather-beam}, respectively.  This organisation separates
+target availability from ranked beam quality and avoids compressing all five
+metrics into one overly wide table.  Under Clear
 conditions, cross-agent multimodal fusion reaches \(81.92\%\) AP@2m and
 \(75.00\%\) Beam Top-1@2m.  In Rain/Fog, ISAC-only detection
 (\(62.12\%\) AP@2m) exceeds camera-only detection (\(43.98\%\)), whereas the
@@ -157,14 +161,79 @@ detection and beam metrics.  These observations motivate the use of multimodal
 evidence and reliability gating, rather than a fixed preference for one
 modality or a claim that one fusion rule dominates every condition.
 
-\begin{table}[t]
+\begin{table}[H]
     \centering
-    \caption{Detection and beam-prediction results by environmental condition.
-    Beam metrics are evaluated for detections matched within 2~m.}
-    \label{tab:experiments-weather-learning}
-    \resizebox{\textwidth}{!}{%
-        \input{paper_results/tables/table_02_learning_modalities_by_weather.tex}%
-    }
+    \caption{Detection metrics by environmental condition.}
+    \label{tab:experiments-weather-detection}
+    \small
+    \renewcommand{\arraystretch}{1.08}
+    \begin{tabular}{lrr}
+        \toprule
+        Method & AP@2m (\%) & Recall@2m (\%) \\
+        \midrule
+        \multicolumn{3}{l}{\textit{Clear}} \\
+        Camera & 68.44 & 71.10 \\
+        ISAC & 53.47 & 58.22 \\
+        Single-station multimodal & 71.85 & 77.64 \\
+        Mean-gated multimodal & 79.53 & 83.09 \\
+        Node-mean fusion & 69.61 & 74.46 \\
+        Cross-agent multimodal & 81.92 & 83.86 \\
+        \addlinespace
+        \multicolumn{3}{l}{\textit{Rain/Fog}} \\
+        Camera & 43.98 & 50.97 \\
+        ISAC & 62.12 & 64.30 \\
+        Single-station multimodal & 77.42 & 79.08 \\
+        Mean-gated multimodal & 77.71 & 80.78 \\
+        Node-mean fusion & 68.66 & 71.40 \\
+        Cross-agent multimodal & 77.26 & 79.56 \\
+        \addlinespace
+        \multicolumn{3}{l}{\textit{Night}} \\
+        Camera & 57.47 & 63.61 \\
+        ISAC & 44.40 & 49.40 \\
+        Single-station multimodal & 74.62 & 82.03 \\
+        Mean-gated multimodal & 77.14 & 81.63 \\
+        Node-mean fusion & 64.31 & 72.48 \\
+        Cross-agent multimodal & 76.88 & 80.81 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{table}[H]
+    \centering
+    \caption{Beam-prediction metrics by environmental condition.  All beam
+    metrics are evaluated for detections matched within 2~m.}
+    \label{tab:experiments-weather-beam}
+    \small
+    \renewcommand{\arraystretch}{1.08}
+    \begin{tabular}{lrrr}
+        \toprule
+        Method & Top-1 (\%) & Top-4 (\%) & Top-4 power (\%) \\
+        \midrule
+        \multicolumn{4}{l}{\textit{Clear}} \\
+        Camera & 67.33 & 90.28 & 93.02 \\
+        ISAC & 65.70 & 92.31 & 86.66 \\
+        Single-station multimodal & 73.06 & 95.96 & 96.02 \\
+        Mean-gated multimodal & 70.07 & 94.07 & 97.39 \\
+        Node-mean fusion & 68.30 & 92.99 & 94.83 \\
+        Cross-agent multimodal & 75.00 & 94.90 & 96.55 \\
+        \addlinespace
+        \multicolumn{4}{l}{\textit{Rain/Fog}} \\
+        Camera & 68.15 & 94.76 & 97.16 \\
+        ISAC & 63.79 & 95.36 & 89.92 \\
+        Single-station multimodal & 71.39 & 95.00 & 97.02 \\
+        Mean-gated multimodal & 65.94 & 95.92 & 97.42 \\
+        Node-mean fusion & 68.67 & 93.87 & 91.92 \\
+        Cross-agent multimodal & 67.27 & 93.96 & 97.86 \\
+        \addlinespace
+        \multicolumn{4}{l}{\textit{Night}} \\
+        Camera & 60.50 & 90.71 & 95.95 \\
+        ISAC & 65.62 & 91.76 & 83.38 \\
+        Single-station multimodal & 69.89 & 93.06 & 96.05 \\
+        Mean-gated multimodal & 67.20 & 93.28 & 96.56 \\
+        Node-mean fusion & 64.56 & 92.03 & 94.77 \\
+        Cross-agent multimodal & 70.55 & 93.48 & 96.62 \\
+        \bottomrule
+    \end{tabular}
 \end{table}
 
 \subsection{Value of Nearby Sensing Nodes}
@@ -184,21 +253,21 @@ Top-1 beam ranking is more method dependent, which is consistent with the
 different roles of target-BS geometry, modality fusion, and cross-node
 observations.
 
-\begin{figure}[t]
+\begin{figure}[H]
     \centering
     \includegraphics[width=0.90\textwidth]{paper_results/figures/fig_01_node_count_ap.pdf}
     \caption{AP@2m as the number of available nearby sensing nodes varies.}
     \label{fig:experiments-node-ap}
 \end{figure}
 
-\begin{figure}[t]
+\begin{figure}[H]
     \centering
     \includegraphics[width=0.90\textwidth]{paper_results/figures/fig_02_node_count_recall.pdf}
     \caption{Recall@2m as the number of available nearby sensing nodes varies.}
     \label{fig:experiments-node-recall}
 \end{figure}
 
-\begin{figure}[t]
+\begin{figure}[H]
     \centering
     \includegraphics[width=0.90\textwidth]{paper_results/figures/fig_03_node_count_beam.pdf}
     \caption{Beam Top-1@2m and Top-4@2m as the number of available nearby
@@ -220,25 +289,43 @@ with \(1.39\%\) CSI-RS overhead, compared with \(151.367\) Mbps and
 \(1.90\%\) for conventional four-beam refinement.  The twelve-beam policy
 incurs \(5.71\%\) CSI-RS overhead and attains \(127.033\) Mbps.
 
-The sensing-use and fallback columns clarify how the policy reaches these
-outcomes.  Sensing candidates are used for \(76.35\%\) of the Clear evaluation
+The sensing-use entries and their complementary fallback ratios clarify how
+the policy reaches these outcomes.  Sensing candidates are used for \(76.35\%\) of the Clear evaluation
 instances, \(56.65\%\) of the Rain/Fog instances, and \(30.07\%\) of the Night
 instances.  The corresponding fallback ratios are \(23.65\%\), \(43.35\%\), and
 \(69.93\%\).  Thus, when the available observation and association evidence
 becomes less reliable, the gate increasingly returns to conventional
-refinement instead of applying a sensing-derived hint to a UE unconditionally.
+refinement instead of applying sensing-derived beam information to a UE
+unconditionally.
 
-\begin{table}[t]
+\begin{table}[H]
     \centering
     \caption{Beam-management results by environmental condition under the
-    common frozen protocol.  The effective rate is averaged over all UEs.}
+    common system configuration.  The effective rate is averaged over all UEs.}
     \label{tab:experiments-system-weather}
-    \resizebox{\textwidth}{!}{%
-        \input{paper_results/tables/table_04_core_by_weather.tex}%
-    }
+    \small
+    \renewcommand{\arraystretch}{1.10}
+    \begin{tabular}{llrrr}
+        \toprule
+        Condition & Policy & Effective rate (Mbps) &
+        CSI-RS overhead (\%) & Sensing use (\%) \\
+        \midrule
+        Clear & Conventional 4-beam & 151.367 & 1.90 & 0.00 \\
+        Clear & Conventional 12-beam & 127.033 & 5.71 & 0.00 \\
+        Clear & Perception-assisted & 155.453 & 1.39 & 76.35 \\
+        \addlinespace
+        Rain/Fog & Conventional 4-beam & 147.571 & 1.90 & 0.00 \\
+        Rain/Fog & Conventional 12-beam & 115.342 & 5.71 & 0.00 \\
+        Rain/Fog & Perception-assisted & 150.801 & 1.57 & 56.65 \\
+        \addlinespace
+        Night & Conventional 4-beam & 127.807 & 1.90 & 0.00 \\
+        Night & Conventional 12-beam & 105.294 & 5.71 & 0.00 \\
+        Night & Perception-assisted & 132.743 & 1.71 & 30.07 \\
+        \bottomrule
+    \end{tabular}
 \end{table}
 
-\begin{figure}[t]
+\begin{figure}[H]
     \centering
     \includegraphics[width=0.88\textwidth]{paper_results/figures/fig_04_core_user_rate_by_weather.pdf}
     \caption{Effective user rate by weather condition and beam-management
@@ -263,48 +350,28 @@ the consequence of using sensing only when a current detection and a credible
 target-to-user association are available.  The service beam is still selected
 from the actually measured CSI-RS candidates.
 
-\begin{figure}[t]
+\begin{figure}[H]
     \centering
     \includegraphics[width=0.96\textwidth]{paper_results/figures/fig_05_core_user_rate_hint_overhead.pdf}
     \caption{Macro-average effective rate, CSI-RS overhead, and the
-    sensing-use/fallback composition under the frozen protocol.}
+    sensing-use/fallback composition under the common system configuration.}
     \label{fig:experiments-system-tradeoff}
 \end{figure}
 
-\section{Tracking under the Frozen Protocol}
+\section{Tracking Performance}
 \label{sec:experiments-tracking}
-
-\subsection{Controlled Trajectory Diagnosis}
-\label{subsec:experiments-tracker-diagnosis}
-
-Figure~\ref{fig:experiments-tracker-trajectory} visualises KF-CV, KF-CT, and
-IMM trajectories for the test, Clear, BS-NE condition with ground-truth
-positions perturbed by 1.0-m location noise.  This controlled construction
-isolates motion-state estimation from detector misses and association errors.
-The figure illustrates how the filters smooth noisy observations and represent
-a trajectory containing turning motion.  It is a qualitative diagnostic, not an
-end-to-end user-rate comparison or evidence that one tracker is uniformly
-superior.
-
-\begin{figure}[t]
-    \centering
-    \includegraphics[width=0.96\textwidth]{paper_results/figures/fig_06_tracker_gt_noise_test.png}
-    \caption{Controlled trajectory diagnosis with ground-truth positions
-    perturbed by 1.0-m location noise in the test, Clear, BS-NE condition.}
-    \label{fig:experiments-tracker-trajectory}
-\end{figure}
 
 \subsection{End-to-End Tracker Comparison}
 \label{subsec:experiments-tracker-system}
 
-Table~\ref{tab:experiments-trackers} evaluates the three trackers on the same
-Top-1 CE detector and the same frozen system protocol.  Their effective rates
+Table~\ref{tab:experiments-trackers} evaluates the three trackers with the same
+Top-1 CE detector and system configuration.  Their effective rates
 are close: \(146.332\) Mbps for IMM, \(146.373\) Mbps for KF-CV, and
 \(145.880\) Mbps for KF-CT.  KF-CV is marginally higher than IMM in this
 metric.  The table therefore does not support an effective-rate claim of
 universal IMM superiority.
 
-The remaining operational quantities also need to be considered.  IMM uses
+Effective rate alone does not characterise the role of the tracker.  IMM uses
 sensing candidates in \(54.35\%\) of evaluated instances, with a mean of
 \(2.651\) candidates and the same macro-average handover count as the two
 reference filters.  IMM is retained in the proposed framework for its
@@ -313,10 +380,10 @@ that its end-to-end consequence must be interpreted jointly with candidate use,
 fallback, and the upstream detector, rather than through a single tracker-only
 metric.
 
-\begin{table}[t]
+\begin{table}[H]
     \centering
     \caption{Macro-average end-to-end results for the tracker variants under
-    the common detector and frozen protocol.}
+    the common detector and system configuration.}
     \label{tab:experiments-trackers}
     \resizebox{\textwidth}{!}{%
         \input{paper_results/tables/table_06_tracker_macro_average.tex}%
@@ -331,16 +398,15 @@ observations improve different aspects of target availability and beam ranking;
 the reliability gate determines whether this evidence can be safely converted
 into a narrower CSI-RS measurement action; and the system evaluation reports
 the resulting effective throughput together with the associated measurement
-cost.  The substantial fallback share under Rain/Fog and Night is consequently
-part of the intended operating behaviour, not a failure to be hidden by an
-average-rate result.
+cost.  The substantial fallback share under Rain/Fog and Night is therefore an
+integral part of the reliability-aware operating policy and should be
+interpreted together with the average-rate result.
 
-Several boundaries of interpretation remain.  The reported evaluation does not
-include a standalone accepted-binding accuracy, lower-tail rate, or outage
-table.  The sensing-use and fallback measures consequently serve as operational
-evidence of the association-to-policy interface, without being recast as those
-unreported metrics.  In addition, the results concern a local target-BS service
-region, existing multimodal data assets, approximately 100-ms RT segments, and
-an RZF/resource abstraction.  They characterise the stated 5G NR-oriented
-beam-management evaluation, rather than a complete protocol-stack simulation
-or a direct real-world deployment result.
+The system analysis characterises association-mediated operation through the
+sensing-use ratio, fallback ratio, and all-UE effective rate; accepted-association
+accuracy, lower-tail rate, and outage are outside the reported analysis.  The
+conclusions are further limited to a local target-BS service region, a simulated
+multimodal dataset, approximately 100-ms ray-tracing channel segments, and the
+stated RZF and resource model.  They therefore describe performance under the
+specified system assumptions rather than a complete 5G NR protocol stack or a
+direct real-world deployment.

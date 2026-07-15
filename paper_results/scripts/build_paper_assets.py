@@ -46,7 +46,6 @@ LEARNING_METHODS = (
     ("Camera", "v3_rt_anchor_modalities_camera_concat_power_kl_ranking"),
     ("ISAC", "v3_rt_anchor_modalities_isac_concat_power_kl_ranking"),
     ("Single-station multimodal", "v3_rt_anchor_modalities_multimodal_mean_concat_power_kl_ranking"),
-    ("Mean-gated multimodal", "v3_rt_anchor_modalities_multimodal_mean_gated_power_kl_ranking"),
     ("Node-mean fusion", "v3_rt_anchor_node_fusion_multimodal_node_mean_power_kl_ranking"),
     ("Cross-agent multimodal", "v3_rt_anchor_beam_top1_ce_cross_agent"),
 )

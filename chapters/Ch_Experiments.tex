@@ -79,8 +79,8 @@ highest-ranked CSI beams.  It measures candidate-set utility, not calibration of
 the beam-class posterior as a physical power distribution.
 
 The reported learning schemes differ in modality and fusion mechanism:
-Camera, ISAC, single-station multimodal, mean-gated multimodal, node-mean
-fusion, and cross-agent multimodal.  They are compared under the same
+Camera, ISAC, single-station multimodal, node-mean fusion, and cross-agent
+multimodal.  They are compared under the same
 target-level task and Top-1 cross-entropy beam supervision.  These
 comparisons identify how different observations affect detection and ranked beam
 candidates; they do not, by themselves, establish a communication-rate gain.
@@ -129,13 +129,13 @@ system protocol.
 
 Table~\ref{tab:experiments-modalities} reports the overall results.  No single
 fusion scheme is uniformly best across all metrics.  Cross-agent multimodal
-fusion yields the highest AP@2m, at \(78.73\%\), while mean-gated multimodal
-fusion attains the highest Recall@2m and Top-4 power ratio, at \(81.90\%\) and
-\(97.13\%\), respectively.  Single-station multimodal fusion obtains the
-highest Beam Top-1@2m, at \(71.54\%\).  This pattern is important: a method
-that improves target availability need not improve the exact strongest-beam
-class by the same margin, and candidate quality is therefore assessed using
-both Top-1 and Top-4 measures.
+fusion yields the highest AP@2m, Recall@2m, and Top-4 power ratio, at
+\(78.73\%\), \(81.51\%\), and \(97.01\%\), respectively.  Single-station
+multimodal fusion obtains the highest Beam Top-1@2m and Beam Top-4@2m, at
+\(71.54\%\) and \(94.66\%\), respectively.  This pattern shows that improved
+target availability does not necessarily yield the strongest beam ranking on
+every metric; candidate quality is therefore assessed using both Top-1 and
+Top-4 measures.
 
 \begin{table}[H]
     \centering
@@ -175,7 +175,6 @@ modality or a claim that one fusion rule dominates every condition.
         Camera & 68.44 & 71.10 \\
         ISAC & 53.47 & 58.22 \\
         Single-station multimodal & 71.85 & 77.64 \\
-        Mean-gated multimodal & 79.53 & 83.09 \\
         Node-mean fusion & 69.61 & 74.46 \\
         Cross-agent multimodal & 81.92 & 83.86 \\
         \addlinespace
@@ -183,7 +182,6 @@ modality or a claim that one fusion rule dominates every condition.
         Camera & 43.98 & 50.97 \\
         ISAC & 62.12 & 64.30 \\
         Single-station multimodal & 77.42 & 79.08 \\
-        Mean-gated multimodal & 77.71 & 80.78 \\
         Node-mean fusion & 68.66 & 71.40 \\
         Cross-agent multimodal & 77.26 & 79.56 \\
         \addlinespace
@@ -191,7 +189,6 @@ modality or a claim that one fusion rule dominates every condition.
         Camera & 57.47 & 63.61 \\
         ISAC & 44.40 & 49.40 \\
         Single-station multimodal & 74.62 & 82.03 \\
-        Mean-gated multimodal & 77.14 & 81.63 \\
         Node-mean fusion & 64.31 & 72.48 \\
         Cross-agent multimodal & 76.88 & 80.81 \\
         \bottomrule
@@ -213,7 +210,6 @@ modality or a claim that one fusion rule dominates every condition.
         Camera & 67.33 & 90.28 & 93.02 \\
         ISAC & 65.70 & 92.31 & 86.66 \\
         Single-station multimodal & 73.06 & 95.96 & 96.02 \\
-        Mean-gated multimodal & 70.07 & 94.07 & 97.39 \\
         Node-mean fusion & 68.30 & 92.99 & 94.83 \\
         Cross-agent multimodal & 75.00 & 94.90 & 96.55 \\
         \addlinespace
@@ -221,7 +217,6 @@ modality or a claim that one fusion rule dominates every condition.
         Camera & 68.15 & 94.76 & 97.16 \\
         ISAC & 63.79 & 95.36 & 89.92 \\
         Single-station multimodal & 71.39 & 95.00 & 97.02 \\
-        Mean-gated multimodal & 65.94 & 95.92 & 97.42 \\
         Node-mean fusion & 68.67 & 93.87 & 91.92 \\
         Cross-agent multimodal & 67.27 & 93.96 & 97.86 \\
         \addlinespace
@@ -229,7 +224,6 @@ modality or a claim that one fusion rule dominates every condition.
         Camera & 60.50 & 90.71 & 95.95 \\
         ISAC & 65.62 & 91.76 & 83.38 \\
         Single-station multimodal & 69.89 & 93.06 & 96.05 \\
-        Mean-gated multimodal & 67.20 & 93.28 & 96.56 \\
         Node-mean fusion & 64.56 & 92.03 & 94.77 \\
         Cross-agent multimodal & 70.55 & 93.48 & 96.62 \\
         \bottomrule

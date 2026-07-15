@@ -1,6 +1,6 @@
 # 工作说明
 
-最后更新：2026-07-14
+最后更新：2026-07-16
 
 论文暂定题目：*Multimodal Sensing-Assisted User Association and Tracking in Vehicular Networks*
 
@@ -275,7 +275,7 @@ R_{b,u,n}^{\mathrm{eff}}=
 
 ### 5.3 对照组
 
-- Learning：Camera、ISAC、single-station multimodal、mean-gated multimodal、node-mean fusion 和 cross-agent multimodal。
+- Learning：Camera、ISAC、single-station multimodal、node-mean fusion 和 cross-agent multimodal。
 - Nearby-node study：cross-agent + gated fusion、cross-agent attention 和 node masked mean，nearby-node count 从 0 至 5。
 - Beam learning：固定 Top-1 CE；Power-KL、KL-only 和 KL+ranking 仅保留为内部开发归档，不作为论文图表或结果。
 - System：conventional 4-beam refinement、conventional 12-beam refinement 与 perception-assisted policy；三者共享冻结的 resource profile。

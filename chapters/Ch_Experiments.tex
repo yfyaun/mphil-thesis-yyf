@@ -291,22 +291,32 @@ observations.
 \subsection{Performance Across Environmental Conditions}
 \label{subsec:experiments-weather-system}
 
-Table~\ref{tab:experiments-system-weather} and
-Figure~\ref{fig:experiments-weather-rate} compare the three measurement
-policies under each environmental condition.  In Clear conditions, DMSA-BM
+Table~\ref{tab:experiments-system-weather} compares the three measurement
+policies under each environmental condition and reports their equal-weight
+macro averages.  In Clear conditions, DMSA-BM
 reaches an effective user rate of \(155.453\) Mbps with \(1.39\%\) CSI-RS
 overhead.  SSB-guided refinement with \(K_{\mathrm{ref}}=4\) reaches
 \(151.367\) Mbps with \(1.90\%\) overhead, whereas the
 \(K_{\mathrm{ref}}=12\) operating point reaches \(127.033\) Mbps with
 \(5.71\%\) overhead.
 
-The sensing-use entries and their complementary fallback ratios clarify how
-the policy reaches these outcomes.  Sensing candidates are used for \(76.35\%\)
-of the Clear instances, \(56.65\%\) of the Rain/Fog instances, and \(30.07\%\)
-of the Night instances.  The corresponding fallback ratios are \(23.65\%\), \(43.35\%\), and
-\(69.93\%\).  Thus, DMSA-BM retains SSB-guided refinement whenever no
-accepted association with a currently observed track is available, instead of
-applying target-indexed beam information to a VUE unconditionally.
+The same rate--overhead relationship remains visible under the more difficult
+conditions.  DMSA-BM attains \(150.801\) Mbps in Rain/Fog and \(132.743\) Mbps
+at Night, with CSI-RS overheads of \(1.57\%\) and \(1.71\%\), respectively.
+Its sensing-use ratio decreases from \(76.35\%\) in Clear conditions to
+\(56.65\%\) in Rain/Fog and \(30.07\%\) at Night.  The remaining instances use
+SSB-guided refinement because an accepted association with a currently observed
+track is unavailable.  The increasing reliance on refinement explains why the
+CSI-RS overhead approaches that of the \(K_{\mathrm{ref}}=4\) baseline as the
+observation condition becomes less favourable.
+
+Across the three conditions, DMSA-BM provides an average effective user rate of
+\(146.332\) Mbps with \(1.56\%\) CSI-RS overhead.  The corresponding results for
+SSB-guided refinement are \(142.248\) Mbps and \(1.90\%\) at
+\(K_{\mathrm{ref}}=4\), and \(115.890\) Mbps and \(5.71\%\) at
+\(K_{\mathrm{ref}}=12\).  These results evaluate the complete measurement
+policies after resource accounting; they do not equate a sensing-use event with
+a correct target-to-user association.
 
 \begin{table}[H]
     \centering
@@ -317,59 +327,82 @@ applying target-indexed beam information to a VUE unconditionally.
     \small
     \renewcommand{\arraystretch}{1.10}
     \resizebox{\textwidth}{!}{%
-    \begin{tabular}{llrrr}
+    \begin{tabular}{llrr}
         \toprule
         Condition & Policy & Effective rate (Mbps) &
-        CSI-RS overhead (\%) & Sensing use (\%) \\
+        CSI-RS overhead (\%) \\
         \midrule
-        Clear & SSB-guided refinement, \(K_{\mathrm{ref}}=4\) & 151.367 & 1.90 & 0.00 \\
-        Clear & SSB-guided refinement, \(K_{\mathrm{ref}}=12\) & 127.033 & 5.71 & 0.00 \\
-        Clear & DMSA-BM & 155.453 & 1.39 & 76.35 \\
+        Clear & SSB-guided refinement, \(K_{\mathrm{ref}}=4\) & 151.367 & 1.90 \\
+        Clear & SSB-guided refinement, \(K_{\mathrm{ref}}=12\) & 127.033 & 5.71 \\
+        Clear & DMSA-BM & 155.453 & 1.39 \\
         \addlinespace
-        Rain/Fog & SSB-guided refinement, \(K_{\mathrm{ref}}=4\) & 147.571 & 1.90 & 0.00 \\
-        Rain/Fog & SSB-guided refinement, \(K_{\mathrm{ref}}=12\) & 115.342 & 5.71 & 0.00 \\
-        Rain/Fog & DMSA-BM & 150.801 & 1.57 & 56.65 \\
+        Rain/Fog & SSB-guided refinement, \(K_{\mathrm{ref}}=4\) & 147.571 & 1.90 \\
+        Rain/Fog & SSB-guided refinement, \(K_{\mathrm{ref}}=12\) & 115.342 & 5.71 \\
+        Rain/Fog & DMSA-BM & 150.801 & 1.57 \\
         \addlinespace
-        Night & SSB-guided refinement, \(K_{\mathrm{ref}}=4\) & 127.807 & 1.90 & 0.00 \\
-        Night & SSB-guided refinement, \(K_{\mathrm{ref}}=12\) & 105.294 & 5.71 & 0.00 \\
-        Night & DMSA-BM & 132.743 & 1.71 & 30.07 \\
+        Night & SSB-guided refinement, \(K_{\mathrm{ref}}=4\) & 127.807 & 1.90 \\
+        Night & SSB-guided refinement, \(K_{\mathrm{ref}}=12\) & 105.294 & 5.71 \\
+        Night & DMSA-BM & 132.743 & 1.71 \\
+        \addlinespace
+        Macro average & SSB-guided refinement, \(K_{\mathrm{ref}}=4\) & 142.248 & 1.90 \\
+        Macro average & SSB-guided refinement, \(K_{\mathrm{ref}}=12\) & 115.890 & 5.71 \\
+        Macro average & DMSA-BM & 146.332 & 1.56 \\
         \bottomrule
     \end{tabular}%
     }
 \end{table}
 
-\begin{figure}[H]
+\subsection{Impact of Sensing Configuration}
+\label{subsec:experiments-sensing-configuration-system}
+
+Table~\ref{tab:experiments-sensing-configuration-system} connects the sensing
+ablation to the final communication outcome.  It compares Camera-only,
+ISAC-only, local camera--ISAC fusion, and the complete distributed multimodal
+configuration using the equal-weight average across the three environmental
+conditions.  The effective-rate definition and resource accounting are the
+same as those used for the preceding policy comparison.
+
+\begin{table}[H]
     \centering
-    \includegraphics[width=0.88\textwidth]{paper_results/figures/fig_04_core_user_rate_by_weather.pdf}
-    \caption{Effective user rate by environmental condition and measurement
-    policy.}
-    \label{fig:experiments-weather-rate}
-\end{figure}
+    \caption{End-to-end communication performance of different sensing
+    configurations, averaged equally across the three environmental
+    conditions.}
+    \label{tab:experiments-sensing-configuration-system}
+    \small
+    \renewcommand{\arraystretch}{1.10}
+    \begin{tabular}{lrrr}
+        \toprule
+        Sensing configuration & Effective rate (Mbps) &
+        CSI-RS overhead (\%) & Sensing use (\%) \\
+        \midrule
+        Camera-only & 138.868 & 1.86 & 47.93 \\
+        ISAC-only & 142.522 & 1.81 & 49.03 \\
+        Local camera--ISAC fusion & 143.701 & 1.80 & 58.28 \\
+        DMSA-BM & 146.332 & 1.56 & 54.35 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
 
-\subsection{Aggregate Performance}
-\label{subsec:experiments-macro-system}
+Local camera--ISAC fusion is the strongest of the three reduced-input
+configurations, reaching \(143.701\) Mbps and remaining within \(1.80\%\) of
+DMSA-BM.  This result indicates that local modal complementarity accounts for a
+substantial part of the end-to-end benefit.  The additional distributed views
+in DMSA-BM further increase the effective rate while reducing CSI-RS overhead.
+Camera-only gives the lowest effective rate and the highest measurement
+overhead among the four configurations, whereas ISAC-only lies between the
+camera-only and locally fused configurations.
 
-Figure~\ref{fig:experiments-system-tradeoff} aggregates the three environmental
-conditions with equal weight.  DMSA-BM achieves an effective user rate of
-\(146.332\) Mbps with \(1.56\%\) CSI-RS overhead.  The corresponding values
-for SSB-guided refinement are \(142.248\) Mbps and \(1.90\%\) at
-\(K_{\mathrm{ref}}=4\), and \(115.890\) Mbps and \(5.71\%\) at
-\(K_{\mathrm{ref}}=12\).
-
-DMSA-BM remains explicitly conditional.  Its aggregate sensing-use ratio is
-\(54.35\%\), while \(45.65\%\) of instances use SSB-guided refinement as the
-fallback.  Taken together, the rate and overhead values show
-the consequence of using sensing only when a current detection and a credible
-target-to-user association are available.  The service beam is still selected
-from the actually measured CSI-RS candidates.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.96\textwidth]{paper_results/figures/fig_05_core_user_rate_hint_overhead.pdf}
-    \caption{Aggregate effective rate, CSI-RS overhead, and the
-    sensing-use/fallback composition under the common system configuration.}
-    \label{fig:experiments-system-tradeoff}
-\end{figure}
+The sensing-use ratio should be interpreted together with rate and overhead.
+Local camera--ISAC fusion uses sensing more frequently than DMSA-BM, but does
+not achieve the same effective rate or measurement reduction.  The result shows
+that frequent sensing-assisted operation is not sufficient by itself; the
+target availability, beam ranking, and validity of the associated candidate set
+jointly determine the communication outcome.  The three reduced-input
+configurations are evaluated at their respective modality-ablation operating
+points, whereas DMSA-BM uses the selected primary operating point.  The table
+therefore compares complete end-to-end
+configurations and does not attribute every difference to a single fusion
+module.
 
 \section{Tracking Performance}
 \label{sec:experiments-tracking}

@@ -42,6 +42,11 @@ TRACKER_LABELS = {
     "kf_cv_bm_v2": "KF-CV",
     "kf_ct_bm_v2": "KF-CT",
 }
+SENSING_CONFIGURATION_LABELS = {
+    "camera_only": "Camera-only",
+    "isac_only": "ISAC-only",
+    "single_station_multimodal": "Local camera--ISAC fusion",
+}
 LEARNING_METHODS = (
     ("Camera-only", "v3_rt_anchor_modalities_camera_concat_power_kl_ranking"),
     ("ISAC-only", "v3_rt_anchor_modalities_isac_concat_power_kl_ranking"),
@@ -74,15 +79,25 @@ def main() -> None:
     learning_summary = _read_json(RAW_ROOT / "learning" / "v3_rt_anchor_paper_test" / "summary.json")
     node_summary = _read_json(RAW_ROOT / "learning" / "v3_rt_anchor_node_fusion_sn_count_test" / "summary.json")
     core_summary = _read_json(RAW_ROOT / "beam_management" / "v9" / "core_comparison.json")
+    modality_summary = _read_json(
+        RAW_ROOT / "beam_management" / "v9" / "modality_ablation_comparison.json"
+    )
     tracker_summary = _read_json(
         RAW_ROOT / "beam_management" / "v9" / "tracker_top1ce" / "tracker_ablation_comparison.json"
     )
     core_user_counts = _load_core_unique_ue_counts()
+    modality_user_counts = _load_modality_unique_ue_counts()
     tracker_user_counts = _load_tracker_unique_ue_counts()
 
     _export_learning_tables(learning_summary)
     _export_node_count_table_and_figures(node_summary)
-    _export_core_tables_and_figures(core_summary, core_user_counts)
+    _export_core_table(core_summary, core_user_counts)
+    _export_sensing_configuration_table(
+        core_summary,
+        core_user_counts,
+        modality_summary,
+        modality_user_counts,
+    )
     _export_tracker_table(tracker_summary, tracker_user_counts)
     _copy_tracker_visual()
     _write_manifest()
@@ -94,6 +109,7 @@ def _validate_inputs() -> None:
         RAW_ROOT / "learning" / "v3_rt_anchor_paper_test" / "summary.json",
         RAW_ROOT / "learning" / "v3_rt_anchor_node_fusion_sn_count_test" / "summary.json",
         RAW_ROOT / "beam_management" / "v9" / "core_comparison.json",
+        RAW_ROOT / "beam_management" / "v9" / "modality_ablation_comparison.json",
         RAW_ROOT / "beam_management" / "v9" / "tracker_top1ce" / "tracker_ablation_comparison.json",
         RAW_ROOT / "tracking" / "visualizations" / "test_clear_day_bs_ne_three_trackers_noise_1_0m.png",
     )
@@ -141,6 +157,19 @@ def _load_tracker_unique_ue_counts() -> dict[tuple[str, str], int]:
             if count <= 0:
                 raise ValueError(f"Invalid unique_ue_count for {weather}/{tracker}: {count}")
             counts[(weather, tracker)] = count
+    return counts
+
+
+def _load_modality_unique_ue_counts() -> dict[tuple[str, str], int]:
+    root = RAW_ROOT / "beam_management" / "v9" / "run_summaries" / "modality_ablation" / "csi5ms"
+    counts: dict[tuple[str, str], int] = {}
+    for weather in WEATHERS:
+        for detector in SENSING_CONFIGURATION_LABELS:
+            summary = _read_json(root / weather / detector / "summary.json")
+            count = int(summary["unique_ue_count"])
+            if count <= 0:
+                raise ValueError(f"Invalid unique_ue_count for {weather}/{detector}: {count}")
+            counts[(weather, detector)] = count
     return counts
 
 
@@ -291,7 +320,7 @@ def _plot_node_beam_metrics(
     _save_figure(fig, "fig_03_node_count_beam")
 
 
-def _export_core_tables_and_figures(
+def _export_core_table(
     summary: dict[str, Any],
     unique_ue_counts: dict[tuple[str, str], int],
 ) -> None:
@@ -303,12 +332,11 @@ def _export_core_tables_and_figures(
         selected["mean_effective_user_rate_bps"] = float(row["mean_system_rate_bps"]) / unique_ue_counts[key]
         selected["unique_ue_count"] = unique_ue_counts[key]
         by_key[key] = selected
-    headers = ["Weather", "Scheme", "Mean effective user rate (Mbps)", "UE count", "CSI-RS overhead (%)", "SSB overhead (%)", "Data fraction (%)", "Sensing use (%)", "Fallback (%)"]
+    headers = ["Weather", "Scheme", "Mean effective user rate (Mbps)", "CSI-RS overhead (%)"]
     detail_rows: list[list[str]] = []
     for weather in WEATHERS:
         for condition in CONDITION_LABELS:
             detail_rows.append(_core_table_row(WEATHER_LABELS[weather], CONDITION_LABELS[condition], by_key[(weather, condition)]))
-    _write_table("table_04_core_by_weather", headers, detail_rows)
 
     aggregate_by_condition = {row["condition"]: dict(row) for row in summary["aggregates"]}
     for condition, aggregate in aggregate_by_condition.items():
@@ -317,11 +345,11 @@ def _export_core_tables_and_figures(
             np.mean([row["mean_effective_user_rate_bps"] for row in selected_rows])
         )
         aggregate["unique_ue_count"] = int(round(np.mean([row["unique_ue_count"] for row in selected_rows])))
-    aggregate_rows = [_core_table_row("Macro average", CONDITION_LABELS[condition], aggregate_by_condition[condition]) for condition in CONDITION_LABELS]
-    _write_table("table_05_core_macro_average", headers, aggregate_rows)
-
-    _plot_core_user_rate(by_key)
-    _plot_core_user_rate_hint_and_overhead(by_key)
+    detail_rows.extend(
+        _core_table_row("Macro average", CONDITION_LABELS[condition], aggregate_by_condition[condition])
+        for condition in CONDITION_LABELS
+    )
+    _write_table("table_04_core_by_weather", headers, detail_rows)
 
 
 def _core_table_row(weather: str, scheme: str, row: dict[str, Any]) -> list[str]:
@@ -329,52 +357,56 @@ def _core_table_row(weather: str, scheme: str, row: dict[str, Any]) -> list[str]
         weather,
         scheme,
         _num(float(row["mean_effective_user_rate_bps"]) / 1e6),
-        str(int(row["unique_ue_count"])),
         _pct(row["mean_csi_overhead"]),
-        _pct(row["mean_ssb_overhead"]),
-        _pct(row["mean_data_fraction"]),
-        _pct_or_dash(row.get("sensing_hint_usage_fraction")),
-        _pct_or_dash(row.get("sensing_fallback_fraction")),
     ]
 
 
-def _plot_core_user_rate(by_key: dict[tuple[str, str], dict[str, Any]]) -> None:
-    fig, ax = plt.subplots(figsize=(6.7, 4.0), constrained_layout=True)
-    x = np.arange(len(WEATHERS))
-    width = 0.24
-    colors = ("#4c78a8", "#f58518", "#54a24b")
-    for index, (condition, label) in enumerate(CONDITION_LABELS.items()):
-        values = [by_key[(weather, condition)]["mean_effective_user_rate_bps"] / 1e6 for weather in WEATHERS]
-        bars = ax.bar(x + (index - 1) * width, values, width, label=label, color=colors[index])
-        ax.bar_label(bars, labels=[f"{value:.1f}" for value in values], padding=2, fontsize=8, rotation=0)
-    ax.set_xticks(x, [WEATHER_LABELS[weather] for weather in WEATHERS])
-    ax.set_ylabel("Mean effective user rate (Mbps)")
-    ax.grid(axis="y", alpha=0.25)
-    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.13), ncol=3, frameon=False, fontsize=8)
-    _save_figure(fig, "fig_04_core_user_rate_by_weather")
+def _export_sensing_configuration_table(
+    core_summary: dict[str, Any],
+    core_user_counts: dict[tuple[str, str], int],
+    modality_summary: dict[str, Any],
+    modality_user_counts: dict[tuple[str, str], int],
+) -> None:
+    headers = ["Sensing configuration", "Mean effective user rate (Mbps)", "CSI-RS overhead (%)", "Sensing use (%)"]
+    modality_by_key = {
+        (row["weather_id"], row["detector"]): row
+        for row in modality_summary["rows"]
+        if row["detector"] in SENSING_CONFIGURATION_LABELS
+    }
+    table_rows: list[list[str]] = []
+    for detector, label in SENSING_CONFIGURATION_LABELS.items():
+        rows = [modality_by_key[(weather, detector)] for weather in WEATHERS]
+        rates = [
+            float(row["mean_system_rate_bps"]) / modality_user_counts[(weather, detector)]
+            for weather, row in zip(WEATHERS, rows)
+        ]
+        table_rows.append(
+            [
+                label,
+                _num(float(np.mean(rates)) / 1e6),
+                _pct(float(np.mean([float(row["mean_csi_overhead"]) for row in rows]))),
+                _pct(float(np.mean([float(row["sensing_hint_usage_fraction"]) for row in rows]))),
+            ]
+        )
 
-
-def _plot_core_user_rate_hint_and_overhead(by_key: dict[tuple[str, str], dict[str, Any]]) -> None:
-    fig, axes = plt.subplots(1, 3, figsize=(11.4, 3.8), constrained_layout=True)
-    x = np.arange(len(WEATHERS))
-    width = 0.24
-    colors = ("#4c78a8", "#f58518", "#54a24b")
-    for index, (condition, label) in enumerate(CONDITION_LABELS.items()):
-        user_rate = [by_key[(weather, condition)]["mean_effective_user_rate_bps"] / 1e6 for weather in WEATHERS]
-        overhead = [100 * by_key[(weather, condition)]["mean_csi_overhead"] for weather in WEATHERS]
-        axes[0].bar(x + (index - 1) * width, user_rate, width, label=label, color=colors[index])
-        axes[1].bar(x + (index - 1) * width, overhead, width, label=label, color=colors[index])
-    sensing_use = [100 * by_key[(weather, "sensing_imm")]["sensing_hint_usage_fraction"] for weather in WEATHERS]
-    fallback = [100 * by_key[(weather, "sensing_imm")]["sensing_fallback_fraction"] for weather in WEATHERS]
-    axes[2].bar(x, sensing_use, label="Sensing hint used", color="#54a24b")
-    axes[2].bar(x, fallback, bottom=sensing_use, label="Conventional fallback", color="#bab0ac")
-    for axis, ylabel in zip(axes, ("Mean effective user rate (Mbps)", "CSI-RS overhead (%)", "CSI-event fraction (%)")):
-        axis.set_xticks(x, [WEATHER_LABELS[weather] for weather in WEATHERS], rotation=15)
-        axis.set_ylabel(ylabel)
-        axis.grid(axis="y", alpha=0.25)
-    axes[0].legend(frameon=False, fontsize=7.5)
-    axes[2].legend(frameon=False, fontsize=7.5)
-    _save_figure(fig, "fig_05_core_user_rate_hint_overhead")
+    core_rows = {
+        row["weather_id"]: row
+        for row in core_summary["rows"]
+        if row["condition"] == "sensing_imm"
+    }
+    core_rates = [
+        float(core_rows[weather]["mean_system_rate_bps"]) / core_user_counts[(weather, "sensing_imm")]
+        for weather in WEATHERS
+    ]
+    table_rows.append(
+        [
+            "DMSA-BM",
+            _num(float(np.mean(core_rates)) / 1e6),
+            _pct(float(np.mean([float(core_rows[weather]["mean_csi_overhead"]) for weather in WEATHERS]))),
+            _pct(float(np.mean([float(core_rows[weather]["sensing_hint_usage_fraction"]) for weather in WEATHERS]))),
+        ]
+    )
+    _write_table("table_05_sensing_configuration_communication", headers, table_rows)
 
 
 def _export_tracker_table(
@@ -418,6 +450,7 @@ def _write_manifest() -> None:
             "raw/learning/v3_rt_anchor_paper_test/summary.json",
             "raw/learning/v3_rt_anchor_node_fusion_sn_count_test/summary.json",
             "raw/beam_management/v9/core_comparison.json",
+            "raw/beam_management/v9/modality_ablation_comparison.json",
             "raw/beam_management/v9/tracker_top1ce/tracker_ablation_comparison.json",
             "raw/tracking/visualizations/test_clear_day_bs_ne_three_trackers_noise_1_0m.png",
         ],

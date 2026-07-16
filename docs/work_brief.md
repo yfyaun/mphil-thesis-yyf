@@ -318,7 +318,7 @@ B_b\,\eta_b^{\mathrm{DL}}\,
 
 - 唯一正式定量来源为 paper_results/README.md 及其 figures、tables 子目录。论文 Chapter 5 按“数据与设置—评价方法—感知性能—通信性能—跟踪性能—讨论与边界”呈现，不将历史开发结果混入主表。
 - 学习结果使用 table_01--table_03 与 fig_01--fig_03：总体与天气分层表首先说明不同融合方案在 AP、Recall、Top-1 和 Top-4 指标上不存在统一最优；随后用 fixed-model missing-node curves 表达 nearby-node availability 的影响，而非为每个节点数分别训练模型。
-- 系统结果使用 table_04、fig_04 与 fig_05：先按天气报告 effective user rate、CSI-RS overhead、sensing use 和 fallback，再以图形呈现三天气等权宏平均的 rate--overhead 与 sensing/fallback 权衡。data fraction 是冻结资源 profile 的公共项，不作为 policy 独立优化的结果。
+- 系统结果使用两张互补表格。table_04 在同一张表中按天气比较 DMSA-BM 与两个 SSB-guided refinement operating points，并在表末增加三天气等权宏平均；该表只保留 average effective user rate 与 CSI-RS overhead，避免与后续模态表重复。table_05 使用 Camera-only、ISAC-only、Local camera--ISAC fusion 与完整 DMSA-BM 的端到端结果，报告三天气等权平均的 effective user rate、CSI-RS overhead 与 sensing use，从通信层说明感知来源与分布式协作的作用。原 fig_04 与 fig_05 不再进入论文结果包。data fraction 是冻结资源 profile 的公共项，不作为 policy 独立优化的结果。
 - 跟踪结果以 table_06 的 predicted-detection 系统指标呈现，必须避免以单一 rate 数值声称 IMM 普遍优于 KF-CV/KF-CT。fig_06 作为 GT 加 1.0 m 噪声下的受控轨迹诊断保留在正式结果包中，但不纳入当前 Chapter 5 的展示。
 
 ## 6. 当前进展与证据等级
@@ -337,7 +337,8 @@ B_b\,\eta_b^{\mathrm{DL}}\,
 | Top-1 CE multimodal learning | 正式结果包的 Distributed multimodal attention test：AP@2m 为 78.73\%，Recall@2m 为 81.51\%，Beam Top-1@2m 为 71.13\%，Beam Top-4@2m 为 94.13\%，Top-4 power ratio 为 97.01\% | 固定 Top-1 CE 检测器能够同时提供车辆检测和候选 beam 排序；Top-4 的候选价值需与 detection availability 一并解释 | 冻结正式结果包，`table_01_learning_modalities_overall` |
 | 分天气 learning | Clear、Rain/Fog、Night 三种天气下，多模态 variants 的 AP@2m 均高于单模态 camera/ISAC；Distributed multimodal attention 在 Clear 下达到 81.92\% AP@2m 与 75.00\% Beam Top-1@2m | 模态与跨节点互补性随天气和指标而变化，不宜用单一总体指标宣称所有融合策略均最优 | 冻结正式结果包，table 02 |
 | 跨节点互补 | Distributed multimodal attention 的节点数 test 中，AP@2m 从 0 节点的 38.59\% 升至 5 个邻近节点的 80.41\%；Beam Top-4@2m 从 91.58\% 升至 95.40\% | 更多邻近视角在该冻结协议下改善检测，并保持较高的 Top-4 候选覆盖 | 冻结正式结果包，`table_03_node_count_overall` |
-| 核心系统比较 | 三天气等权宏平均下，DMSA-BM 的 mean effective user rate 为 146.332 Mbps，CSI-RS overhead 为 1.56\%，sensing use 为 54.35\%，fallback 为 45.65\%；SSB-guided refinement \((K_{\mathrm{ref}}=4)\) 的相应 rate/overhead 为 142.248 Mbps/1.90\% | 在该固定操作点和资源模型下，感知辅助以部分 fallback 换取较低 CSI-RS 开销与更高的用户平均有效速率 | 冻结正式结果包，`table_05_core_macro_average` |
+| 核心系统比较 | 三天气等权宏平均下，DMSA-BM 的 mean effective user rate 为 146.332 Mbps，CSI-RS overhead 为 1.56\%，sensing use 为 54.35\%，fallback 为 45.65\%；SSB-guided refinement \((K_{\mathrm{ref}}=4)\) 的相应 rate/overhead 为 142.248 Mbps/1.90\% | 在该固定操作点和资源模型下，感知辅助以部分 fallback 换取较低 CSI-RS 开销与更高的用户平均有效速率 | 冻结正式结果包，`table_04_core_by_weather` 的 Macro average 行 |
+| 感知方案端到端比较 | 三天气等权平均下，DMSA-BM、Local camera--ISAC fusion、ISAC-only 与 Camera-only 的 mean effective user rate 分别为 146.332、143.701、142.522 与 138.868 Mbps；相应 CSI-RS overhead 为 1.56\%、1.80\%、1.81\% 与 1.86\%，sensing use 为 54.35\%、58.28\%、49.03\% 与 47.93\% | 完整分布式多模态方案同时取得更高 average effective user rate 和更低 CSI-RS overhead；Local camera--ISAC 是三个简化输入方案中最接近完整方案的配置。sensing use 的高低不能单独推出速率收益 | `table_05_sensing_configuration_communication`；简化方案来自保存的 modality-ablation runs，DMSA-BM 采用正式 selected operating point |
 | 条件化 system operation | DMSA-BM 的 sensing use 从 Clear 的 76.35\% 降至 Rain/Fog 的 56.65\% 和 Night 的 30.07\%，对应 fallback 为 23.65\%、43.35\% 和 69.93\% | association-acceptance rule 与 current-observation requirement 共同决定 sensing use 或 SSB-guided refinement fallback | 冻结正式结果包，table 04 |
 | Tracker 宏平均比较 | Top-1 CE detector 下，IMM、KF-CV 和 KF-CT 的 mean effective user rate 分别为 146.332、146.373 和 145.880 Mbps | 三种 tracker 的端到端差异需要与 hint usage、fallback 和候选数共同解释；该表不支持将 IMM 表述为普遍最优 | 冻结正式结果包，`table_06_tracker_macro_average` |
 

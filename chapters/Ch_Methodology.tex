@@ -887,14 +887,15 @@ candidate set.  Otherwise, SSB-guided CSI-RS refinement remains active.
 \end{equation}
 Thus, a predicted-only track can preserve state-estimation continuity but cannot alone initiate a reduced CSI-RS scan.
 
-The measurement width can adapt to the concentration of the current posterior.  Let \(s_1\geq\cdots\geq s_{K_{\max}}\) be its leading scores.  For minimum width \(K_{\min}\) and score-mass target \(\zeta\), the selected width is
+The measurement width can adapt to the concentration of the current posterior.  Let \(s_1\geq\cdots\geq s_{K_{\max}}\) be its leading scores.  For score-mass target \(\zeta\), the selected width is
 \begin{equation}
     K^{\star}_{\mathrm{scan}}
     =
-    \min\left\{k\ \middle|\ k\geq K_{\min},\
+    \min\left\{k\in\{1,\ldots,K_{\max}\}\ \middle|\
     \frac{\sum_{j=1}^{k}s_j}{\sum_{j=1}^{K_{\max}}s_j}\geq\zeta\right\}.
     \label{eq:method-adaptive-scan}
 \end{equation}
+The smallest admissible candidate set therefore contains only the highest-ranked beam.
 Diffuse posteriors consequently retain more CSI-RS candidates, whereas
 concentrated posteriors permit a narrower scan.  In both cases, the posterior
 determines only which beams are measured.  The service beam is selected from the

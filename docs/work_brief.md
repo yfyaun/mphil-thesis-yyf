@@ -203,9 +203,11 @@ accepted status 在两次 association event 之间随 binding 保持，并在 as
 若当前 observed detection 的前 \(K_{\max}\) 个 beam scores 为 \(s_1\geq\cdots\geq s_{K_{\max}}\)，自适应候选数可定义为
 
 \[
-k^*=\min\left\{k:\ k\geq K_{\min},
+k^*=\min\left\{k\in\{1,\ldots,K_{\max}\}\ \middle|\
 \frac{\sum_{i=1}^{k}s_i}{\sum_{i=1}^{K_{\max}}s_i}\geq q\right\}.
 \]
+
+因此候选集宽度最小为 1，即仅测量 Top-1 预测波束。
 
 该规则只决定 CSI-RS 测量集合大小；UE 在实测候选中按测得 SNR 选择 beam。正式 policy 仅使用当前 observed detection 的 beam Top-\(K\)，不将 KF/IMM 的纯预测位置映射为正式候选 beam；后者只保留为诊断性几何消融。
 

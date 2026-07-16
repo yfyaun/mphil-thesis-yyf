@@ -33,9 +33,9 @@ LEGACY_TRACKING_ROOT = PAPER_ROOT / "tracking"
 WEATHERS = ("clear_day", "rain_fog_day", "night")
 WEATHER_LABELS = {"clear_day": "Clear", "rain_fog_day": "Rain/Fog", "night": "Night"}
 CONDITION_LABELS = {
-    "conventional_4beam": "Conventional 4-beam",
-    "conventional_12beam": "Conventional 12-beam",
-    "sensing_imm": "Perception-assisted",
+    "conventional_4beam": "SSB-guided refinement (K = 4)",
+    "conventional_12beam": "SSB-guided refinement (K = 12)",
+    "sensing_imm": "DMSA-BM",
 }
 TRACKER_LABELS = {
     "imm_bm_v2": "IMM",
@@ -43,12 +43,17 @@ TRACKER_LABELS = {
     "kf_ct_bm_v2": "KF-CT",
 }
 LEARNING_METHODS = (
-    ("Camera", "v3_rt_anchor_modalities_camera_concat_power_kl_ranking"),
-    ("ISAC", "v3_rt_anchor_modalities_isac_concat_power_kl_ranking"),
-    ("Single-station multimodal", "v3_rt_anchor_modalities_multimodal_mean_concat_power_kl_ranking"),
-    ("Node-mean fusion", "v3_rt_anchor_node_fusion_multimodal_node_mean_power_kl_ranking"),
-    ("Cross-agent multimodal", "v3_rt_anchor_beam_top1_ce_cross_agent"),
+    ("Camera-only", "v3_rt_anchor_modalities_camera_concat_power_kl_ranking"),
+    ("ISAC-only", "v3_rt_anchor_modalities_isac_concat_power_kl_ranking"),
+    ("Local camera--ISAC fusion", "v3_rt_anchor_modalities_multimodal_mean_concat_power_kl_ranking"),
+    ("Distributed mean fusion", "v3_rt_anchor_node_fusion_multimodal_node_mean_power_kl_ranking"),
+    ("Distributed multimodal attention (proposed)", "v3_rt_anchor_beam_top1_ce_cross_agent"),
 )
+NODE_FUSION_LABELS = {
+    "Cross-agent + gated fusion": "Distributed fusion with learned gating",
+    "Cross-agent attention": "Distributed multimodal attention (proposed)",
+    "Node masked mean": "Distributed mean fusion",
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -196,7 +201,8 @@ def _learning_table_row(label: str, row: dict[str, Any]) -> list[str]:
 def _export_node_count_table_and_figures(summary: dict[str, Any]) -> None:
     records: list[dict[str, Any]] = []
     for result in summary["results"]:
-        label = str(result["label"])
+        raw_label = str(result["label"])
+        label = NODE_FUSION_LABELS.get(raw_label, raw_label)
         evaluations = result["evaluation"]["results"]
         for raw_count, payload in evaluations.items():
             metrics = payload["overall"]["metrics"]
@@ -384,16 +390,7 @@ def _export_tracker_table(
         by_tracker[row["tracker"]].append(selected)
     if any(len(rows) != len(WEATHERS) for rows in by_tracker.values()):
         raise ValueError("Tracker table requires one completed Top-1 CE result per tracker and weather")
-    headers = [
-        "Tracker",
-        "Mean effective user rate (Mbps)",
-        "UE count",
-        "CSI-RS overhead (%)",
-        "Sensing use (%)",
-        "Fallback (%)",
-        "Mean candidate beams",
-        "Handover count",
-    ]
+    headers = ["Tracker", "Mean effective user rate (Mbps)", "Sensing use (%)"]
     table_rows: list[list[str]] = []
     for tracker, label in TRACKER_LABELS.items():
         values = by_tracker[tracker]
@@ -401,12 +398,7 @@ def _export_tracker_table(
             [
                 label,
                 _num(float(np.mean([row["mean_effective_user_rate_bps"] for row in values])) / 1e6),
-                str(int(round(np.mean([unique_ue_counts[(row["weather_id"], tracker)] for row in values])))),
-                _pct(float(np.mean([row["mean_csi_overhead"] for row in values]))),
                 _pct(float(np.mean([row["sensing_hint_usage_fraction"] for row in values]))),
-                _pct(float(np.mean([row["sensing_fallback_fraction"] for row in values]))),
-                _num(float(np.mean([row["mean_sensing_candidate_beams_when_used"] for row in values]))),
-                _num(float(np.mean([row["handover_count"] for row in values]))),
             ]
         )
     _write_table("table_06_tracker_macro_average", headers, table_rows)

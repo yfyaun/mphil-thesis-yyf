@@ -1,10 +1,10 @@
 Weather,Scheme,Mean effective user rate (Mbps),UE count,CSI-RS overhead (%),SSB overhead (%),Data fraction (%),Sensing use (%),Fallback (%)
-Clear,Conventional 4-beam,151.367,32,1.90,0.52,66.75,0.00,0.00
-Clear,Conventional 12-beam,127.033,32,5.71,0.52,66.75,0.00,0.00
-Clear,Perception-assisted,155.453,32,1.39,0.52,66.75,76.35,23.65
-Rain/Fog,Conventional 4-beam,147.571,32,1.90,0.52,66.75,0.00,0.00
-Rain/Fog,Conventional 12-beam,115.342,32,5.71,0.52,66.75,0.00,0.00
-Rain/Fog,Perception-assisted,150.801,32,1.57,0.52,66.75,56.65,43.35
-Night,Conventional 4-beam,127.807,32,1.90,0.52,66.75,0.00,0.00
-Night,Conventional 12-beam,105.294,32,5.71,0.52,66.75,0.00,0.00
-Night,Perception-assisted,132.743,32,1.71,0.52,66.75,30.07,69.93
+Clear,SSB-guided refinement (K = 4),151.367,32,1.90,0.52,66.75,0.00,0.00
+Clear,SSB-guided refinement (K = 12),127.033,32,5.71,0.52,66.75,0.00,0.00
+Clear,DMSA-BM,155.453,32,1.39,0.52,66.75,76.35,23.65
+Rain/Fog,SSB-guided refinement (K = 4),147.571,32,1.90,0.52,66.75,0.00,0.00
+Rain/Fog,SSB-guided refinement (K = 12),115.342,32,5.71,0.52,66.75,0.00,0.00
+Rain/Fog,DMSA-BM,150.801,32,1.57,0.52,66.75,56.65,43.35
+Night,SSB-guided refinement (K = 4),127.807,32,1.90,0.52,66.75,0.00,0.00
+Night,SSB-guided refinement (K = 12),105.294,32,5.71,0.52,66.75,0.00,0.00
+Night,DMSA-BM,132.743,32,1.71,0.52,66.75,30.07,69.93

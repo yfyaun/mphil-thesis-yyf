@@ -9,7 +9,7 @@
    - 表 2：相同指标的 Clear、Rain-Fog、Night 分天气结果。
    - 表 3、图 1–3：nearby node 数变化下的 AP@2m、Recall@2m 与 Beam Top-1/Top-4@2m。
 2. **系统级 beam management：**
-   - 表 4：三种天气下 Conventional 4-beam、Conventional 12-beam 与 Perception-assisted 的用户平均速率、CSI-RS 开销与 hint/fallback 结果。
+   - 表 4：三种天气下 SSB-guided CSI-RS refinement 的 \(K_{\mathrm{ref}}=4\) 与 \(K_{\mathrm{ref}}=12\) 设置，以及 DMSA-BM 的用户平均速率、CSI-RS 开销与 sensing use/fallback 结果。
    - 表 5、图 4–5：三天气等权宏平均、用户平均速率、CSI-RS overhead 与 hint/fallback 运行折中。
 3. **Tracker：** 图 6 使用 test / clear-day / BS-NE 的 GT+1.0 m 位置噪声输入，直观对比 KF-CV、KF-CT、IMM 轨迹。**表 IV**（`table_06_tracker_macro_average.*`）报告固定 Top-1 CE detector、CSI 5 ms、四小区与 weather-specific gate 下三种 tracker 的跨天气等权宏平均用户有效速率和 sensing-use ratio。
 

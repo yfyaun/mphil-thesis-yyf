@@ -1,8 +1,9 @@
-\chapter{Proposed Sensing-Assisted Beam Management Framework}
+\chapter{Distributed Multimodal Sensing-Assisted Beam Management}
 \label{ch:methodology}
 
-This chapter specifies the proposed sensing-assisted beam-management framework
-under the system model of Chapter~\ref{ch:system-model}.  The framework is
+This chapter specifies the proposed Distributed Multimodal Sensing-Assisted
+Beam Management framework, referred to as DMSA-BM, under the system model of
+Chapter~\ref{ch:system-model}.  The framework is
 organised around a strict separation between a physical vehicle observed by the
 sensing system and a VUE addressed by the communication system.  Multimodal
 sensing first produces target-level evidence in a target-BS-centred BEV
@@ -12,7 +13,7 @@ reduction is permitted only while the association is accepted and its track is
 supported by a current observation.  Sensing therefore ranks measurements; it
 does not replace CSI-RS-based service-beam selection.
 
-The proposed method couples perception, tracking, association, and candidate
+The DMSA-BM framework couples perception, tracking, association, and candidate
 selection.  Distributed multimodal BEV perception produces target detections
 and beam predictions, while IMM-based multi-object tracking retains temporally
 consistent evidence for physical vehicles.  Measurement-assisted target-to-user
@@ -70,7 +71,7 @@ identified VUE.
     is used only while its associated track is currently observed.  The
     corresponding beam-class posterior then defines a fixed or adaptive CSI-RS
     candidate set.  If no association is accepted or the associated track is
-    absent from the current observation, conventional refinement is retained.
+    absent from the current observation, SSB-guided CSI-RS refinement is retained.
     In either case, the service beam is chosen only after CSI-RS quality has
     been measured over the selected candidate set.
 \end{enumerate}
@@ -91,7 +92,7 @@ The resulting information flow is concisely represented by
 where \(\mathcal{R}_{b,n}\) is the set of perception tracks,
 \(\pi_{b,n}\) denotes the partial mapping formed from accepted UE--track
 associations, and \(\mathcal{C}_{b,u,n}\) is either a sensing-derived CSI-RS
-candidate set or a conventional refinement set.  This sequence defines the
+candidate set or an SSB-guided CSI-RS refinement set.  This sequence defines the
 interfaces among the perception, tracking, association, and beam-measurement
 models developed below.
 
@@ -113,9 +114,10 @@ measurement while excluding oracle information from online decisions.
 \label{sec:method-perception-learning}
 
 This section formulates the distributed multimodal perception and beam-prediction
-model.  It first constructs a target-BS-centred BEV representation from
-distributed visual observations and BS-local ISAC sensing,
-then decodes vehicle-level detections and beam-class scores from the shared
+model, referred to as distributed multimodal attention.  It first constructs a
+target-BS-centred BEV representation through
+attention-based cross-node fusion and gated multimodal attention.  It then
+decodes vehicle-level detections and beam-class scores from the shared
 representation.  The final subsection defines the Top-1 classification
 supervision used to learn beam prediction without treating the prediction as a
 direct service-beam declaration.
@@ -126,8 +128,12 @@ direct service-beam declaration.
 The BEV representation provides a common spatial interface for distributed
 visual observations, BS-local ISAC sensing, vehicle detection, and beam
 prediction.  Let \(\mathcal{J}_b=\{b\}\cup\mathcal{N}_b\) denote the target BS
-and its neighbouring SNs.  For each node \(j\in\mathcal{J}_b\), calibrated
-multiview images are encoded and lifted into the BEV frame of BS \(b\) as follows.
+and its neighbouring SNs, and let \(\mathcal{G}_b\) denote the BEV grid of the
+target BS.
+
+\paragraph{BEV-aligned visual encoding.}
+For each node \(j\in\mathcal{J}_b\), calibrated multiview images are encoded and
+lifted into the BEV frame of BS \(b\) according to
 \begin{equation}
     \mathbf{F}^{\mathrm{cam}}_{j\rightarrow b,n}
     =
@@ -139,30 +145,105 @@ multiview images are encoded and lifted into the BEV frame of BS \(b\) as follow
 \end{equation}
 where \(\mathbf{T}_{j\rightarrow b}\) denotes the calibration information that
 expresses node \(j\)'s visual evidence in the target-BS-centred coordinate
-system.  All node features are transformed to this common BEV frame before
-cross-node aggregation.
+system.  Multiple views at the same node are combined after projection.  For a
+cell \(\mathbf{x}\in\mathcal{G}_b\), denote the resulting feature vector by
+\(\mathbf{f}^{\mathrm{cam}}_{j\rightarrow b,n}(\mathbf{x})\).  The binary mask
+\(m^{\mathrm{node}}_{j,n}(\mathbf{x})\) equals one only when node \(j\) provides
+a valid projected observation at that cell.  It represents geometric validity
+and observation availability rather than a learned reliability score.
 
-The distributed visual evidence is aggregated as
+\paragraph{Attention-based cross-node fusion.}
+Node fusion must preserve the target-BS perspective while exploiting viewpoints
+that may observe different parts of the road scene.  The valid-node mean first
+provides a stable reference feature
 \begin{equation}
-    \mathbf{F}^{\mathrm{cam}}_{b,n}
+    \overline{\mathbf{f}}^{\mathrm{cam}}_{b,n}(\mathbf{x})
     =
-    \Phi_{\mathrm{node}}
-    \left(
-    \left\{
-    \mathbf{F}^{\mathrm{cam}}_{j\rightarrow b,n},
-    \mathbf{m}^{\mathrm{cam}}_{j,n}
-    \right\}_{j\in\mathcal{J}_b}
-    \right),
-    \label{eq:method-node-aggregation}
+    \frac{
+    \sum_{j\in\mathcal{J}_b}m^{\mathrm{node}}_{j,n}(\mathbf{x})
+    \mathbf{f}^{\mathrm{cam}}_{j\rightarrow b,n}(\mathbf{x})}
+    {\sum_{j\in\mathcal{J}_b}m^{\mathrm{node}}_{j,n}(\mathbf{x})+\epsilon},
+    \label{eq:method-node-mean}
 \end{equation}
-where \(\mathbf{m}^{\mathrm{cam}}_{j,n}\) captures view availability or
-reliability.  The study compares node aggregation mechanisms, including uniform
-aggregation and learned cross-node attention, within the common operator
-\(\Phi_{\mathrm{node}}\).  Across these mechanisms, neighbouring nodes serve the
-same algorithmic purpose.  They supplement the target-BS view when its coverage
-is incomplete or affected by occlusion.
+where \(\epsilon>0\) prevents division by zero.  For attention head
+\(h\in\{1,\ldots,H\}\), a target-conditioned query and node-specific keys and
+values are constructed as
+\begin{align}
+    \mathbf{q}_{h,n}(\mathbf{x})
+    &=\mathbf{W}^{Q}_{h}
+    \left[
+    \mathbf{f}^{\mathrm{cam}}_{b\rightarrow b,n}(\mathbf{x})
+    \,\|\,
+    \overline{\mathbf{f}}^{\mathrm{cam}}_{b,n}(\mathbf{x})
+    \right],
+    \label{eq:method-node-query}\\
+    \mathbf{k}_{j,h,n}(\mathbf{x})
+    &=\mathbf{W}^{K}_{h}
+    \mathbf{f}^{\mathrm{cam}}_{j\rightarrow b,n}(\mathbf{x})
+    +\mathbf{E}_{h}\mathbf{g}_{j\rightarrow b},
+    \label{eq:method-node-key}\\
+    \mathbf{v}_{j,h,n}(\mathbf{x})
+    &=\mathbf{W}^{V}_{h}
+    \mathbf{f}^{\mathrm{cam}}_{j\rightarrow b,n}(\mathbf{x}),
+    \label{eq:method-node-value}
+\end{align}
+where \(\mathbf{g}_{j\rightarrow b}\) encodes the relative position, range, and
+bearing of node \(j\) with respect to the target BS.  For head dimension
+\(d_h\), the geometry-aware compatibility score and masked attention weight are
+\begin{align}
+    e_{j,h,n}(\mathbf{x})
+    &=
+    \frac{
+    \mathbf{q}^{\mathsf T}_{h,n}(\mathbf{x})
+    \mathbf{k}_{j,h,n}(\mathbf{x})}{\sqrt{d_h}}
+    +b_h\!\left(\mathbf{g}_{j\rightarrow b}\right),
+    \label{eq:method-node-attention-score}\\
+    \alpha_{j,h,n}(\mathbf{x})
+    &=
+    \frac{
+    m^{\mathrm{node}}_{j,n}(\mathbf{x})
+    \exp\!\left(e_{j,h,n}(\mathbf{x})/T_{\mathrm{node}}\right)}
+    {\sum_{\ell\in\mathcal{J}_b}
+    m^{\mathrm{node}}_{\ell,n}(\mathbf{x})
+    \exp\!\left(e_{\ell,h,n}(\mathbf{x})/T_{\mathrm{node}}\right)+\epsilon},
+    \label{eq:method-node-attention-weight}
+\end{align}
+where \(T_{\mathrm{node}}>0\) controls the attention concentration.  The heads
+are combined by
+\begin{equation}
+    \mathbf{f}^{\mathrm{att}}_{b,n}(\mathbf{x})
+    =
+    \mathbf{W}^{O}
+    \underset{h=1}{\overset{H}{\operatorname{Concat}}}
+    \left(
+    \sum_{j\in\mathcal{J}_b}
+    \alpha_{j,h,n}(\mathbf{x})
+    \mathbf{v}_{j,h,n}(\mathbf{x})
+    \right).
+    \label{eq:method-node-attended-feature}
+\end{equation}
+Let \(\overline{\mathbf{F}}^{\mathrm{cam}}_{b,n}\) and
+\(\mathbf{F}^{\mathrm{att}}_{b,n}\) denote the corresponding BEV feature maps.
+Residual aggregation and feed-forward refinement produce
+\begin{align}
+    \mathbf{F}^{\mathrm{node},0}_{b,n}
+    &=\overline{\mathbf{F}}^{\mathrm{cam}}_{b,n}
+    +\rho_{mathrm{att}}\mathbf{F}^{\mathrm{att}}_{b,n},\\
+    \mathbf{F}^{\mathrm{cam}}_{b,n}
+    &=\mathbf{F}^{\mathrm{node},0}_{b,n}
+    +\rho_{mathrm{ffn}}
+    \Phi_{\mathrm{ffn}}\!\left(\mathbf{F}^{\mathrm{node},0}_{b,n}\right).
+    \label{eq:method-node-aggregation}
+\end{align}
+This attention-based cross-node fusion assigns spatially varying importance to
+the available roadside views.  The target-conditioned query anchors fusion to
+the serving BS, while geometry-aware keys distinguish viewpoints with different
+locations and viewing directions.  Consequently, a node that reveals a locally
+occluded vehicle can receive greater weight at the relevant BEV cells without
+dominating regions for which it provides no valid observation.
 
-The BS-local ISAC point cloud is independently encoded on the same grid,
+\paragraph{Gated multimodal attention.}
+The BS-local ISAC point cloud is independently encoded on the same grid according to
 \begin{equation}
     \mathbf{F}^{\mathrm{isac}}_{b,n}
     =
@@ -170,29 +251,90 @@ The BS-local ISAC point cloud is independently encoded on the same grid,
     \left(\mathcal{P}_{b,n}\right).
     \label{eq:method-isac-encoding}
 \end{equation}
-The camera and point-cloud representations are combined by a modality-fusion
-operator,
+The visual and ISAC features are projected to a common channel dimension
 \begin{equation}
-    \mathbf{F}_{b,n}
-    =
-    \Phi_{\mathrm{modal}}
-    \left(
-    \mathbf{F}^{\mathrm{cam}}_{b,n},
-    \mathbf{F}^{\mathrm{isac}}_{b,n};
-    \mathbf{m}^{\mathrm{modal}}_{b,n}
-    \right),
-    \label{eq:method-modal-fusion}
+    \widetilde{\mathbf{F}}^{q}_{b,n}
+    =\Phi^{q}_{\mathrm{proj}}\!\left(\mathbf{F}^{q}_{b,n}\right),
+    \qquad q\in\{\mathrm{cam},\mathrm{isac}\}.
+    \label{eq:method-modal-projection}
 \end{equation}
-where \(\mathbf{m}^{\mathrm{modal}}_{b,n}\) represents modality availability or
-confidence.  Modality gating can downweight unreliable evidence, while node
-aggregation preserves complementary visual observations.  Neither operation is
-used to infer a communication identity; their role is to construct a
-target-level scene representation with improved observability.
+Their agreement and discrepancy are represented jointly by
+\begin{equation}
+    \mathbf{U}_{b,n}
+    =
+    \left[
+    \widetilde{\mathbf{F}}^{\mathrm{cam}}_{b,n}
+    \,\|\,
+    \widetilde{\mathbf{F}}^{\mathrm{isac}}_{b,n}
+    \,\|\,
+    \left|
+    \widetilde{\mathbf{F}}^{\mathrm{cam}}_{b,n}
+    -\widetilde{\mathbf{F}}^{\mathrm{isac}}_{b,n}
+    \right|
+    \right].
+    \label{eq:method-modal-interaction}
+\end{equation}
+For modality \(q\), the local gate produces a spatial logit from
+\(\mathbf{U}_{b,n}\), whereas the global gate extracts a scene-level logit from
+global average pooling.  The two components and their sum are
+\begin{equation}
+    \ell^{\mathrm{loc}}_{q,b,n}(\mathbf{x})
+    =
+    \Phi^{q}_{\mathrm{loc}}\!\left(\mathbf{U}_{b,n}\right)(\mathbf{x}),
+    \qquad
+    \ell_{q,b,n}(\mathbf{x})
+    =
+    \ell^{\mathrm{loc}}_{q,b,n}(\mathbf{x})
+    +\ell^{\mathrm{glo}}_{q,b,n},
+    \qquad
+    \ell^{\mathrm{glo}}_{q,b,n}
+    =
+    \Phi^{q}_{\mathrm{glo}}\!\left(
+    \operatorname{GAP}(\mathbf{U}_{b,n})\right).
+    \label{eq:method-modal-logit}
+\end{equation}
+Let \(a_{q,b,n}\in\{0,1\}\) indicate whether modality \(q\) is available.  The
+gated modality-attention weight is
+\begin{equation}
+    \beta_{q,b,n}(\mathbf{x})
+    =
+    \frac{
+    a_{q,b,n}
+    \exp\!\left(\ell_{q,b,n}(\mathbf{x})/T_{\mathrm{modal}}\right)}
+    {\sum_{q'\in\{\mathrm{cam},\mathrm{isac}\}}
+    a_{q',b,n}
+    \exp\!\left(\ell_{q',b,n}(\mathbf{x})/T_{\mathrm{modal}}\right)+\epsilon},
+    \label{eq:method-modal-attention}
+\end{equation}
+where \(T_{\mathrm{modal}}>0\) controls the modality-weight concentration.  The
+weighted feature and refined multimodal representation are
+\begin{align}
+    \mathbf{F}^{\mathrm{modal},0}_{b,n}(\mathbf{x})
+    &=
+    \sum_{q\in\{\mathrm{cam},\mathrm{isac}\}}
+    \beta_{q,b,n}(\mathbf{x})
+    \widetilde{\mathbf{F}}^{q}_{b,n}(\mathbf{x}),\\
+    \mathbf{F}_{b,n}
+    &=
+    \sigma\!\left(
+    \mathbf{F}^{\mathrm{modal},0}_{b,n}
+    +\Phi_{\mathrm{ref}}\!\left(\mathbf{F}^{\mathrm{modal},0}_{b,n}\right)
+    \right).
+    \label{eq:method-modal-fusion}
+\end{align}
+The local gate accounts for spatially varying effects such as vehicle occlusion,
+camera blind regions, and point-cloud sparsity.  The global gate captures
+scene-wide changes in illumination, visibility, and weather-induced sensing
+quality.  The joint detection and beam-prediction objectives train the gates to
+respond to condition-dependent patterns present in the two feature maps.  The
+availability variable \(a_{q,b,n}\) only excludes a missing modality and is not
+an independent confidence or reliability model.
 
 The shared BEV representation aligns a detected vehicle and its beam-prediction
 supervision with the local service region of BS \(b\).  It also enables
-cross-view evidence to influence both detection and beam prediction
-before target-level outputs are decoded.  The resulting feature map
+cross-view and cross-modal evidence to influence both detection and beam
+prediction before target-level outputs are decoded.  Neither attention module
+infers a communication identity.  The resulting feature map
 \(\mathbf{F}_{b,n}\) is therefore shared by the two prediction tasks described
 next.
 
@@ -256,10 +398,11 @@ suitable for the subsequent association stage.
 \label{subsec:method-top1-beam-classification}
 
 For a supervised BS--UE link, let \(g_{b,u,n}(k)\) be the physical CSI beam gain
-in Equation~\eqref{eq:system-beam-gain}.  The beam-prediction label
-is the strongest CSI beam,
+in Equation~\eqref{eq:system-beam-gain}.  To distinguish the training label from
+the measured service beam \(k^{\star}_{b,u,n}\) in
+Equation~\eqref{eq:system-service-beam}, define the strongest-beam class label as
 \begin{equation}
-    k^\star_{b,u,n}
+    y^{\mathrm{beam}}_{b,u,n}
     =
     \underset{k\in\{1,\ldots,M_{\mathrm{CSI}}\}}{\arg\max}
     g_{b,u,n}(k).
@@ -273,7 +416,7 @@ cross-entropy objective,
 \begin{equation}
     \mathcal{L}_{\mathrm{beam}}
     =
-    -\log p_{b,i,n}\!\left(k^\star_{b,u,n}\right).
+    -\log p_{b,i,n}\!\left(y^{\mathrm{beam}}_{b,u,n}\right).
     \label{eq:method-beam-loss}
 \end{equation}
 This supervision trains the network to identify the strongest codebook beam for
@@ -732,7 +875,7 @@ determines whether the mapping is admissible, while current observation ensures
 that candidate selection uses a fresh target-level beam posterior.
 
 When \(G_{u,n}=1\), the current observation supplies a sensing-assisted
-candidate set.  Otherwise, conventional refinement remains active.
+candidate set.  Otherwise, SSB-guided CSI-RS refinement remains active.
 \begin{equation}
     \mathcal{C}_{b,u,n}
     =
@@ -757,7 +900,7 @@ concentrated posteriors permit a narrower scan.  In both cases, the posterior
 determines only which beams are measured.  The service beam is selected from the
 measured candidate set according to Equation~\eqref{eq:system-service-beam}.  If
 the association-gated condition is not satisfied, the framework reverts to
-conventional refinement and thereby retains a recovery path.
+SSB-guided CSI-RS refinement and thereby retains a recovery path.
 
 This association-to-candidate interface prevents an unaccepted mapping or a
 prediction-only track from directly constraining a VUE's measurement set.  Its
@@ -802,7 +945,7 @@ CSI-RS candidate sets \(\{\mathcal{C}_{b,u,n}\}_{u\in\mathcal{U}_b[n]}\)
         \STATE Derive fixed or adaptive sensing candidates from the current
         target posterior.
     \ELSE
-        \STATE Use conventional refinement candidates.
+        \STATE Use SSB-guided CSI-RS refinement candidates.
     \ENDIF
     \STATE Measure the selected CSI-RS candidates and choose the service beam
     from the measured quality.

@@ -1,7 +1,7 @@
 | Method | AP@2m (%) | Recall@2m (%) | Beam Top-1@2m (%) | Beam Top-4@2m (%) | Top-4 power ratio (%) |
 | --- | --- | --- | --- | --- | --- |
-| Camera | 57.45 | 62.34 | 65.22 | 91.56 | 95.38 |
-| ISAC | 53.19 | 57.16 | 65.00 | 93.19 | 86.64 |
-| Single-station multimodal | 74.35 | 79.53 | 71.54 | 94.66 | 96.35 |
-| Node-mean fusion | 67.48 | 72.82 | 67.10 | 92.99 | 93.84 |
-| Cross-agent multimodal | 78.73 | 81.51 | 71.13 | 94.13 | 97.01 |
+| Camera-only | 57.45 | 62.34 | 65.22 | 91.56 | 95.38 |
+| ISAC-only | 53.19 | 57.16 | 65.00 | 93.19 | 86.64 |
+| Local camera--ISAC fusion | 74.35 | 79.53 | 71.54 | 94.66 | 96.35 |
+| Distributed mean fusion | 67.48 | 72.82 | 67.10 | 92.99 | 93.84 |
+| Distributed multimodal attention (proposed) | 78.73 | 81.51 | 71.13 | 94.13 | 97.01 |

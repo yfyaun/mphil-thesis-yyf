@@ -1,17 +1,18 @@
 \chapter{Experimental Evaluation}
 \label{ch:experiments}
 
-This chapter evaluates the proposed multimodal sensing-assisted beam-management
-framework.  The analysis follows its information flow.  Multimodal observations
-first support target-level detection and beam
-prediction; target-to-user association and current-track observation then
-determine whether a sensing-derived candidate set is used; and the resulting measurement
-policy is assessed through average effective user rate and CSI-RS overhead.  The
-chapter therefore separates learning-level evidence from its communication-level
-consequences, rather than interpreting a beam-prediction accuracy alone as a
-rate result.
+This chapter evaluates the proposed Distributed Multimodal Sensing-Assisted
+Beam Management framework, denoted by DMSA-BM.  The evaluation follows the
+information flow established in Chapter~\ref{ch:methodology}.  Distributed
+multimodal observations first support target-level detection and beam
+prediction.  Target-to-user association and current-track observation then
+determine whether a sensing-derived CSI-RS candidate set may be used.  The
+resulting measurement decision is finally evaluated through average effective
+user rate and CSI-RS overhead.  This organisation separates learning-level
+evidence from its communication consequence and avoids interpreting
+beam-prediction accuracy alone as a rate improvement.
 
-\section{Multimodal V2I Dataset Construction}
+\section{Dataset and Experimental Setup}
 \label{sec:experiments-dataset}
 
 \subsection{Multimodal Simulation and Data Generation}
@@ -40,7 +41,7 @@ produces a 192-way beam-class posterior for an observed physical target.  Its
 ranking is used to score association hypotheses and to reduce the CSI-RS
 candidate set; it is neither a UE identifier nor a direct service-beam decision.
 
-\subsection{Scenario Definition and Data Splits}
+\subsection{Scenarios and Data Partitioning}
 \label{subsec:experiments-scenario}
 
 The data contain a four-BS roadside scenario under the \emph{Clear},
@@ -51,18 +52,23 @@ the learning and system-level evaluations.  Target tracks and
 target-to-user associations are maintained locally at each target BS; the
 experiments do not assume a global identity that persists across serving cells.
 
-All system-level comparisons use a common radio configuration comprising a
-100-ms SSB periodicity, a 20-ms CSI-RS periodicity, a four-beam conventional refinement
-within each SSB parent, and common ray-tracing segment, Doppler, power, noise,
-regularised zero-forcing (RZF), and resource-accounting assumptions.  The
-resource model is a 5G NR-oriented abstraction rather than a full PRB- and
-RE-level protocol implementation.  In the Rain/Fog condition, the
-association-margin threshold is fixed at \(\tau_{\mathrm{margin}}=0.10\).
-Because this operating point was selected for the Rain/Fog test condition, the
-corresponding results characterise that operating point rather than independent
-out-of-sample generalisation.
+\subsection{Communication Configuration}
+\label{subsec:experiments-communication-configuration}
 
-\section{Evaluation Metrics and Protocol}
+All system-level comparisons use a common radio configuration with a 100-ms
+SSB periodicity, a 20-ms CSI-RS periodicity, and the 48-beam SSB and 192-beam
+CSI-RS codebooks defined in Chapter~\ref{ch:system-model}.  The compared
+policies also share the same ray-tracing segments, Doppler evolution, transmit
+power, noise model, regularised zero-forcing processing, and resource
+accounting.  The resulting communication model is a 5G NR-oriented abstraction
+at the beam-measurement level rather than a PRB- and RE-level protocol model.
+
+In the Rain/Fog condition, the association-margin threshold is fixed at
+\(\tau_{\mathrm{margin}}=0.10\).  Because this operating point was selected
+for the Rain/Fog test condition, the corresponding results characterise that
+operating point rather than independent out-of-sample generalisation.
+
+\section{Evaluation Methodology}
 \label{sec:experiments-metrics}
 
 \subsection{Detection and Beam-Prediction Metrics}
@@ -77,14 +83,7 @@ ratio reports the fraction of reference link energy captured by the four
 highest-ranked CSI beams.  It measures candidate-set utility, not calibration of
 the beam-class posterior as a physical power distribution.
 
-The reported learning schemes differ in modality and fusion mechanism.  They
-comprise Camera, ISAC, single-station multimodal, node-mean fusion, and cross-agent
-multimodal.  They are compared under the same
-target-level task and Top-1 cross-entropy beam supervision.  These
-comparisons identify how different observations affect detection and ranked beam
-candidates; they do not, by themselves, establish a communication-rate gain.
-
-\subsection{System-Level Evaluation Protocol}
+\subsection{Communication Metrics}
 \label{subsec:experiments-system-protocol}
 
 The system metric is the average effective user rate,
@@ -103,32 +102,52 @@ candidate-measurement policies after their communication overhead has been
 accounted for.
 
 The accompanying operational metrics are CSI-RS overhead, sensing-use ratio,
-conventional-fallback ratio, and the mean number of measured candidates.  A
+fallback ratio, and the mean number of measured candidates.  A
 sensing-use event requires a currently observed target and an accepted
 target-to-user association.  Fallback therefore follows from association
 acceptance and current-track availability.  It does not replace a standalone
 target-to-user association-accuracy metric, which is not reported separately.
 
-The system comparison contains conventional four-beam refinement, conventional
-twelve-beam refinement, and the perception-assisted policy.  All three use the
-same codebooks, RZF processing, and resource configuration.  The
-perception-assisted policy scans a sensing-derived candidate set only when the
-association is accepted and its track is currently observed; otherwise, it
-executes conventional refinement.  The tracker
-comparison applies IMM, KF-CV, and KF-CT to the same Top-1 CE detector and
-system protocol.
+\subsection{Baselines and Ablation Variants}
+\label{subsec:experiments-baselines}
 
-\section{Multimodal Perception and Beam Prediction}
+The learning comparison isolates the sensing source and fusion mechanism while
+retaining the same detection and Top-1 beam-classification objectives.
+Camera-only and ISAC-only use one sensing modality.  Local camera--ISAC fusion
+combines the two modalities at the target BS without neighbouring sensing
+nodes.  Distributed mean fusion aggregates the BEV-aligned node features by a
+masked mean.  Distributed multimodal attention is the proposed perception
+variant and applies attention-based cross-node fusion before combining the
+distributed visual representation with BS-local ISAC sensing.  The nearby-node
+study additionally includes distributed fusion with learned gating, which
+learns a gate over the available sensing-node features in place of cross-node
+attention.  These variants test different information sources and aggregation
+rules rather than different prediction objectives.
+
+The communication baseline follows the coarse-to-fine principle of
+hierarchical codebook beam training \cite{xiao2016hierarchicalcodebook}.  An
+SSB measurement first identifies a coarse angular region, after which an
+SSB-guided CSI-RS refinement set of width \(K_{\mathrm{ref}}\) is measured.
+The settings \(K_{\mathrm{ref}}=4\) and \(K_{\mathrm{ref}}=12\) are two
+measurement-budget operating points of the same baseline, not two distinct
+algorithms.  DMSA-BM instead constructs a sensing-derived candidate set when
+the target-to-user association is accepted and the associated track is
+currently observed.  Otherwise, it returns to SSB-guided refinement under the
+common radio configuration.  The service beam of every scheme is selected
+from measured CSI-RS candidates.  The tracker comparison applies IMM, KF-CV,
+and KF-CT to the same Top-1 CE detector and communication procedure.
+
+\section{Perception and Beam-Prediction Performance}
 \label{sec:experiments-perception}
 
-\subsection{Modality and Fusion Results}
+\subsection{Modality and Fusion Ablation}
 \label{subsec:experiments-modality-fusion}
 
 Table~\ref{tab:experiments-modalities} reports the overall results.  No single
-fusion scheme is uniformly best across all metrics.  Cross-agent multimodal
-fusion yields the highest AP@2m, Recall@2m, and Top-4 power ratio, at
-\(78.73\%\), \(81.51\%\), and \(97.01\%\), respectively.  Single-station
-multimodal fusion obtains the highest Beam Top-1@2m and Beam Top-4@2m, at
+fusion scheme is uniformly best across all metrics.  Distributed multimodal
+attention yields the highest AP@2m, Recall@2m, and Top-4 power ratio, at
+\(78.73\%\), \(81.51\%\), and \(97.01\%\), respectively.  Local
+camera--ISAC fusion obtains the highest Beam Top-1@2m and Beam Top-4@2m, at
 \(71.54\%\) and \(94.66\%\), respectively.  This pattern shows that improved
 target availability does not necessarily yield the strongest beam ranking on
 every metric; candidate quality is therefore assessed using both Top-1 and
@@ -149,7 +168,7 @@ beam-prediction panels in Tables~\ref{tab:experiments-weather-detection} and
 \ref{tab:experiments-weather-beam}, respectively.  This organisation separates
 target availability from ranked beam quality and avoids compressing all five
 metrics into one overly wide table.  Under Clear
-conditions, cross-agent multimodal fusion reaches \(81.92\%\) AP@2m and
+conditions, distributed multimodal attention reaches \(81.92\%\) AP@2m and
 \(75.00\%\) Beam Top-1@2m.  In Rain/Fog, ISAC-only detection
 (\(62.12\%\) AP@2m) exceeds camera-only detection (\(43.98\%\)), whereas the
 multimodal schemes retain the strongest joint detection and candidate
@@ -169,25 +188,25 @@ fusion rule dominates every condition.
         Method & AP@2m (\%) & Recall@2m (\%) \\
         \midrule
         \multicolumn{3}{l}{\textit{Clear}} \\
-        Camera & 68.44 & 71.10 \\
-        ISAC & 53.47 & 58.22 \\
-        Single-station multimodal & 71.85 & 77.64 \\
-        Node-mean fusion & 69.61 & 74.46 \\
-        Cross-agent multimodal & 81.92 & 83.86 \\
+        Camera-only & 68.44 & 71.10 \\
+        ISAC-only & 53.47 & 58.22 \\
+        Local camera--ISAC fusion & 71.85 & 77.64 \\
+        Distributed mean fusion & 69.61 & 74.46 \\
+        Distributed multimodal attention (proposed) & 81.92 & 83.86 \\
         \addlinespace
         \multicolumn{3}{l}{\textit{Rain/Fog}} \\
-        Camera & 43.98 & 50.97 \\
-        ISAC & 62.12 & 64.30 \\
-        Single-station multimodal & 77.42 & 79.08 \\
-        Node-mean fusion & 68.66 & 71.40 \\
-        Cross-agent multimodal & 77.26 & 79.56 \\
+        Camera-only & 43.98 & 50.97 \\
+        ISAC-only & 62.12 & 64.30 \\
+        Local camera--ISAC fusion & 77.42 & 79.08 \\
+        Distributed mean fusion & 68.66 & 71.40 \\
+        Distributed multimodal attention (proposed) & 77.26 & 79.56 \\
         \addlinespace
         \multicolumn{3}{l}{\textit{Night}} \\
-        Camera & 57.47 & 63.61 \\
-        ISAC & 44.40 & 49.40 \\
-        Single-station multimodal & 74.62 & 82.03 \\
-        Node-mean fusion & 64.31 & 72.48 \\
-        Cross-agent multimodal & 76.88 & 80.81 \\
+        Camera-only & 57.47 & 63.61 \\
+        ISAC-only & 44.40 & 49.40 \\
+        Local camera--ISAC fusion & 74.62 & 82.03 \\
+        Distributed mean fusion & 64.31 & 72.48 \\
+        Distributed multimodal attention (proposed) & 76.88 & 80.81 \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -204,30 +223,30 @@ fusion rule dominates every condition.
         Method & Top-1 (\%) & Top-4 (\%) & Top-4 power (\%) \\
         \midrule
         \multicolumn{4}{l}{\textit{Clear}} \\
-        Camera & 67.33 & 90.28 & 93.02 \\
-        ISAC & 65.70 & 92.31 & 86.66 \\
-        Single-station multimodal & 73.06 & 95.96 & 96.02 \\
-        Node-mean fusion & 68.30 & 92.99 & 94.83 \\
-        Cross-agent multimodal & 75.00 & 94.90 & 96.55 \\
+        Camera-only & 67.33 & 90.28 & 93.02 \\
+        ISAC-only & 65.70 & 92.31 & 86.66 \\
+        Local camera--ISAC fusion & 73.06 & 95.96 & 96.02 \\
+        Distributed mean fusion & 68.30 & 92.99 & 94.83 \\
+        Distributed multimodal attention (proposed) & 75.00 & 94.90 & 96.55 \\
         \addlinespace
         \multicolumn{4}{l}{\textit{Rain/Fog}} \\
-        Camera & 68.15 & 94.76 & 97.16 \\
-        ISAC & 63.79 & 95.36 & 89.92 \\
-        Single-station multimodal & 71.39 & 95.00 & 97.02 \\
-        Node-mean fusion & 68.67 & 93.87 & 91.92 \\
-        Cross-agent multimodal & 67.27 & 93.96 & 97.86 \\
+        Camera-only & 68.15 & 94.76 & 97.16 \\
+        ISAC-only & 63.79 & 95.36 & 89.92 \\
+        Local camera--ISAC fusion & 71.39 & 95.00 & 97.02 \\
+        Distributed mean fusion & 68.67 & 93.87 & 91.92 \\
+        Distributed multimodal attention (proposed) & 67.27 & 93.96 & 97.86 \\
         \addlinespace
         \multicolumn{4}{l}{\textit{Night}} \\
-        Camera & 60.50 & 90.71 & 95.95 \\
-        ISAC & 65.62 & 91.76 & 83.38 \\
-        Single-station multimodal & 69.89 & 93.06 & 96.05 \\
-        Node-mean fusion & 64.56 & 92.03 & 94.77 \\
-        Cross-agent multimodal & 70.55 & 93.48 & 96.62 \\
+        Camera-only & 60.50 & 90.71 & 95.95 \\
+        ISAC-only & 65.62 & 91.76 & 83.38 \\
+        Local camera--ISAC fusion & 69.89 & 93.06 & 96.05 \\
+        Distributed mean fusion & 64.56 & 92.03 & 94.77 \\
+        Distributed multimodal attention (proposed) & 70.55 & 93.48 & 96.62 \\
         \bottomrule
     \end{tabular}
 \end{table}
 
-\subsection{Value of Nearby Sensing Nodes}
+\subsection{Impact of Cooperative Sensing Nodes}
 \label{subsec:experiments-nearby-nodes}
 
 Figures~\ref{fig:experiments-node-ap}--\ref{fig:experiments-node-beam} vary the
@@ -235,7 +254,7 @@ number of available nearby sensing nodes from zero to five for fixed trained
 models.  They are consequently missing-node robustness and coverage curves,
 rather than comparisons between models retrained at different node counts.
 
-For cross-agent attention, AP@2m rises from \(38.59\%\) with no nearby node to
+For distributed multimodal attention, AP@2m rises from \(38.59\%\) with no nearby node to
 \(80.41\%\) with five nearby nodes; Recall@2m rises from \(52.34\%\) to
 \(83.15\%\).  In contrast, Beam Top-4@2m is already high with few nodes and
 then approaches saturation.  The contrast indicates that additional viewpoints
@@ -266,77 +285,80 @@ observations.
     \label{fig:experiments-node-beam}
 \end{figure}
 
-\section{Association-Gated Beam Management}
+\section{Communication Performance}
 \label{sec:experiments-beam-management}
 
-\subsection{Results Across Weather Conditions}
+\subsection{Performance Across Environmental Conditions}
 \label{subsec:experiments-weather-system}
 
 Table~\ref{tab:experiments-system-weather} and
 Figure~\ref{fig:experiments-weather-rate} compare the three measurement
-policies under each weather condition.  In Clear conditions, the
-perception-assisted policy reaches an effective user rate of \(155.453\) Mbps
-with \(1.39\%\) CSI-RS overhead, compared with \(151.367\) Mbps and
-\(1.90\%\) for conventional four-beam refinement.  The twelve-beam policy
-incurs \(5.71\%\) CSI-RS overhead and attains \(127.033\) Mbps.
+policies under each environmental condition.  In Clear conditions, DMSA-BM
+reaches an effective user rate of \(155.453\) Mbps with \(1.39\%\) CSI-RS
+overhead.  SSB-guided refinement with \(K_{\mathrm{ref}}=4\) reaches
+\(151.367\) Mbps with \(1.90\%\) overhead, whereas the
+\(K_{\mathrm{ref}}=12\) operating point reaches \(127.033\) Mbps with
+\(5.71\%\) overhead.
 
 The sensing-use entries and their complementary fallback ratios clarify how
 the policy reaches these outcomes.  Sensing candidates are used for \(76.35\%\)
 of the Clear instances, \(56.65\%\) of the Rain/Fog instances, and \(30.07\%\)
 of the Night instances.  The corresponding fallback ratios are \(23.65\%\), \(43.35\%\), and
-\(69.93\%\).  Thus, the policy retains conventional refinement whenever no
+\(69.93\%\).  Thus, DMSA-BM retains SSB-guided refinement whenever no
 accepted association with a currently observed track is available, instead of
 applying target-indexed beam information to a VUE unconditionally.
 
 \begin{table}[H]
     \centering
-    \caption{Beam-management results by environmental condition under the
+    \caption{Communication performance by environmental condition under the
     common system configuration.  The effective rate is averaged over VUEs and
     communication cycles.}
     \label{tab:experiments-system-weather}
     \small
     \renewcommand{\arraystretch}{1.10}
+    \resizebox{\textwidth}{!}{%
     \begin{tabular}{llrrr}
         \toprule
         Condition & Policy & Effective rate (Mbps) &
         CSI-RS overhead (\%) & Sensing use (\%) \\
         \midrule
-        Clear & Conventional 4-beam & 151.367 & 1.90 & 0.00 \\
-        Clear & Conventional 12-beam & 127.033 & 5.71 & 0.00 \\
-        Clear & Perception-assisted & 155.453 & 1.39 & 76.35 \\
+        Clear & SSB-guided refinement, \(K_{\mathrm{ref}}=4\) & 151.367 & 1.90 & 0.00 \\
+        Clear & SSB-guided refinement, \(K_{\mathrm{ref}}=12\) & 127.033 & 5.71 & 0.00 \\
+        Clear & DMSA-BM & 155.453 & 1.39 & 76.35 \\
         \addlinespace
-        Rain/Fog & Conventional 4-beam & 147.571 & 1.90 & 0.00 \\
-        Rain/Fog & Conventional 12-beam & 115.342 & 5.71 & 0.00 \\
-        Rain/Fog & Perception-assisted & 150.801 & 1.57 & 56.65 \\
+        Rain/Fog & SSB-guided refinement, \(K_{\mathrm{ref}}=4\) & 147.571 & 1.90 & 0.00 \\
+        Rain/Fog & SSB-guided refinement, \(K_{\mathrm{ref}}=12\) & 115.342 & 5.71 & 0.00 \\
+        Rain/Fog & DMSA-BM & 150.801 & 1.57 & 56.65 \\
         \addlinespace
-        Night & Conventional 4-beam & 127.807 & 1.90 & 0.00 \\
-        Night & Conventional 12-beam & 105.294 & 5.71 & 0.00 \\
-        Night & Perception-assisted & 132.743 & 1.71 & 30.07 \\
+        Night & SSB-guided refinement, \(K_{\mathrm{ref}}=4\) & 127.807 & 1.90 & 0.00 \\
+        Night & SSB-guided refinement, \(K_{\mathrm{ref}}=12\) & 105.294 & 5.71 & 0.00 \\
+        Night & DMSA-BM & 132.743 & 1.71 & 30.07 \\
         \bottomrule
-    \end{tabular}
+    \end{tabular}%
+    }
 \end{table}
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.88\textwidth]{paper_results/figures/fig_04_core_user_rate_by_weather.pdf}
-    \caption{Effective user rate by weather condition and beam-management
+    \caption{Effective user rate by environmental condition and measurement
     policy.}
     \label{fig:experiments-weather-rate}
 \end{figure}
 
-\subsection{Macro-Average Resource and Rate Trade-off}
+\subsection{Aggregate Performance}
 \label{subsec:experiments-macro-system}
 
-Figure~\ref{fig:experiments-system-tradeoff} aggregates the three weather
-conditions with equal weight.  The perception-assisted policy achieves an
-effective user rate of \(146.332\) Mbps with \(1.56\%\) CSI-RS overhead.  The
-corresponding values are \(142.248\) Mbps and \(1.90\%\) for conventional
-four-beam refinement, and \(115.890\) Mbps and \(5.71\%\) for conventional
-twelve-beam refinement.
+Figure~\ref{fig:experiments-system-tradeoff} aggregates the three environmental
+conditions with equal weight.  DMSA-BM achieves an effective user rate of
+\(146.332\) Mbps with \(1.56\%\) CSI-RS overhead.  The corresponding values
+for SSB-guided refinement are \(142.248\) Mbps and \(1.90\%\) at
+\(K_{\mathrm{ref}}=4\), and \(115.890\) Mbps and \(5.71\%\) at
+\(K_{\mathrm{ref}}=12\).
 
-The perception-assisted operation remains explicitly conditional.  Its
-macro-average sensing-use ratio is \(54.35\%\), while \(45.65\%\) of instances
-use conventional fallback.  Taken together, the rate and overhead values show
+DMSA-BM remains explicitly conditional.  Its aggregate sensing-use ratio is
+\(54.35\%\), while \(45.65\%\) of instances use SSB-guided refinement as the
+fallback.  Taken together, the rate and overhead values show
 the consequence of using sensing only when a current detection and a credible
 target-to-user association are available.  The service beam is still selected
 from the actually measured CSI-RS candidates.
@@ -344,7 +366,7 @@ from the actually measured CSI-RS candidates.
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.96\textwidth]{paper_results/figures/fig_05_core_user_rate_hint_overhead.pdf}
-    \caption{Macro-average effective rate, CSI-RS overhead, and the
+    \caption{Aggregate effective rate, CSI-RS overhead, and the
     sensing-use/fallback composition under the common system configuration.}
     \label{fig:experiments-system-tradeoff}
 \end{figure}
@@ -352,7 +374,7 @@ from the actually measured CSI-RS candidates.
 \section{Tracking Performance}
 \label{sec:experiments-tracking}
 
-\subsection{End-to-End Tracker Comparison}
+\subsection{Comparison of Tracking Models}
 \label{subsec:experiments-tracker-system}
 
 Table~\ref{tab:experiments-trackers} evaluates the three trackers with the same
@@ -365,21 +387,21 @@ universal IMM superiority.
 The sensing-use ratios are also close, at \(54.35\%\) for IMM, \(53.80\%\) for
 KF-CV, and \(52.26\%\) for KF-CT.  These values show that the three trackers
 operate at comparable frequencies of sensing-assisted candidate selection under
-the evaluated protocol.  IMM is retained in the proposed framework for its
+the evaluated procedure.  IMM is retained in DMSA-BM for its
 multi-model state-estimation role in association maintenance.  The table should
 therefore be interpreted as an end-to-end comparison rather than as a
 tracker-only proof of superiority.
 
 \begin{table}[H]
     \centering
-    \caption{Macro-average end-to-end results for the tracker variants under
+    \caption{Aggregate communication results for the tracker variants under
     the common detector and system configuration.}
     \label{tab:experiments-trackers}
     \small
     \input{paper_results/tables/table_06_tracker_macro_average.tex}
 \end{table}
 
-\section{Discussion and Scope}
+\section{Discussion and Limitations}
 \label{sec:experiments-discussion}
 
 The results support a consistent evidence chain.  Multimodal and nearby-node
@@ -388,8 +410,8 @@ association acceptance and current-track observation determine whether this
 evidence is converted into a narrower CSI-RS measurement action; and the system
 evaluation reports the resulting effective throughput together with the
 associated measurement cost.  The substantial fallback share under Rain/Fog
-and Night is therefore an integral part of the association-gated operating
-policy and should be interpreted together with the average-rate result.
+and Night is therefore an integral part of DMSA-BM and should be interpreted
+together with the average-rate result.
 
 The system analysis characterises association-mediated operation through the
 sensing-use ratio, fallback ratio, and average effective user rate; accepted-association

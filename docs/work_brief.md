@@ -12,7 +12,7 @@
 
 本文研究多小区 V2I 场景中的多模态感知辅助波束管理。传统 SSB/CSI-RS 测量在高速移动、遮挡和天气变化下具有显著资源开销，且测得的 CSI 会随时间老化。道路侧基础设施能够同时提供相机和 ISAC 观测，但感知结果本身可能漏检、误检、失去连续身份，且不天然携带通信 UE 身份。
 
-因此，本文采用以 target BS 为中心的闭环框架：在统一的 target-BS-centered BEV 表达中，从服务 BS、邻近 sensing nodes (SNs) 的相机观测和 BS-local ISAC 点云中检测车辆，并预测其 CSI 波束类别后验分数；以不携带通信身份的感知轨迹为中介，在传统测量支持的初始接入或重关联阶段建立 UE--track binding；只有在绑定和当前观测均可靠时，才用感知提示压缩下一次 CSI-RS 测量候选集。否则，系统保留 conventional scanning/refinement。
+因此，本文采用以 target BS 为中心的 Distributed Multimodal Sensing-Assisted Beam Management (DMSA-BM) 框架：在统一的 target-BS-centered BEV 表达中，从服务 BS、邻近 sensing nodes (SNs) 的相机观测和 BS-local ISAC 点云中检测车辆，并预测其 CSI 波束类别后验分数；以不携带通信身份的感知轨迹为中介，在传统测量支持的初始接入或重关联阶段建立 UE--track binding；只有在绑定和当前观测均可靠时，才用感知提示压缩下一次 CSI-RS 测量候选集。否则，系统保留 SSB-guided CSI-RS refinement。
 
 论文的目标不是将感知无条件替代传统波束管理，也不是只提高单帧 beam Top-1 分类率；目标是在统一资源模型下检验感知辅助候选集压缩在 effective rate、outage/failure risk 与 pilot overhead 之间的可验证权衡。
 
@@ -48,6 +48,8 @@
 3. 感知轨迹 ID 的稳定性以及初始/重关联正确性如何影响 beam hint 能否持续服务正确 UE？
 4. 在计入 SSB、CSI-RS、CSI aging、RZF、切换和 fallback 后，基于 association acceptance 的感知辅助能否形成可接受的 rate--overhead Pareto trade-off？
 
+Chapter 1 将上述科学问题收束为两项方法挑战和一项验证要求。挑战一是条件变化下单站点、单模态的目标可观测性受限，对应分布式多模态感知与 beam prediction；挑战二是 sensing target 与 communication UE 之间存在身份歧义，对应 communication-measurement-assisted target-to-user association 与 IMM-based tracking。系统级 rate--overhead 评价不再单列为第三项挑战，而作为第三项研究目标，用于验证前两项方法能否在关联接受、current-observation requirement 与 conventional fallback 共同作用下形成可度量的通信收益。
+
 ### 2.2 研究假设
 
 - **H1：信息互补。** 相机的语义和可见性信息、ISAC 的无线感知信息以及邻近节点的互补视角共同支持检测与 beam prediction；融合收益应同时由 detection 和 matched-beam 指标验证。
@@ -59,9 +61,9 @@
 
 下列为方法与评估层面的拟贡献。只有在冻结 test 的同协议结果支持时，才能将其扩展为性能优越性结论。
 
-1. **Distributed Multimodal BEV Perception for Joint Vehicle Detection and Beam Prediction：** 构建以 target-BS-centered BEV 为共同表示的分布式多模态联合学习任务，使车辆检测与 192-way CSI beam classification 在同一空间网格中对齐；以 strongest-beam Top-1 cross-entropy 学习 target-level beam scores，并将其排序用于候选测量与关联，而不将网络输出表述为物理 CSI 功率分布或直接 service-beam decision。
-2. **Target-to-User Association with IMM-Based Tracking：** 提出“未绑定感知输出--目标到用户关联--IMM 多目标跟踪--关联接受门控候选扫描”的 identity-consistent beam-alignment 框架。传统通信测量建立或恢复 target-to-user association，IMM tracking 维持该关联的时序有效性，使 beam hint 服务于正确通信 UE。
-3. **Multimodal V2I Simulator and 5G NR-Oriented Beam-Management Evaluation Framework：** 建立基于既有多模态数据资产的系统级 V2I simulator 与 5G NR-oriented 评价框架，在一致的 SSB/CSI-RS、码本、RZF、Doppler 和资源记账条件下，检验 beam hint 对候选集、有效速率与导频开销权衡的影响。
+1. 提出 distributed multimodal BEV perception framework，在 target-BS-centred BEV 中联合执行车辆检测与 beam prediction。该方法融合 target BS 与邻近 SN 的相机观测以及 BS-local ISAC 点云，以缓解单站点或单模态在遮挡、视场和环境变化下的目标可观测性限制；Top-1 classifier 输出 per-target CSI beam-class posterior，其排序用于 target-to-user association 与候选 CSI-RS 测量。
+2. 构建 target-to-user association framework with IMM-based tracking，以处理物理 sensing target 与 communication UE 之间并非天然对应的问题。传统 SSB/CSI-RS 测量用于建立或恢复 UE--track binding，IMM multi-object tracking 维持感知目标的时序连续性；仅当 association 已接受且对应 track 当前可观测时，才使用 sensing-derived candidates，否则回退至 SSB-guided refinement。
+3. 建立 multimodal V2I simulation and 5G NR-oriented beam-management evaluation framework，将多模态感知、时变 V2I 信道、communication measurement 与资源记账置于一致的评价链条中。该框架以 average effective user rate、CSI-RS overhead、sensing-use/fallback 和候选测量数刻画 perception-assisted policy 的通信后果，从而区分 beam-prediction accuracy 与实际系统收益。
 
 ## 3. 系统模型、算法接口与符号约定
 
@@ -77,22 +79,45 @@
 
 BS-local ISAC 点云在 Chapter 3 中采用 monostatic radio-sensing abstraction 解释。BS 以已知 sensing symbol 和 sensing beam 发射探测信号，接收回波信道分解为 stationary roadside structures 形成的 static component 与 moving objects 形成的 dynamic component。dynamic component 进一步包含目标直接往返回波，以及目标参与、并附加一次环境镜面或漫反射的 secondary paths；其 delay、angle 和 Doppler 随目标运动变化。static component 可通过背景估计或 slow-time averaging 获取，并由常见 clutter suppression 去除。对剩余 target-related channel 进行 range--angle--Doppler processing，再以 CFAR 检测保留显著 resolution cells，最终将 range/angle 映射为 BS-local point cloud \(\mathcal P_{b,t}\)。该建模只阐明已有 ISAC 点云的物理来源，不将新 waveform、clutter-removal 或 CFAR 算法作为本文贡献。
 
-设 \(\mathcal{J}_b=\{b\}\cup\mathcal{N}_b\)，这一过程可概括为
+设 \(\mathcal{J}_b=\{b\}\cup\mathcal{N}_b\)，相机特征先按节点组织并在 target-BS-centred BEV 中对齐。对 BEV cell \(\mathbf x\)，令 \(\mathbf f^{\mathrm{cam}}_{j\rightarrow b,t}(\mathbf x)\) 表示节点 \(j\) 的特征，\(m^{\mathrm{node}}_{j,t}(\mathbf x)\in\{0,1\}\) 表示该节点在该位置是否具有有效投影。正式方法将节点聚合表述为 **attention-based cross-node fusion**，其中 cross-node fusion 是模块功能，multi-head attention 是实现机制。以 target-BS feature 与有效节点均值共同构造 query，以各节点 feature 和相对几何编码构造 key/value。第 \(h\) 个 head 的权重可概括为
 
 \[
-\mathbf F_{b,t}^{\mathrm{cam}}=
-\Phi_{\mathrm{node}}\!\left(
-\{\Phi_{\mathrm{img}}(\mathcal I_{j,t};\mathbf T_{j\rightarrow b})\}_{j\in\mathcal J_b}
-\right),\qquad
-\mathbf F_{b,t}^{\mathrm{isac}}=\Phi_{\mathrm{pc}}(\mathcal P_{b,t}),
+e^{(h)}_{j,t}(\mathbf x)=
+\frac{\mathbf q_h(\mathbf x)^{\mathsf T}\mathbf k_{j,h}(\mathbf x)}{\sqrt{d_h}}
+b_h(\mathbf g_{j\rightarrow b}),\qquad
+\alpha^{(h)}_{j,t}(\mathbf x)=
+\frac{m^{\mathrm{node}}_{j,t}(\mathbf x)\exp(e^{(h)}_{j,t}(\mathbf x)/T_{\mathrm{node}})}
+{\sum_{\ell\in\mathcal J_b}m^{\mathrm{node}}_{\ell,t}(\mathbf x)\exp(e^{(h)}_{\ell,t}(\mathbf x)/T_{\mathrm{node}})}.
+\]
+
+各 head 以 \(\sum_j\alpha^{(h)}_{j,t}\mathbf v_{j,h}\) 聚合不同节点，并通过 output projection、masked-mean residual 与 FFN refinement 得到 \(\mathbf F^{\mathrm{cam}}_{b,t}\)。该设计允许不同 BEV 位置依据目标 BS 上下文、节点相对位置和局部可见性选择互补视角，而不是对所有 SN 固定平均。
+
+BS-local ISAC point cloud 被编码为 \(\mathbf F^{\mathrm{isac}}_{b,t}=\Phi_{\mathrm{pc}}(\mathcal P_{b,t})\)。正式方法进一步采用 **gated multimodal attention**。首先将 camera 与 ISAC features 投影到相同通道数，并构造
+
+\[
+\mathbf U_{b,t}=\left[
+\widetilde{\mathbf F}^{\mathrm{cam}}_{b,t}\,\|\,
+\widetilde{\mathbf F}^{\mathrm{isac}}_{b,t}\,\|\,
+\left|\widetilde{\mathbf F}^{\mathrm{cam}}_{b,t}-
+\widetilde{\mathbf F}^{\mathrm{isac}}_{b,t}\right|
+\right].
+\]
+
+对模态 \(q\in\{\mathrm{cam},\mathrm{isac}\}\)，local gate 产生逐 cell logit \(\ell^{\mathrm{loc}}_{q,t}(\mathbf x)\)，global gate 从 \(\operatorname{GAP}(\mathbf U_{b,t})\) 产生 scene-level logit \(\ell^{\mathrm{glo}}_{q,t}\)。令 \(a_{q,t}\in\{0,1\}\) 为 modality availability mask，则
+
+\[
+\beta_{q,t}(\mathbf x)=
+\frac{a_{q,t}\exp\!\left((\ell^{\mathrm{loc}}_{q,t}(\mathbf x)+\ell^{\mathrm{glo}}_{q,t})/T_{\mathrm{modal}}\right)}
+{\sum_{q'}a_{q',t}\exp\!\left((\ell^{\mathrm{loc}}_{q',t}(\mathbf x)+\ell^{\mathrm{glo}}_{q',t})/T_{\mathrm{modal}}\right)},
 \]
 
 \[
-\mathbf F_{b,t}=\Phi_{\mathrm{modal}}\!\left(
-\mathbf F_{b,t}^{\mathrm{cam}},\mathbf F_{b,t}^{\mathrm{isac}};\mathbf m_{b,t}\right),
+\mathbf F^{(0)}_{b,t}(\mathbf x)=
+\sum_q\beta_{q,t}(\mathbf x)\widetilde{\mathbf F}^{q}_{b,t}(\mathbf x),\qquad
+\mathbf F_{b,t}=\sigma\!\left(\mathbf F^{(0)}_{b,t}+\Phi_{\mathrm{ref}}(\mathbf F^{(0)}_{b,t})\right).
 \]
 
-其中 \(\mathbf m_{b,t}\) 表示 modality availability 或 confidence。节点平均、跨节点注意力和模态门控构成可比较的聚合方案；论文强调其共同的设计目的，即以跨节点视觉和 BS-local 几何证据改善局部 BEV 的可观测性，而不将某一特定网络层作为研究贡献。
+local attention 处理遮挡、点云稀疏性与空间位置相关的模态质量差异，global attention 响应整幅场景中的天气、照明和整体观测条件。天气标签不作为网络输入；权重通过 detection 与 beam-prediction objectives 端到端学习。\(m^{\mathrm{node}}\) 与 \(a_q\) 仅表示投影有效性或模态是否存在，不能解释为独立 reliability model。
 
 联合网络输出两类空间量：车辆中心热图及尺度、朝向和速度等回归量；以及空间密集的 192 维 CSI beam-class logits。对与 detection 对齐的 BEV 位置采样并经 softmax 后，得到该感知目标的 beam-class posterior。训练和评估中可使用 link coordinate 进行监督采样，但该坐标和 UE identity 不作为网络前向输入。
 
@@ -109,16 +134,16 @@ d_{i,t}=(\widehat{\mathbf r}_{i,t},\widehat{\mathbf a}_{i,t},\widehat c_{i,t}),
 
 ### 3.2 Top-1 波束监督与候选集
 
-对一个 BS--UE 链路的物理 CSI 功率向量 \(g\in\mathbb{R}_{+}^{192}\)，最强物理 beam 定义为
+对一个 BS--UE 链路的物理 CSI 功率向量 \(g\in\mathbb{R}_{+}^{192}\)，以 \(y^{\mathrm{beam}}\) 表示 strongest-beam class label，从而与 Chapter 3 中 CSI-RS 测量后确定的 service beam \(k^\star\) 区分。该标签定义为
 
 \[
-k^\star=\arg\max_{k\in\{1,\ldots,192\}}g(k).
+y^{\mathrm{beam}}=\arg\max_{k\in\{1,\ldots,192\}}g(k).
 \]
 
 网络在对应 BEV 位置输出 beam-class posterior \(p_\theta(k)\)，当前采用的 beam loss 为常见的 Top-1 cross-entropy：
 
 \[
-\mathcal{L}_{\mathrm{beam}}=-\log p_\theta(k^\star).
+\mathcal{L}_{\mathrm{beam}}=-\log p_\theta(y^{\mathrm{beam}}).
 \]
 
 联合训练目标可概括为
@@ -281,17 +306,17 @@ B_b\,\eta_b^{\mathrm{DL}}\,
 
 ### 5.3 对照组
 
-- Learning：Camera、ISAC、single-station multimodal、node-mean fusion 和 cross-agent multimodal。
-- Nearby-node study：cross-agent + gated fusion、cross-agent attention 和 node masked mean，nearby-node count 从 0 至 5。
+- Learning：Camera-only、ISAC-only、Local camera--ISAC fusion、Distributed mean fusion 和 Distributed multimodal attention (proposed)。
+- Nearby-node study：Distributed fusion with learned gating、Distributed multimodal attention (proposed) 和 Distributed mean fusion，nearby-node count 从 0 至 5。Distributed multimodal attention 是正式主感知方案；Distributed fusion with learned gating 是对不同 SN 特征学习融合 gate 的对照方案。
 - Beam learning：固定 Top-1 CE；Power-KL、KL-only 和 KL+ranking 仅保留为内部开发归档，不作为论文图表或结果。
-- System：conventional 4-beam refinement、conventional 12-beam refinement 与 perception-assisted policy；三者共享冻结的 resource profile。
+- System：SSB-guided CSI-RS refinement 的 \(K_{\mathrm{ref}}=4\) 和 \(K_{\mathrm{ref}}=12\) 两个参数点，以及完整 DMSA-BM 方案；三者共享冻结的 resource profile。两个 refinement 设置属于同一 hierarchical beam-search baseline，不表述为两种独立算法；该 baseline 的 coarse-to-fine search 依据 Xiao et al. 的 hierarchical codebook 工作进行学术定位。
 - Tracking：IMM、KF-CV 与 KF-CT；定性轨迹图采用 test / clear-day / BS-NE 的 GT+1.0 m 位置噪声输入，仅用于受控运动诊断；宏平均表使用相同的 Top-1 CE detector 与系统级 protocol。
 
-主结果采用一套冻结 radio profile：48 SSB、100 ms SSB period、20 ms CSI-RS period、每 SSB parent 的 4-beam conventional refinement、4-BS 场景，以及一致的 RT segment、功率、噪声、RZF 与归一化 \(\tau\) 资源抽象。CSI-RS period、conventional refinement 宽度、\(K_{\mathrm{scan}}\)、\(\delta_{\mathrm{probe}}\)/measurement multiplexing、单/多 BS 和 Doppler 可作为敏感性轴，而不应与全部上游模型形成全笛卡尔积。
+主结果采用一套冻结 radio profile：48 SSB、100 ms SSB period、20 ms CSI-RS period、4-BS 场景，以及一致的 RT segment、功率、噪声、RZF 与归一化 \(\tau\) 资源抽象。SSB-guided CSI-RS refinement 以 \(K_{\mathrm{ref}}\in\{4,12\}\) 表示两个候选宽度；正式正文不将十二波束设置误写为全部位于单一 SSB parent 内。CSI-RS period、\(K_{\mathrm{ref}}\)、\(K_{\mathrm{scan}}\)、\(\delta_{\mathrm{probe}}\)/measurement multiplexing、单/多 BS 和 Doppler 可作为敏感性轴，而不应与全部上游模型形成全笛卡尔积。
 
 ### 5.4 正式结果包与论文呈现顺序
 
-- 唯一正式定量来源为 paper_results/README.md 及其 figures、tables 子目录。论文 Chapter 5 按“模态与融合—邻近节点—按天气的门控波束管理—宏平均 rate--overhead 权衡—跟踪诊断与端到端比较”呈现，不将历史开发结果混入主表。
+- 唯一正式定量来源为 paper_results/README.md 及其 figures、tables 子目录。论文 Chapter 5 按“数据与设置—评价方法—感知性能—通信性能—跟踪性能—讨论与边界”呈现，不将历史开发结果混入主表。
 - 学习结果使用 table_01--table_03 与 fig_01--fig_03：总体与天气分层表首先说明不同融合方案在 AP、Recall、Top-1 和 Top-4 指标上不存在统一最优；随后用 fixed-model missing-node curves 表达 nearby-node availability 的影响，而非为每个节点数分别训练模型。
 - 系统结果使用 table_04、fig_04 与 fig_05：先按天气报告 effective user rate、CSI-RS overhead、sensing use 和 fallback，再以图形呈现三天气等权宏平均的 rate--overhead 与 sensing/fallback 权衡。data fraction 是冻结资源 profile 的公共项，不作为 policy 独立优化的结果。
 - 跟踪结果以 table_06 的 predicted-detection 系统指标呈现，必须避免以单一 rate 数值声称 IMM 普遍优于 KF-CV/KF-CT。fig_06 作为 GT 加 1.0 m 噪声下的受控轨迹诊断保留在正式结果包中，但不纳入当前 Chapter 5 的展示。
@@ -309,15 +334,16 @@ B_b\,\eta_b^{\mathrm{DL}}\,
 
 | 层级 | 已保存证据 | 可谨慎使用的表述 | 证据等级 |
 | --- | --- | --- | --- |
-| Top-1 CE multimodal learning | 正式结果包的 cross-agent multimodal test：AP@2m 为 78.73\%，Recall@2m 为 81.51\%，Beam Top-1@2m 为 71.13\%，Beam Top-4@2m 为 94.13\%，Top-4 power ratio 为 97.01\% | 固定 Top-1 CE 检测器能够同时提供车辆检测和候选 beam 排序；Top-4 的候选价值需与 detection availability 一并解释 | 冻结正式结果包，`table_01_learning_modalities_overall` |
-| 分天气 learning | Clear、Rain/Fog、Night 三种天气下，多模态 variants 的 AP@2m 均高于单模态 camera/ISAC；cross-agent 在 Clear 下达到 81.92\% AP@2m 与 75.00\% Beam Top-1@2m | 模态与跨节点互补性随天气和指标而变化，不宜用单一总体指标宣称所有融合策略均最优 | 冻结正式结果包，table 02 |
-| 跨节点互补 | cross-agent attention 的节点数 test 中，AP@2m 从 0 节点的 38.59\% 升至 5 个邻近节点的 80.41\%；Beam Top-4@2m 从 91.58\% 升至 95.40\% | 更多邻近视角在该冻结协议下改善检测，并保持较高的 Top-4 候选覆盖 | 冻结正式结果包，`table_03_node_count_overall` |
-| 核心系统比较 | 三天气等权宏平均下，perception-assisted 的 mean effective user rate 为 146.332 Mbps，CSI-RS overhead 为 1.56\%，sensing use 为 54.35\%，fallback 为 45.65\%；conventional 4-beam 的相应 rate/overhead 为 142.248 Mbps/1.90\% | 在该固定操作点和资源模型下，感知辅助以部分 fallback 换取较低 CSI-RS 开销与更高的用户平均有效速率 | 冻结正式结果包，`table_05_core_macro_average` |
-| 条件化 system operation | perception-assisted 的 sensing use 从 Clear 的 76.35\% 降至 Rain/Fog 的 56.65\% 和 Night 的 30.07\%，对应 fallback 为 23.65\%、43.35\% 和 69.93\% | association-acceptance rule 与 current-observation requirement 共同决定 sensing use 或 conventional fallback | 冻结正式结果包，table 04 |
+| Top-1 CE multimodal learning | 正式结果包的 Distributed multimodal attention test：AP@2m 为 78.73\%，Recall@2m 为 81.51\%，Beam Top-1@2m 为 71.13\%，Beam Top-4@2m 为 94.13\%，Top-4 power ratio 为 97.01\% | 固定 Top-1 CE 检测器能够同时提供车辆检测和候选 beam 排序；Top-4 的候选价值需与 detection availability 一并解释 | 冻结正式结果包，`table_01_learning_modalities_overall` |
+| 分天气 learning | Clear、Rain/Fog、Night 三种天气下，多模态 variants 的 AP@2m 均高于单模态 camera/ISAC；Distributed multimodal attention 在 Clear 下达到 81.92\% AP@2m 与 75.00\% Beam Top-1@2m | 模态与跨节点互补性随天气和指标而变化，不宜用单一总体指标宣称所有融合策略均最优 | 冻结正式结果包，table 02 |
+| 跨节点互补 | Distributed multimodal attention 的节点数 test 中，AP@2m 从 0 节点的 38.59\% 升至 5 个邻近节点的 80.41\%；Beam Top-4@2m 从 91.58\% 升至 95.40\% | 更多邻近视角在该冻结协议下改善检测，并保持较高的 Top-4 候选覆盖 | 冻结正式结果包，`table_03_node_count_overall` |
+| 核心系统比较 | 三天气等权宏平均下，DMSA-BM 的 mean effective user rate 为 146.332 Mbps，CSI-RS overhead 为 1.56\%，sensing use 为 54.35\%，fallback 为 45.65\%；SSB-guided refinement \((K_{\mathrm{ref}}=4)\) 的相应 rate/overhead 为 142.248 Mbps/1.90\% | 在该固定操作点和资源模型下，感知辅助以部分 fallback 换取较低 CSI-RS 开销与更高的用户平均有效速率 | 冻结正式结果包，`table_05_core_macro_average` |
+| 条件化 system operation | DMSA-BM 的 sensing use 从 Clear 的 76.35\% 降至 Rain/Fog 的 56.65\% 和 Night 的 30.07\%，对应 fallback 为 23.65\%、43.35\% 和 69.93\% | association-acceptance rule 与 current-observation requirement 共同决定 sensing use 或 SSB-guided refinement fallback | 冻结正式结果包，table 04 |
 | Tracker 宏平均比较 | Top-1 CE detector 下，IMM、KF-CV 和 KF-CT 的 mean effective user rate 分别为 146.332、146.373 和 145.880 Mbps | 三种 tracker 的端到端差异需要与 hint usage、fallback 和候选数共同解释；该表不支持将 IMM 表述为普遍最优 | 冻结正式结果包，`table_06_tracker_macro_average` |
 
 ### 6.3 当前必须保持的证据边界
 
+- Chapter 4 的正式方法已改为 attention-based cross-node fusion 与 gated multimodal attention。当前保存的定量表格沿用此前结果包，在用户完成相应结果更新前，不得把其中数值直接归因于新的 gated multimodal attention 配置；Chapter 5 现有数值暂按用户要求保持不变。
 - Power-KL、KL-only 和 KL+ranking 为内部开发归档，不进入论文图表、方法比较或性能主张；正式叙事固定为 Top-1 CE beam classifier。
 - 不得将正式 Top-1 CE detector 的结果与历史 Power-KL、KL-only 或 KL+ranking 的开发结果混合；后者不进入论文图表、方法比较或性能主张。
 - 不得将采用 `min_association_margin=0.10` 的雨雾 gate 表述为独立 held-out 泛化结论；它是正式结果包记录的固定 test-tuned 操作点。
@@ -329,10 +355,10 @@ B_b\,\eta_b^{\mathrm{DL}}\,
 
 以下事项留在本文档中推进，不应以未完成口吻进入正式正文。
 
-1. 维护 Top-1 CE final model 的 checkpoint、输入输出、seed、原始分子/分母及其与正式结果包的追溯关系；不再将历史 Power-KL 或 ranking supervision 纳入论文模型比较。
+1. 更新并维护采用 gated multimodal attention 的 Top-1 CE final model checkpoint、输入输出、seed、原始分子/分母及其与正式结果包的追溯关系；不再将历史 Power-KL 或 ranking supervision 纳入论文模型比较。
 2. 在相同 Top-1 CE predicted-detection outputs 上进一步诊断 CV/CT/IMM 的差异，并补充 association accuracy、track continuity 和按条件分层的错误统计；重点解释宏平均 user rate、hint/fallback 与候选数之间的关系。
 3. 将 beam-posterior association、association cost threshold、assignment margin 和 adaptive \(K\) 的选择过程完整记录为可追溯操作点；对 test-tuned 参数保持审慎表述。
-4. 在相同 RT manifest、归一化 \(\tau\) profile 和 PHY 参数下补充 oracle ceiling 或两阶段 fallback 的诊断，但不替代正式 perception-assisted 主结果。
+4. 在相同 RT manifest、归一化 \(\tau\) profile 和 PHY 参数下补充 oracle ceiling 或两阶段 fallback 的诊断，但不替代正式 DMSA-BM 主结果。
 5. 研究 conservative candidate union、基于实际 pilot-SNR 的两阶段 fallback 或更稳健的初始/重关联，重点改善 night 与 rain/fog 条件下的 fallback 依赖。
 6. 维护 final checkpoint、raw snapshot、原始统计、汇总指标、可视化和轻量 run manifest 的可追溯关系。
 
@@ -340,6 +366,10 @@ B_b\,\eta_b^{\mathrm{DL}}\,
 
 | 概念 | 推荐术语或符号 | 说明 |
 | --- | --- | --- |
+| 完整主方案 | Distributed Multimodal Sensing-Assisted Beam Management (DMSA-BM) | 包含分布式多模态感知、IMM tracking、measurement-assisted target-to-user association 与 association-gated CSI-RS candidate selection |
+| 主感知方案 | Distributed multimodal attention (proposed) | 采用 attention-based cross-node fusion 的正式感知网络 |
+| 学习门控对照 | Distributed fusion with learned gating | 对不同 SN 特征学习融合 gate 的对照方案，不是正式主感知方案 |
+| 通信基线 | SSB-guided CSI-RS refinement | coarse SSB measurement 后进行 CSI-RS refinement，以 \(K_{\mathrm{ref}}\) 表示候选宽度 |
 | 多模态感知 | multimodal sensing | camera modality、ISAC modality 与跨节点观测共同构成 |
 | 目标基站 | target base station (target BS) | 当前构造局部 BEV、输出 detection 并服务 UE 的 BS |
 | 分布式感知节点 | sensing node (SN) | 向 target BS 提供邻近视觉观测，不独立提供通信服务 |

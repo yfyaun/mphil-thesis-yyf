@@ -388,17 +388,32 @@ respectively.  These intervals need not be identical.  At each beam-management
 cycle, the BS uses the most recent sensing observation together with the
 communication measurements available at the decision instant.
 
-Conventional beam management first sweeps an SSB codebook
+Hierarchical beam training first probes a coarse angular partition and then
+refines the search over a narrower codebook region
+\cite{xiao2016hierarchicalcodebook}.  Following this principle, the
+communication procedure sweeps the SSB codebook
 \(\mathcal{F}^{\mathrm{SSB}}_b\) to identify a coarse serving direction and
 then transmits CSI-RS over a refined candidate set.  The system employs
-\(M_{\mathrm{SSB}}=48\) SSB beams and \(M_{\mathrm{CSI}}=192\) CSI-RS beams;
-each CSI-RS beam has an SSB parent
-\(\varphi_b(k)\in\{1,\ldots,M_{\mathrm{SSB}}\}\).  The proposed framework
-retains this measurement sequence but uses an accepted target-to-user
-association and its beam-prediction scores to reduce the CSI-RS candidate set.
-When the association or sensing evidence is unavailable, conventional
-refinement is used.  Thus, sensing changes the number and ordering of CSI-RS
-measurements, not the requirement that the final service beam be measured.
+\(M_{\mathrm{SSB}}=48\) SSB beams and \(M_{\mathrm{CSI}}=192\) CSI-RS beams,
+and each CSI-RS beam has an SSB parent
+\(\varphi_b(k)\in\{1,\ldots,M_{\mathrm{SSB}}\}\).
+
+Let \(\mathcal{C}^{\mathrm{ref}}_{b,u,n}(K_{\mathrm{ref}})\) denote the
+SSB-guided CSI-RS refinement set of VUE \(u\), where
+\begin{equation}
+    \left|\mathcal{C}^{\mathrm{ref}}_{b,u,n}(K_{\mathrm{ref}})\right|
+    =K_{\mathrm{ref}}.
+    \label{eq:system-refinement-width}
+\end{equation}
+The candidate width \(K_{\mathrm{ref}}\) controls the trade-off between the
+angular region examined by CSI-RS and the corresponding measurement cost.  The
+proposed DMSA-BM framework retains the same measurement sequence but uses an
+accepted target-to-user association and its beam-prediction scores to construct
+a smaller CSI-RS candidate set.  If the association or current sensing
+observation is unavailable, the SSB-guided refinement set is used instead.
+Sensing therefore changes the number and ordering of CSI-RS measurements, not
+the requirement that the final service beam be selected from measured
+candidates.
 
 Within a beam-management cycle, the normalised downlink resource budget is
 partitioned as

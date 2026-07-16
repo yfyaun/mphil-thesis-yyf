@@ -103,10 +103,10 @@ evaluation}.  Sensing should not replace communication measurement whenever a
 predicted Top-$K$ list is available.  A candidate set can be misleading when
 the current target is poorly observed, the target-to-user association is
 ambiguous, or the predicted beam-class posterior is diffuse.  A valid
-sensing-assisted policy must use sensing-derived beam information only under a
-credible association and current sensing evidence, and must otherwise fall back
+sensing-assisted policy must use sensing-derived beam information only under an
+accepted association and current sensing evidence, and must otherwise fall back
 to conventional refinement.  Its merit must be assessed jointly through candidate recall,
-CSI-RS overhead, sensing-use and fallback behaviour, and all-UE effective rate.
+CSI-RS overhead, sensing-use and fallback behaviour, and average effective user rate.
 This evaluation must expose how an incorrect association, re-association, or fallback event
 propagates to the final user outcome; Top-$K$ accuracy alone cannot establish a
 communication benefit.
@@ -159,9 +159,9 @@ entering a new serving cell establishes a new local association; no global
 multi-BS identity is assumed.  Likewise, ground-truth identities and detections
 are used only to quantify association performance and diagnostic upper bounds;
 online decisions rely exclusively on sensing outputs and communication
-measurements available to the BS.  Detailed
-radio configurations, channel assumptions, scheduling rules, and physical-layer
-metrics are specified in the system model and experimental evaluation.
+  measurements available to the BS.  Detailed radio configurations, channel
+  assumptions, resource accounting, and physical-layer metrics are specified in
+  the system model and experimental evaluation.
 
 \section{Contributions}
 \label{sec:introduction-contributions}
@@ -184,9 +184,10 @@ user-specific beam-alignment decisions:
     measurement-anchored association mechanism connects target-indexed
     perception outputs with communication UEs.  Conventional measurements
     establish or recover the association, while an interacting multiple-model (IMM) tracker
-    maintains it as targets evolve over time.  Reliability assessment determines
-    whether sensing-derived beam information can be applied to a UE or whether the
-    procedure should revert to conventional refinement.
+    maintains it as targets evolve over time.  An accepted association enables
+    sensing-derived candidate reduction only while the corresponding track is
+    currently observed; otherwise, the procedure reverts to conventional
+    refinement.
 
     \item \textbf{Multimodal V2I Simulator and 5G NR-Oriented Beam-Management
     Evaluation Framework.} A system-level framework integrates multimodal
@@ -221,7 +222,7 @@ which target-level evidence affects VUE-level performance.
 Chapter~\ref{ch:methodology} presents the proposed
 framework, including distributed multimodal BEV perception, joint vehicle
 detection and beam prediction, target-to-user association with IMM-based
-tracking, reliability-aware candidate scanning, and the communication interface.
+tracking, association-gated candidate scanning, and the communication interface.
 
 Chapter~\ref{ch:experiments} describes the data protocol, comparison methods,
 layered metrics, and the Multimodal V2I Simulator with its 5G NR-oriented

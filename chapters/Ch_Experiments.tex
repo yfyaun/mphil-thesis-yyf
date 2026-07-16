@@ -4,9 +4,9 @@
 This chapter evaluates the proposed multimodal sensing-assisted beam-management
 framework.  The analysis follows the information flow of the
 framework: multimodal observations first support target-level detection and beam
-prediction; a reliability-gated target-to-user association then determines
-whether a sensing-derived candidate set is used; and the resulting measurement
-policy is assessed through all-UE effective throughput and CSI-RS overhead.  The
+prediction; target-to-user association and current-track observation then
+determine whether a sensing-derived candidate set is used; and the resulting measurement
+policy is assessed through average effective user rate and CSI-RS overhead.  The
 chapter therefore separates learning-level evidence from its communication-level
 consequences, rather than interpreting a beam-prediction accuracy alone as a
 rate result.
@@ -54,7 +54,6 @@ experiments do not assume a global identity that persists across serving cells.
 All system-level comparisons use a common radio configuration: a 100-ms SSB
 periodicity, a 20-ms CSI-RS periodicity, a four-beam conventional refinement
 within each SSB parent, and common ray-tracing segment, Doppler, power, noise,
-scheduling,
 regularised zero-forcing (RZF), and resource-accounting assumptions.  The
 resource model is a 5G NR-oriented abstraction rather than a full PRB- and
 RE-level protocol implementation.  In the Rain/Fog condition, the
@@ -88,36 +87,34 @@ candidates; they do not, by themselves, establish a communication-rate gain.
 \subsection{System-Level Evaluation Protocol}
 \label{subsec:experiments-system-protocol}
 
-The system metric is the all-UE time-average effective throughput,
+The system metric is the average effective user rate,
 \begin{equation}
 \bar{R}_{\mathrm{eff}}
  =
- \frac{1}{|\mathcal{U}|}
- \sum_{u\in\mathcal{U}}
- \left(
- \frac{1}{N_u}\sum_{n=1}^{N_u} r_{u,n}^{\mathrm{eff}}
- \right),
+ \frac{1}{N}\sum_{n=1}^{N}
+ \frac{1}{|\mathcal{U}_b[n]|}
+ \sum_{u\in\mathcal{U}_b[n]}R_{b,u,n}^{\mathrm{eff}},
 \label{eq:experiments-effective-rate}
 \end{equation}
-where \(r_{u,n}^{\mathrm{eff}}\) includes the effect of control, SSB, CSI-RS,
-data allocation, and unscheduled intervals at evaluation instant \(n\).
-Accordingly, an unserved interval contributes zero throughput.  This definition
-prevents conditional scheduled-user rates from obscuring the resource cost of a
-measurement policy.
+where \(N\) is the number of evaluated communication cycles and
+\(R_{b,u,n}^{\mathrm{eff}}\) includes the resource effects of control, SSB,
+CSI-RS, and data transmission at cycle \(n\).  The definition therefore compares
+candidate-measurement policies after their communication overhead has been
+accounted for.
 
 The accompanying operational metrics are CSI-RS overhead, sensing-use ratio,
 conventional-fallback ratio, and the mean number of measured candidates.  A
-sensing-use event requires a currently observed target and a credible
-target-to-user association.  Fallback is therefore an observable consequence of
-the association and reliability gate, but it is not a substitute for a
-standalone target-to-user association-accuracy metric, which is not reported
-separately here.
+sensing-use event requires a currently observed target and an accepted
+target-to-user association.  Fallback therefore follows from association
+acceptance and current-track availability.  It does not replace a standalone
+target-to-user association-accuracy metric, which is not reported separately.
 
 The system comparison contains conventional four-beam refinement, conventional
 twelve-beam refinement, and the perception-assisted policy.  All three use the
-same codebooks, scheduling, RZF processing, and resource configuration.  The
-perception-assisted policy scans a sensing-derived candidate set only after the
-reliability test; otherwise, it executes conventional refinement.  The tracker
+same codebooks, RZF processing, and resource configuration.  The
+perception-assisted policy scans a sensing-derived candidate set only when the
+association is accepted and its track is currently observed; otherwise, it
+executes conventional refinement.  The tracker
 comparison applies IMM, KF-CV, and KF-CT to the same Top-1 CE detector and
 system protocol.
 
@@ -158,8 +155,8 @@ conditions, cross-agent multimodal fusion reaches \(81.92\%\) AP@2m and
 multimodal schemes retain the strongest joint detection and candidate
 performance.  At Night, the camera and ISAC results again differ across
 detection and beam metrics.  These observations motivate the use of multimodal
-evidence and reliability gating, rather than a fixed preference for one
-modality or a claim that one fusion rule dominates every condition.
+evidence, rather than a fixed preference for one modality or a claim that one
+fusion rule dominates every condition.
 
 \begin{table}[H]
     \centering
@@ -269,7 +266,7 @@ observations.
     \label{fig:experiments-node-beam}
 \end{figure}
 
-\section{Reliability-Gated Beam Management}
+\section{Association-Gated Beam Management}
 \label{sec:experiments-beam-management}
 
 \subsection{Results Across Weather Conditions}
@@ -284,18 +281,18 @@ with \(1.39\%\) CSI-RS overhead, compared with \(151.367\) Mbps and
 incurs \(5.71\%\) CSI-RS overhead and attains \(127.033\) Mbps.
 
 The sensing-use entries and their complementary fallback ratios clarify how
-the policy reaches these outcomes.  Sensing candidates are used for \(76.35\%\) of the Clear evaluation
-instances, \(56.65\%\) of the Rain/Fog instances, and \(30.07\%\) of the Night
-instances.  The corresponding fallback ratios are \(23.65\%\), \(43.35\%\), and
-\(69.93\%\).  Thus, when the available observation and association evidence
-becomes less reliable, the gate increasingly returns to conventional
-refinement instead of applying sensing-derived beam information to a UE
-unconditionally.
+the policy reaches these outcomes.  Sensing candidates are used for \(76.35\%\)
+of the Clear instances, \(56.65\%\) of the Rain/Fog instances, and \(30.07\%\)
+of the Night instances.  The corresponding fallback ratios are \(23.65\%\), \(43.35\%\), and
+\(69.93\%\).  Thus, the policy retains conventional refinement whenever no
+accepted association with a currently observed track is available, instead of
+applying target-indexed beam information to a VUE unconditionally.
 
 \begin{table}[H]
     \centering
     \caption{Beam-management results by environmental condition under the
-    common system configuration.  The effective rate is averaged over all UEs.}
+    common system configuration.  The effective rate is averaged over VUEs and
+    communication cycles.}
     \label{tab:experiments-system-weather}
     \small
     \renewcommand{\arraystretch}{1.10}
@@ -389,15 +386,15 @@ metric.
 
 The results support a consistent evidence chain.  Multimodal and nearby-node
 observations improve different aspects of target availability and beam ranking;
-the reliability gate determines whether this evidence can be safely converted
-into a narrower CSI-RS measurement action; and the system evaluation reports
-the resulting effective throughput together with the associated measurement
-cost.  The substantial fallback share under Rain/Fog and Night is therefore an
-integral part of the reliability-aware operating policy and should be
-interpreted together with the average-rate result.
+association acceptance and current-track observation determine whether this
+evidence is converted into a narrower CSI-RS measurement action; and the system
+evaluation reports the resulting effective throughput together with the
+associated measurement cost.  The substantial fallback share under Rain/Fog
+and Night is therefore an integral part of the association-gated operating
+policy and should be interpreted together with the average-rate result.
 
 The system analysis characterises association-mediated operation through the
-sensing-use ratio, fallback ratio, and all-UE effective rate; accepted-association
+sensing-use ratio, fallback ratio, and average effective user rate; accepted-association
 accuracy, lower-tail rate, and outage are outside the reported analysis.  The
 conclusions are further limited to a local target-BS service region, a simulated
 multimodal dataset, approximately 100-ms ray-tracing channel segments, and the

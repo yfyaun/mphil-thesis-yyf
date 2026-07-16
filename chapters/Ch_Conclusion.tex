@@ -58,9 +58,9 @@ Second, the communication model is a simplified and interpretable
 abstraction rather than a complete 5G NR protocol stack. The thesis models
 beam management, beam mismatch, RZF precoding SINR, spectral efficiency, and
 overhead-adjusted throughput at a system level, but it does not fully model
-protocol-level details such as SSB and CSI-RS scheduling, feedback latency,
-control signaling, HARQ behaviour, scheduler interaction, or mobility management
-procedures. As a result, throughput-related quantities should be interpreted as
+protocol-level details such as physical-resource mapping, feedback latency,
+control signalling, HARQ behaviour, or mobility-management procedures. As a
+result, throughput-related quantities should be interpreted as
 model-based performance measures under the stated abstraction, not as direct
 predictions of deployment-level 5G NR performance.
 
@@ -68,7 +68,7 @@ Third, the proposed sensing-assisted workflow depends on the reliability of
 multimodal sensing and cross-modal alignment. Camera calibration errors,
 time-synchronization errors, sparse or noisy ISAC point clouds, missing
 modalities, and severe occlusion can degrade BEV detection, beam prediction,
-target-to-user association, and tracking. Reliability gating, conventional
+target-to-user association, and tracking. Association rejection, conventional
 refinement, and re-association provide recovery mechanisms, but the precise
 robustness limits and failure thresholds remain important factors for
 system-level evaluation and deployment-oriented future work.
@@ -104,8 +104,8 @@ prediction and target-to-user association.
 
 The communication abstraction can be extended toward a fuller 5G NR
 protocol-level simulation. Future work may incorporate more detailed modelling
-of SSB and CSI-RS timing, beam reporting, feedback delay, scheduling, control
-overhead, retransmission behaviour, and mobility procedures. This would allow
+of SSB and CSI-RS timing, beam reporting, feedback delay, control overhead,
+retransmission behaviour, and mobility procedures. This would allow
 sensing-assisted beam management to be evaluated not only through simplified
 SINR and throughput indicators, but also through protocol-aware latency,
 resource utilization, and service continuity metrics.

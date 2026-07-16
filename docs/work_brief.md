@@ -46,21 +46,21 @@
 1. 多模态与跨节点观测能否在 target-BS-centered BEV 中同时支持车辆检测和条件 CSI 波束预测？
 2. 以最强物理 beam 为 Top-1 标签训练的联合检测--波束预测网络，能否产生可用于候选 CSI-RS 测量的 target-level beam scores？
 3. 感知轨迹 ID 的稳定性以及初始/重关联正确性如何影响 beam hint 能否持续服务正确 UE？
-4. 在计入 SSB、CSI-RS、CSI aging、RZF、切换和 fallback 后，可靠度门控的感知辅助能否形成可接受的 rate--overhead Pareto trade-off？
+4. 在计入 SSB、CSI-RS、CSI aging、RZF、切换和 fallback 后，基于 association acceptance 的感知辅助能否形成可接受的 rate--overhead Pareto trade-off？
 
 ### 2.2 研究假设
 
 - **H1：信息互补。** 相机的语义和可见性信息、ISAC 的无线感知信息以及邻近节点的互补视角共同支持检测与 beam prediction；融合收益应同时由 detection 和 matched-beam 指标验证。
 - **H2：Top-1 beam prediction supports candidate measurement.** strongest-beam cross-entropy 所学习的 192-way class posterior 可为 Top-\(K\) candidate measurement 与 measurement-assisted association 提供 score ordering；其候选价值应由 Beam Top-1/Top-\(K\) 与 Top-\(K\) power ratio 验证，而不将 posterior 解释为物理 CSI 功率分布。
 - **H3：身份是系统中介变量。** 正确的位置和单帧 beam ranking 仍可能因 ID switch 或错误 binding 被交给错误 UE；因此 tracking 和 binding 是感知指标转化为通信指标的必要中间环节。
-- **H4：保守使用感知。** 可靠度门控与 conventional fallback 能够拒绝低质量 beam hint，使导频压缩不以不可接受的性能风险为代价。
+- **H4：关联接受后使用感知。** association cost、assignment margin 与 current-observation requirement 共同决定是否接受 UE--track binding；只有已接受且当前可观测的 binding 才能产生 sensing candidates，否则使用 conventional fallback。
 
 ### 2.3 当前采用的贡献表述
 
 下列为方法与评估层面的拟贡献。只有在冻结 test 的同协议结果支持时，才能将其扩展为性能优越性结论。
 
 1. **Distributed Multimodal BEV Perception for Joint Vehicle Detection and Beam Prediction：** 构建以 target-BS-centered BEV 为共同表示的分布式多模态联合学习任务，使车辆检测与 192-way CSI beam classification 在同一空间网格中对齐；以 strongest-beam Top-1 cross-entropy 学习 target-level beam scores，并将其排序用于候选测量与关联，而不将网络输出表述为物理 CSI 功率分布或直接 service-beam decision。
-2. **Target-to-User Association with IMM-Based Tracking：** 提出“未绑定感知输出--目标到用户关联--IMM 多目标跟踪--可靠度门控候选扫描”的 identity-consistent beam-alignment 框架。传统通信测量建立或恢复 target-to-user association，IMM tracking 维持该关联的时序有效性，使 beam hint 服务于正确通信 UE。
+2. **Target-to-User Association with IMM-Based Tracking：** 提出“未绑定感知输出--目标到用户关联--IMM 多目标跟踪--关联接受门控候选扫描”的 identity-consistent beam-alignment 框架。传统通信测量建立或恢复 target-to-user association，IMM tracking 维持该关联的时序有效性，使 beam hint 服务于正确通信 UE。
 3. **Multimodal V2I Simulator and 5G NR-Oriented Beam-Management Evaluation Framework：** 建立基于既有多模态数据资产的系统级 V2I simulator 与 5G NR-oriented 评价框架，在一致的 SSB/CSI-RS、码本、RZF、Doppler 和资源记账条件下，检验 beam hint 对候选集、有效速率与导频开销权衡的影响。
 
 ## 3. 系统模型、算法接口与符号约定
@@ -163,11 +163,17 @@ c(u,i)=\frac{-\log p_i(b_u)}{\log M_{\mathrm{CSI}}}.
 
 只有当 \(\varphi_b(b_u)\) 与当前 serving SSB 一致时，该 UE--track 配对才可行。系统在可行配对和未匹配虚拟列上执行 Hungarian assignment；高代价或低 margin 的配对被拒绝，并继续沿用 conventional scanning。该规则不使用 ground truth、不以预测位置反推码本的几何近似，也不以人工 UE ID 作为模型输入。
 
-`beam_direction` 和 `beam_topk` 可作为 association ablation；正式叙事以 beam-posterior score + SSB-parent consistency + reliability decision 为主。实验须分别报告 binding coverage、可诊断样本上的 accuracy 和 active accuracy，不能以单一百分比掩盖拒绝关联的比例。
+`beam_direction` 和 `beam_topk` 可作为 association ablation；正式叙事以 beam-posterior score、SSB-parent consistency、association cost threshold 与 assignment margin 为主。实验须分别报告 binding coverage、可诊断样本上的 accuracy 和 active accuracy，不能以单一百分比掩盖拒绝关联的比例。
 
-### 3.5 可靠度门控、候选扫描与回退
+### 3.5 关联接受门控、候选扫描与回退
 
-已建立 binding \((weather_id,bs_id,ue_id)\mapsto track_id\) 后，系统定义可靠度事件 \(G_{u,t}\)。其证据只能来自非 ground-truth 信息，例如 binding confidence、association margin、当前 observed detection/track confidence、hint age、SSB-parent consistency、已有观测次数以及 beam score mass。仅当 \(G_{u,t}=1\) 时使用感知候选；否则进行 conventional refinement。
+已建立 binding \((weather_id,bs_id,ue_id)\mapsto track_id\) 后，系统保留 \(G_{u,t}\) 作为 candidate-use indicator，但不再为其引入独立的 reliability feature vector 或 threshold function。令 \(A_{u,r,t}\) 表示由 association cost threshold 与 assignment margin 决定的接受状态，则
+
+\[
+G_{u,t}=A_{u,r,t}\,\mathbf 1\!\left\{\pi_{b,t}(u)=r\in\mathcal R_{b,t}^{\mathrm{obs}}\right\}.
+\]
+
+accepted status 在两次 association event 之间随 binding 保持，并在 association 失效时置零。仅当已接受的 binding 对应当前 observed track 时使用感知候选；否则进行 conventional refinement。association confidence、detection/track confidence、hint age、observation count 和 beam-score mass 不再作为第二层 candidate-use gate 的输入。
 
 若当前 observed detection 的前 \(K_{\max}\) 个 beam scores 为 \(s_1\geq\cdots\geq s_{K_{\max}}\)，自适应候选数可定义为
 
@@ -181,12 +187,12 @@ k^*=\min\left\{k:\ k\geq K_{\min},
 ### 3.6 通信、CSI 获取与有效速率模型
 
 在每个 beam-management cycle \(n\)，target BS 为
-\(\mathcal U_b^{\mathrm{sch}}[n]\subseteq\mathcal U_b[n]\) 中的 VUE 进行下行传输。BS--VUE
+\(\mathcal U_b[n]\) 中的 VUE 进行下行传输。BS--VUE
 信道采用随 RT reference channel 和 Doppler 演化的多径向量
 \(\mathbf h_{b,u,n}=\sum_{\ell}\alpha_{b,u,\ell,n}e^{\mathrm j2\pi\nu_{b,u,\ell,n}t_n}
-\mathbf a_b(\vartheta_{b,u,\ell,n})\) 表示。BS 采用一般线性 precoder 发送多用户数据流；每个 VUE 的接收信号由目标流、其他已调度 VUE 的 multi-user interference 与噪声组成，由此定义未扣除 beam-management overhead 的 downlink SINR 和 gross achievable rate。该部分不预设 beam selection 方法，也不提前引入 beam-conditioned effective channel。
+\mathbf a_b(\vartheta_{b,u,\ell,n})\) 表示。BS 采用一般线性 precoder 向 \(\mathcal U_b[n]\) 中的 VUE 发送多用户数据流；每个 VUE 的接收信号由目标流、其他 VUE 的 multi-user interference 与噪声组成，由此定义未扣除 beam-management overhead 的 downlink SINR 和 gross achievable rate。该部分不预设 beam selection 方法，也不提前引入 beam-conditioned effective channel。
 
-为构造 precoder，BS 通过 CSI-RS codebook \(\mathcal F_b^{\mathrm{CSI}}=\{\mathbf f_{b,k}^{\mathrm{CSI}}\}_{k=1}^{192}\) 发送已知参考信号。VUE 在 beam \(k\) 下估计等效标量信道 \(h_{b,u,k,n}^{\mathrm{eq}}=\mathbf h_{b,u,n}^{\mathrm H}\mathbf f_{b,k}^{\mathrm{CSI}}\)，并由 reference-signal power、interference 与 noise 计算相应 CSI-RS quality/SINR。VUE 在实际测量的 candidate set 内选择 quality 最大的 beam，反馈 beam index、该 beam 下的 channel estimate 及相应 quality information；多用户预编码所需的 scheduled RF-beam coefficients 采用同一 beam-domain CSI 形式反馈。BS 汇总这些 beam-conditioned CSI 后构造 RF beam matrix 和 digital RZF precoder。本文不把完整 NR feedback payload 或逐 PRB/RE physical-resource mapping 作为研究对象，但所有对照必须共享同一 RT/Doppler、信道估计、RZF、调度和功率配置。
+为构造 precoder，BS 通过 CSI-RS codebook \(\mathcal F_b^{\mathrm{CSI}}=\{\mathbf f_{b,k}^{\mathrm{CSI}}\}_{k=1}^{192}\) 发送已知参考信号。VUE 在 beam \(k\) 下估计等效标量信道 \(h_{b,u,k,n}^{\mathrm{eq}}=\mathbf h_{b,u,n}^{\mathrm H}\mathbf f_{b,k}^{\mathrm{CSI}}\)，并由 reference-signal power、interference 与 noise 计算相应 CSI-RS quality/SINR。VUE 在实际测量的 candidate set 内选择 quality 最大的 beam，反馈 beam index、该 beam 下的 channel estimate 及相应 quality information；多用户预编码所需的 selected RF-beam coefficients 采用同一 beam-domain CSI 形式反馈。BS 汇总这些 beam-conditioned CSI 后构造 RF beam matrix 和 digital RZF precoder。本文不把完整 NR feedback payload 或逐 PRB/RE physical-resource mapping 作为研究对象，但所有对照必须共享同一 RT/Doppler、信道估计、RZF、功率和噪声配置。
 
 SSB sweep 提供 coarse beam/serving-SSB evidence；CSI-RS 在实际 candidate set 上完成窄波束测量，实测
 response 决定 service beam。已接受且当前可观测的 UE--track binding 才允许 beam-class posterior 缩减
@@ -210,21 +216,21 @@ CSI-RS candidate width；否则使用 conventional refinement。网络导出的 
 \frac{\tau_{b,n}^{\mathrm{data}}}{\tau_{b,n}^{\mathrm{tot}}},
 \]
 
-其中 \(K_e\) 是 event \(e\) 中所有 serving UEs 的实际候选 beam 总数，\(M\) 是可正交复用的 UE--beam measurement 数，\(\delta_{\mathrm{probe}}\) 是一次 acquisition 的归一化成本。令 \(\chi_{b,u,n}\) 表示 VUE 是否被调度，\(\gamma_{b,u,n}^{\mathrm{RZF}}\) 表示真实 CSI-RS measurement、信道估计与 RZF 后的 SINR，则有效速率指标为
+其中 \(K_e\) 是 event \(e\) 中所有 VUE 的实际候选 beam 总数，\(M\) 是可正交复用的 UE--beam measurement 数，\(\delta_{\mathrm{probe}}\) 是一次 acquisition 的归一化成本。令 \(\gamma_{b,u,n}^{\mathrm{RZF}}\) 表示真实 CSI-RS measurement、信道估计与 RZF 后的 SINR，则有效速率指标为
 
 \[
 R_{b,u,n}^{\mathrm{eff}}=
-\chi_{b,u,n}B_b\,\eta_b^{\mathrm{DL}}\,
+B_b\,\eta_b^{\mathrm{DL}}\,
 \eta_{b,n}^{\mathrm{data}}
 \log_2\!\left(1+\gamma_{b,u,n}^{\mathrm{RZF}}\right).
 \]
 
-当前 system-level data block 为 \(1\,\mathrm{ms}\)，其 measurement event、candidate decision 与资源预算与 \(0.125\,\mathrm{ms}\) physical reference 对齐；block 内保持 schedule 和 precoder，并以中点真实信道计算 post-RZF SINR。该具体时间配置属于 Chapter 5 的冻结实验协议，Chapter 3 仅使用归一化 overhead model，不逐项展开 slot/frame duration。该模型冻结的是 beam-management event 的 candidate/selected beam，而非整个 RT channel。以
+当前 system-level data block 为 \(1\,\mathrm{ms}\)，其 measurement event、candidate decision 与资源预算与 \(0.125\,\mathrm{ms}\) physical reference 对齐；block 内保持 precoder，并以中点真实信道计算 post-RZF SINR。该具体时间配置属于 Chapter 5 的冻结实验协议，Chapter 3 仅使用归一化 overhead model，不逐项展开 slot/frame duration。该模型冻结的是 beam-management event 的 candidate/selected beam，而非整个 RT channel。以
 \[
 \overline R_b[N]=\frac{1}{N}\sum_{n=1}^{N}
 \frac{1}{|\mathcal U_b[n]|}\sum_{u\in\mathcal U_b[n]}R_{b,u,n}^{\mathrm{eff}}
 \]
-定义 BS \(b\) 的 all-UE average effective rate，并将其作为 Chapter 5 的系统级评价统计量。Chapter 3 不再把 sensing、association、candidate selection、precoding 与 scheduling 强行写成一个联合优化问题；这些模块分别在 Chapter 4 给出算法，其共同通信后果通过 post-RZF SINR、CSI-RS overhead 与 \(R_{b,u,n}^{\mathrm{eff}}\) 体现。正式主表报告 all-UE time-average effective throughput、CSI-RS overhead、候选 beam 数、\(\eta_{b,n}^{\mathrm{data}}\) 与 sensing use/fallback；当前正式包不将 p05 rate 或 outage 作为主结果。
+定义 BS \(b\) 的 average effective user rate，并将其作为 Chapter 5 的系统级评价统计量。Chapter 3 不再把 sensing、association、candidate selection 与 precoding 强行写成一个联合优化问题；这些模块分别在 Chapter 4 给出算法，其共同通信后果通过 post-RZF SINR、CSI-RS overhead 与 \(R_{b,u,n}^{\mathrm{eff}}\) 体现。正式主表报告 average effective user rate、CSI-RS overhead、候选 beam 数、\(\eta_{b,n}^{\mathrm{data}}\) 与 sensing use/fallback；当前正式包不将 p05 rate 或 outage 作为主结果。
 
 ## 4. 算法整体框架
 
@@ -234,8 +240,8 @@ R_{b,u,n}^{\mathrm{eff}}=
 2. **联合检测与 beam prediction：** 从共享 BEV 特征输出车辆 heatmap、几何/运动回归量和 dense 192-way CSI beam-class logits；在 detection 位置采样并经 softmax 得到未绑定 detection 及其 beam-class posterior。
 3. **per-BS 多目标轨迹维护：** 采用 CV、CT 或 IMM 在相同 BS、天气和 split 的序列内预测轨迹；通过 gated Hungarian assignment 将当前 detections 与预测轨迹关联，更新 track state、confidence 和 hint age。
 4. **初始/重关联 binding：** 在系统触发传统扫描时，将实测 CSI beam 与当前 observed tracks 的 beam-class posterior score 匹配；SSB-parent consistency 先筛除不可能配对，再以 Hungarian assignment 和拒绝门限建立或修复 UE--track binding。
-5. **可靠度门控候选 CSI-RS：** 对已绑定 UE，根据当前检测、track 和 binding 的可信证据判定是否使用感知 hint。通过时从当前 observation 的 beam-class posterior 形成固定或自适应 \(K_{\mathrm{scan}}\) 候选；不通过时使用 conventional refinement。
-6. **实测选择、RZF 与资源评价：** 在真正扫描的 CSI-RS candidates 内根据实测 SNR 选择 beam；在一致的 RT/Doppler、RZF、调度、功率和归一化 \(\tau\) accounting 条件下计算 candidate recall、CSI-RS overhead、\(\eta_{b,n}^{\mathrm{data}}\)、sensing use/fallback 与 all-UE time-average effective throughput。
+5. **关联接受门控候选 CSI-RS：** 若 UE--track association 已通过 \(A_{u,r,t}\) 接受且对应 track 当前可观测，则从当前 observation 的 beam-class posterior 形成固定或自适应 \(K_{\mathrm{scan}}\) 候选；否则使用 conventional refinement。
+6. **实测选择、RZF 与资源评价：** 在真正扫描的 CSI-RS candidates 内根据实测 SNR 选择 beam；在一致的 RT/Doppler、RZF、功率和归一化 \(\tau\) accounting 条件下计算 candidate recall、CSI-RS overhead、\(\eta_{b,n}^{\mathrm{data}}\)、sensing use/fallback 与 average effective user rate。
 
 该算法的关键边界是：网络预测的对象始终是未绑定感知目标；通信身份只经由传统测量辅助的 binding 层进入；感知输出是缩小实测集合的 hint，而不是绕过测量直接确认下行最优 beam。
 
@@ -248,8 +254,8 @@ R_{b,u,n}^{\mathrm{eff}}=
 | BEV 感知与联合预测 | target BS/SN 相机观测、BS-local ISAC 点云及标定信息 | 未绑定 detection、几何/运动属性、192-way beam-class posterior | 不输入 `ue_id`、link coordinate、ground-truth beam 或 oracle identity |
 | 多目标 tracking | 同一 `(split, weather_id, bs_id)` 序列的未绑定 detections 与既有 track state | perception tracks、状态预测、track confidence 与 hint age | track 只维护感知对象身份；纯预测位置不产生正式 CSI-RS candidate |
 | UE--track binding | 当前 observed tracks、传统 SSB/CSI-RS 测量、SSB-parent consistency | 已接受的 binding、margin/confidence 与拒绝/重关联状态 | ground truth 仅用于离线正确性统计，不能参与匹配代价或接受决策 |
-| 可靠度门控与候选扫描 | 当前 observed detection 的 beam-class posterior、binding/track reliability evidence | fixed/adaptive \(K_{\mathrm{scan}}\) candidates 或 conventional fallback | prediction 只缩小实测集合；最终服务 beam 仍由实际 CSI-RS/SNR 测量决定 |
-| PHY 与资源评价 | 实测候选、统一的 RT/Doppler、RZF、调度、功率和归一化 \(\tau\) profile | candidate recall、CSI-RS overhead、sensing use/fallback 与 all-UE time-average effective throughput | 不从通信结果反向修改 test 阈值或把 oracle ceiling 作为正式方案 |
+| 关联接受门控与候选扫描 | association acceptance \(A_{u,r,t}\)、当前 observed track 及其 beam-class posterior | fixed/adaptive \(K_{\mathrm{scan}}\) candidates 或 conventional fallback | 不引入第二层 reliability features；prediction 只缩小实测集合，最终服务 beam 仍由实际 CSI-RS/SNR 测量决定 |
+| PHY 与资源评价 | 实测候选、统一的 RT/Doppler、RZF、功率和归一化 \(\tau\) profile | candidate recall、CSI-RS overhead、sensing use/fallback 与 average effective user rate | 不从通信结果反向修改 test 阈值或把 oracle ceiling 作为正式方案 |
 
 ## 5. 实验设计与证据链
 
@@ -271,7 +277,7 @@ R_{b,u,n}^{\mathrm{eff}}=
 - 每种天气分别统计；总体比例由原始分子/分母汇总，不对天气百分比简单平均。
 - 除上述已记录的固定雨雾操作点外，不得使用 test rate、test binding accuracy 或 test candidate recall 调节阈值；任何后续 test-tuned 参数同样不能作为严格 held-out 主结论。
 - 条件指标必须写出条件并同时报告 coverage，例如 `beam Recall@4 | matched detection within 2 m`。
-- GT-ID、GT detection 和 oracle hint 仅作为 ceiling 或诊断；正式路径必须以 predicted detection 和非 GT reliability evidence 为输入。
+- GT-ID、GT detection 和 oracle hint 仅作为 ceiling 或诊断；正式路径必须以 predicted detection、communication measurement 和非 GT association-acceptance result 为输入。
 
 ### 5.3 对照组
 
@@ -281,7 +287,7 @@ R_{b,u,n}^{\mathrm{eff}}=
 - System：conventional 4-beam refinement、conventional 12-beam refinement 与 perception-assisted policy；三者共享冻结的 resource profile。
 - Tracking：IMM、KF-CV 与 KF-CT；定性轨迹图采用 test / clear-day / BS-NE 的 GT+1.0 m 位置噪声输入，仅用于受控运动诊断；宏平均表使用相同的 Top-1 CE detector 与系统级 protocol。
 
-主结果采用一套冻结 radio profile：48 SSB、100 ms SSB period、20 ms CSI-RS period、每 SSB parent 的 4-beam conventional refinement、4-BS 场景，以及一致的 RT segment、功率、噪声、调度、RZF 与归一化 \(\tau\) 资源抽象。CSI-RS period、conventional refinement 宽度、\(K_{\mathrm{scan}}\)、\(\delta_{\mathrm{probe}}\)/measurement multiplexing、单/多 BS 和 Doppler 可作为敏感性轴，而不应与全部上游模型形成全笛卡尔积。
+主结果采用一套冻结 radio profile：48 SSB、100 ms SSB period、20 ms CSI-RS period、每 SSB parent 的 4-beam conventional refinement、4-BS 场景，以及一致的 RT segment、功率、噪声、RZF 与归一化 \(\tau\) 资源抽象。CSI-RS period、conventional refinement 宽度、\(K_{\mathrm{scan}}\)、\(\delta_{\mathrm{probe}}\)/measurement multiplexing、单/多 BS 和 Doppler 可作为敏感性轴，而不应与全部上游模型形成全笛卡尔积。
 
 ### 5.4 正式结果包与论文呈现顺序
 
@@ -295,8 +301,8 @@ R_{b,u,n}^{\mathrm{eff}}=
 ### 6.1 已具备的研究与实验框架
 
 - 已建立 manifest 驱动的 target-BS-centered 数据读取、相机/ISAC BEV 表达、基于 Top-1 CE 的联合 detection--beam prediction 及不同模态和节点融合的实验框架。
-- 已建立未绑定 perception prediction、per-BS track state、传统测量辅助关联、current-detection beam Top-\(K\) candidate scanning、SSB-parent check、reliability log、自适应 \(K\)、conventional fallback、RT/Doppler/RZF/归一化 \(\tau\) accounting 的端到端流程。
-- 已具备 camera、ISAC、multimodal 与多节点融合；CV、CT、IMM；conventional、direction/top-\(K\)/reliability-gated 等可比较协议。论文正式 system-level sensing 行固定使用 `v3_rt_anchor_beam_top1_ce_cross_agent` 与 IMM。
+- 已建立未绑定 perception prediction、per-BS track state、传统测量辅助关联、current-detection beam Top-\(K\) candidate scanning、SSB-parent check、association-decision log、自适应 \(K\)、conventional fallback、RT/Doppler/RZF/归一化 \(\tau\) accounting 的端到端流程。
+- 已具备 camera、ISAC、multimodal 与多节点融合；CV、CT、IMM；conventional、direction/top-\(K\)/association-gated 等可比较协议。论文正式 system-level sensing 行固定使用 `v3_rt_anchor_beam_top1_ce_cross_agent` 与 IMM。
 - 正式模块接口遵守“learning output -> unbound detection；tracking -> perception track；beam management -> track state + communication measurement”的边界，避免直接传递训练网络内部状态。
 
 ### 6.2 已有定量证据
@@ -307,7 +313,7 @@ R_{b,u,n}^{\mathrm{eff}}=
 | 分天气 learning | Clear、Rain/Fog、Night 三种天气下，多模态 variants 的 AP@2m 均高于单模态 camera/ISAC；cross-agent 在 Clear 下达到 81.92\% AP@2m 与 75.00\% Beam Top-1@2m | 模态与跨节点互补性随天气和指标而变化，不宜用单一总体指标宣称所有融合策略均最优 | 冻结正式结果包，table 02 |
 | 跨节点互补 | cross-agent attention 的节点数 test 中，AP@2m 从 0 节点的 38.59\% 升至 5 个邻近节点的 80.41\%；Beam Top-4@2m 从 91.58\% 升至 95.40\% | 更多邻近视角在该冻结协议下改善检测，并保持较高的 Top-4 候选覆盖 | 冻结正式结果包，`table_03_node_count_overall` |
 | 核心系统比较 | 三天气等权宏平均下，perception-assisted 的 mean effective user rate 为 146.332 Mbps，CSI-RS overhead 为 1.56\%，sensing use 为 54.35\%，fallback 为 45.65\%；conventional 4-beam 的相应 rate/overhead 为 142.248 Mbps/1.90\% | 在该固定操作点和资源模型下，感知辅助以部分 fallback 换取较低 CSI-RS 开销与更高的用户平均有效速率 | 冻结正式结果包，`table_05_core_macro_average` |
-| 条件化 system operation | perception-assisted 的 sensing use 从 Clear 的 76.35\% 降至 Rain/Fog 的 56.65\% 和 Night 的 30.07\%，对应 fallback 为 23.65\%、43.35\% 和 69.93\% | 可靠度门控在较弱观测条件下更频繁采用 conventional fallback，结果体现了保守使用 sensing hint 的机制 | 冻结正式结果包，table 04 |
+| 条件化 system operation | perception-assisted 的 sensing use 从 Clear 的 76.35\% 降至 Rain/Fog 的 56.65\% 和 Night 的 30.07\%，对应 fallback 为 23.65\%、43.35\% 和 69.93\% | association-acceptance rule 与 current-observation requirement 共同决定 sensing use 或 conventional fallback | 冻结正式结果包，table 04 |
 | Tracker 宏平均比较 | Top-1 CE detector 下，IMM、KF-CV 和 KF-CT 的 mean effective user rate 分别为 146.332、146.373 和 145.880 Mbps | 三种 tracker 的端到端差异需要与 hint usage、fallback 和候选数共同解释；该表不支持将 IMM 表述为普遍最优 | 冻结正式结果包，`table_06_tracker_macro_average` |
 
 ### 6.3 当前必须保持的证据边界
@@ -316,7 +322,7 @@ R_{b,u,n}^{\mathrm{eff}}=
 - 不得将正式 Top-1 CE detector 的结果与历史 Power-KL、KL-only 或 KL+ranking 的开发结果混合；后者不进入论文图表、方法比较或性能主张。
 - 不得将采用 `min_association_margin=0.10` 的雨雾 gate 表述为独立 held-out 泛化结论；它是正式结果包记录的固定 test-tuned 操作点。
 - 不得宣称 IMM 在 predicted-detection 端到端路径上普遍优于 CV/CT；正式宏平均表中 KF-CV 的 user rate 略高于 IMM，比较应同时报告 hint usage、fallback、候选数和 handover。
-- 正式系统结论须采用 `paper_results` 的 all-UE time-average effective throughput；历史 20 ms raw-RE profile、短段结果或条件 scheduled-user rate 不可混入主表。
+- 正式系统结论须采用 `paper_results` 的 average effective user rate；历史 20 ms raw-RE profile 或短段结果不可混入主表。
 - 当前正式结果包未单独导出 accepted binding accuracy、p05 rate 或 outage 主表。正文可将 sensing use/fallback 作为 association-to-policy 的 operational evidence，但不得据此虚构独立 association accuracy 或 lower-tail/outage 结论。
 
 ## 7. 内部待确认事项与后续实验
@@ -325,8 +331,8 @@ R_{b,u,n}^{\mathrm{eff}}=
 
 1. 维护 Top-1 CE final model 的 checkpoint、输入输出、seed、原始分子/分母及其与正式结果包的追溯关系；不再将历史 Power-KL 或 ranking supervision 纳入论文模型比较。
 2. 在相同 Top-1 CE predicted-detection outputs 上进一步诊断 CV/CT/IMM 的差异，并补充 association accuracy、track continuity 和按条件分层的错误统计；重点解释宏平均 user rate、hint/fallback 与候选数之间的关系。
-3. 将 beam-posterior association、association margin、reliability gate 和 adaptive \(K\) 的选择过程完整记录为可追溯操作点；对 test-tuned 参数保持审慎表述。
-4. 在相同 RT manifest、归一化 \(\tau\) profile、调度和 PHY 参数下补充 oracle ceiling 或两阶段 fallback 的诊断，但不替代正式 perception-assisted 主结果。
+3. 将 beam-posterior association、association cost threshold、assignment margin 和 adaptive \(K\) 的选择过程完整记录为可追溯操作点；对 test-tuned 参数保持审慎表述。
+4. 在相同 RT manifest、归一化 \(\tau\) profile 和 PHY 参数下补充 oracle ceiling 或两阶段 fallback 的诊断，但不替代正式 perception-assisted 主结果。
 5. 研究 conservative candidate union、基于实际 pilot-SNR 的两阶段 fallback 或更稳健的初始/重关联，重点改善 night 与 rain/fog 条件下的 fallback 依赖。
 6. 维护 final checkpoint、raw snapshot、原始统计、汇总指标、可视化和轻量 run manifest 的可追溯关系。
 
@@ -343,7 +349,7 @@ R_{b,u,n}^{\mathrm{eff}}=
 | CSI 波束预测后验 | CSI beam-class posterior | Top-1 CE classifier 对 192 个 CSI codebook beams 导出的 softmax scores；不解释为物理功率分布 |
 | 波束后验关联 | beam-posterior association | 用预测 posterior 与扫描所得 CSI beam 的负对数似然完成 binding |
 | \(K_{\mathrm{scan}}\) | CSI-RS scan budget | 已绑定 UE 实际进行 CSI-RS 测量的 beam 数 |
-| 可靠度门控 | reliability gate | 判定当前是否使用 sensing hint 的非 GT 决策机制 |
-| 常规回退 | conventional fallback/refinement | 不可靠时沿用传统扫描的安全机制 |
+| 关联接受门控 | association-acceptance gate | 由 \(A_{u,r,t}\) 与 current-observation requirement 直接决定是否使用 sensing hint，不包含第二层 reliability features |
+| 常规回退 | conventional fallback/refinement | association 未接受或对应 track 当前不可观测时沿用传统扫描 |
 | 有效速率 | effective rate | 同时扣除 SSB、CSI-RS 与控制资源后的速率指标 |
 | RZF | regularized zero-forcing (RZF) | 系统评价中的下行多用户预编码抽象 |

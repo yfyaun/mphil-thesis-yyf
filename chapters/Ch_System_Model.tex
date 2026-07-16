@@ -19,15 +19,15 @@ Consider a roadside vehicular network with a set of base stations (BSs)
 which serves the VUEs in its local service region and executes the corresponding
 beam-management decisions.  A set \(\mathcal{N}_b\) of neighbouring distributed
 sensing nodes (SNs) provides additional camera views of the same road region.
-The SNs are sensing-only collaborators: they neither schedule VUEs nor establish
-independent service cells in the model.  Thus, all communication measurements,
+The SNs are sensing-only collaborators and do not establish independent service
+cells in the model.  Thus, all communication measurements,
 beam decisions, and association states discussed below are local to the target
 BS.
 
 Let \(\mathcal{U}_b[n]\) denote the active VUE set of BS \(b\) at sensing epoch
 \(n\).  A member \(u\in\mathcal{U}_b[n]\) has a communication-side identifier
-used for synchronisation, measurement reporting, scheduling, and downlink
-transmission.  In contrast, the sensing system produces unlabelled physical
+used for synchronisation, measurement reporting, and downlink transmission.  In
+contrast, the sensing system produces unlabelled physical
 targets.  A vehicle that is visible to the sensors is therefore not automatically
 known to be a particular VUE, and a VUE can be temporarily unobserved because of
 occlusion or a sensing miss.  This distinction makes target-to-user association
@@ -211,10 +211,10 @@ transmission.
 \subsection{Downlink Signal and Channel Model}
 \label{subsec:system-downlink-model}
 
-Let \(N_b\) denote the number of transmit-antenna elements at BS \(b\), and
-let \(\mathcal{U}^{\mathrm{sch}}_b[n]\subseteq\mathcal{U}_b[n]\) be the VUEs
-scheduled for downlink transmission in beam-management cycle \(n\).  The
-downlink channel from BS \(b\) to VUE \(u\) is denoted by
+Let \(N_b\) denote the number of transmit-antenna elements at BS \(b\).  During
+beam-management cycle \(n\), the BS provides multi-user downlink transmission
+to the VUE set \(\mathcal{U}_b[n]\).  The downlink channel from BS \(b\) to VUE
+\(u\) is denoted by
 \(\mathbf{h}_{b,u,n}\in\mathbb{C}^{N_b}\).  Its temporal evolution is
 represented by the geometric multipath channel
 \begin{equation}
@@ -235,13 +235,13 @@ of cycle \(n\); and \(\mathbf{a}_b(\cdot)\) is the transmit-array response.
 The BS transmits
 \begin{equation}
     \mathbf{x}_{b,n}
-    =\sum_{u\in\mathcal{U}^{\mathrm{sch}}_b[n]}
+    =\sum_{u\in\mathcal{U}_b[n]}
     \sqrt{P_{b,u,n}}\mathbf{w}_{b,u,n}s_{b,u,n},
     \qquad \|\mathbf{w}_{b,u,n}\|_2=1,
     \label{eq:system-downlink-transmit}
 \end{equation}
 where \(s_{b,u,n}\) is a unit-power data symbol, \(P_{b,u,n}\) is the
-allocated power, and \(\mathbf{w}_{b,u,n}\in\mathbb{C}^{N_b}\) is the
+transmit power, and \(\mathbf{w}_{b,u,n}\in\mathbb{C}^{N_b}\) is the
 unit-norm precoding vector.  The received signal at VUE \(u\) is
 \begin{equation}
     y_{b,u,n}
@@ -249,7 +249,7 @@ unit-norm precoding vector.  The received signal at VUE \(u\) is
     \sqrt{P_{b,u,n}}\mathbf{h}^{\mathrm{H}}_{b,u,n}
     \mathbf{w}_{b,u,n}s_{b,u,n}
     +
-    \sum_{v\in\mathcal{U}^{\mathrm{sch}}_b[n]\setminus\{u\}}
+    \sum_{v\in\mathcal{U}_b[n]\setminus\{u\}}
     \sqrt{P_{b,v,n}}\mathbf{h}^{\mathrm{H}}_{b,u,n}
     \mathbf{w}_{b,v,n}s_{b,v,n}
     +z_{b,u,n},
@@ -263,7 +263,7 @@ instantaneous downlink SINR is
     \frac{P_{b,u,n}
     \left|\mathbf{h}^{\mathrm{H}}_{b,u,n}\mathbf{w}_{b,u,n}\right|^2}
     {\displaystyle
-    \sum_{v\in\mathcal{U}^{\mathrm{sch}}_b[n]\setminus\{u\}}
+    \sum_{v\in\mathcal{U}_b[n]\setminus\{u\}}
     P_{b,v,n}
     \left|\mathbf{h}^{\mathrm{H}}_{b,u,n}\mathbf{w}_{b,v,n}\right|^2
     +\sigma^2_{b,u,n}}.
@@ -273,14 +273,14 @@ Before accounting for beam-management resources, the corresponding downlink
 achievable rate is
 \begin{equation}
     R^{\mathrm{DL}}_{b,u,n}
-    =\chi_{b,u,n}B_b\eta_b^{\mathrm{DL}}
+    =B_b\eta_b^{\mathrm{DL}}
     \log_2\!\left(1+\gamma_{b,u,n}\right),
     \label{eq:system-downlink-rate}
 \end{equation}
-where \(\chi_{b,u,n}\in\{0,1\}\) is the scheduling indicator, \(B_b\) is the
-allocated bandwidth, and \(\eta_b^{\mathrm{DL}}\) is the downlink resource
-fraction.  This is the gross rate supported by the selected precoder; the
-measurement resources required to obtain that precoder are incorporated below.
+where \(B_b\) is the available bandwidth and \(\eta_b^{\mathrm{DL}}\) is the
+downlink resource fraction.  This is the gross rate supported by the selected
+precoder; the measurement resources required to obtain that precoder are
+incorporated below.
 
 \subsection{CSI Acquisition and Feedback}
 \label{subsec:system-csi-feedback}
@@ -340,7 +340,7 @@ and reports the selected beam index together with the associated beam-domain
 CSI.  The report comprises \(k^{\star}_{b,u,n}\),
 \(\widehat{h}^{\mathrm{eq}}_{b,u,k^{\star}_{b,u,n},n}\), and the corresponding
 quality information.  For multi-user precoding, the required equivalent-channel
-coefficients over the scheduled RF beams are reported in the same beam-domain
+coefficients over the selected RF beams are reported in the same beam-domain
 form.  This model separates CSI acquisition from beam prediction: sensing
 determines which beams merit measurement, whereas the service beam and CSI
 supplied to the precoder are obtained from transmitted CSI-RS resources.
@@ -348,8 +348,8 @@ supplied to the precoder are obtained from transmitted CSI-RS resources.
 \subsection{Beam-Management Overhead and Effective Rate}
 \label{subsec:system-beam-management}
 
-Let \(U_b[n]=|\mathcal{U}^{\mathrm{sch}}_b[n]|\), and order the scheduled VUEs
-as \(u_1,\ldots,u_{U_b[n]}\).  Their selected CSI-RS beams form the radio-
+Let \(U_b[n]=|\mathcal{U}_b[n]|\), and order the VUEs as
+\(u_1,\ldots,u_{U_b[n]}\).  Their selected CSI-RS beams form the radio-
 frequency precoder
 \begin{equation}
     \mathbf{F}^{\mathrm{RF}}_b[n]
@@ -363,7 +363,7 @@ The beam-domain channel seen by VUE \(u\) is then
 \mathbf{F}^{\mathrm{RF}}_b[n]\).  Let
 \(\widehat{\mathbf{H}}^{\mathrm{eff}}_b[n]\in
 \mathbb{C}^{U_b[n]\times U_b[n]}\) stack the corresponding feedback-based
-estimates for all scheduled VUEs.  The digital regularised zero-forcing (RZF)
+estimates for all VUEs.  The digital regularised zero-forcing (RZF)
 precoder is
 \begin{equation}
     \mathbf{V}^{\mathrm{RZF}}_b[n]
@@ -438,13 +438,12 @@ rate is
     R_{b,u,n}^{\mathrm{eff}}
     =
     \eta_{b,n}^{\mathrm{data}}
-    \chi_{b,u,n}B_b\eta_b^{\mathrm{DL}}
+    B_b\eta_b^{\mathrm{DL}}
     \log_2\!\left(1+\gamma_{b,u,n}^{\mathrm{RZF}}\right).
     \label{eq:system-effective-rate}
 \end{equation}
-This definition assigns zero rate to an active VUE that is not scheduled in a
-cycle.  It therefore captures the two communication consequences of the
-proposed framework: an incorrect or insufficient candidate set can reduce the
+This definition captures the two communication consequences of the proposed
+framework: an incorrect or insufficient candidate set can reduce the
 post-precoding SINR, whereas a smaller successful candidate set leaves more
 resources for data transmission.  The effective rate therefore provides the
 communication objective that couples sensing-assisted candidate selection to

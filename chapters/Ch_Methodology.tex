@@ -8,13 +8,13 @@ sensing system and a VUE addressed by the communication system.  Multimodal
 sensing first produces target-level evidence in a target-BS-centred BEV
 representation.  Conventional communication measurements then establish the
 target-to-user association required to use that evidence, and CSI-RS candidate
-reduction is permitted only while this association is both reliable and
+reduction is permitted only while the association is accepted and its track is
 supported by a current observation.  Sensing therefore ranks measurements; it
 does not replace CSI-RS-based service-beam selection.
 
 The proposed method comprises four coupled functions: distributed multimodal
 BEV perception and beam prediction, IMM-based multi-object tracking,
-measurement-assisted target-to-user association, and reliability-aware
+measurement-assisted target-to-user association, and association-gated
 candidate selection.  The first two functions operate in the sensing domain and
 retain target-indexed evidence for physical vehicles.  The latter two use
 conventional beam measurements to connect that evidence to an NR-oriented
@@ -66,11 +66,11 @@ identified VUE.
     remain without an accepted association rather than being forced into an
     incorrect UE--track assignment.
 
-    \item \emph{Reliability-aware candidate selection.}  An accepted mapping
-    is used only when its track is currently observed and the association,
-    detection, and beam-prediction evidence jointly support candidate use.
-    The corresponding current posterior then defines a fixed or adaptive
-    CSI-RS candidate set.  Otherwise, conventional refinement is retained.
+    \item \emph{Association-gated candidate selection.}  An accepted mapping
+    is used only while its associated track is currently observed.  The
+    corresponding beam-class posterior then defines a fixed or adaptive CSI-RS
+    candidate set.  If no association is accepted or the associated track is
+    absent from the current observation, conventional refinement is retained.
     In either case, the service beam is chosen only after CSI-RS quality has
     been measured over the selected candidate set.
 \end{enumerate}
@@ -103,8 +103,8 @@ not communication identities.  Third, initial or renewed association uses
 conventional SSB/CSI-RS evidence together with predicted beam-class posterior
 scores, without ground-truth IDs or a geometric inversion from position to beam
 index.
-Finally, a sensing prediction may reduce CSI-RS measurements only for a
-currently observed, reliable association; the measured CSI-RS quality, rather
+Finally, a sensing prediction may reduce CSI-RS measurements only for an
+accepted association whose track is currently observed; the measured CSI-RS quality, rather
 than the neural prediction, selects the service beam.  These boundaries preserve
 the distinct functions of perception, tracking, association, and communication
 measurement while excluding oracle information from online decisions.
@@ -612,8 +612,9 @@ Section~\ref{sec:method-perception-learning} is indexed by a currently observed
 physical track, whereas beam management acts on a VUE.  Conventional beam
 measurements are therefore used to establish the target-to-user association
 between these two domains.  The method first determines a partial UE--track
-mapping in a multi-candidate scene and then assesses whether an accepted
-association is sufficiently reliable to reduce the CSI-RS measurement set.
+mapping in a multi-candidate scene and then uses the association-acceptance state
+and current-track observation to determine whether the CSI-RS measurement set
+may be reduced.
 
 \subsection{Initial Association from Beam Measurements}
 \label{subsec:method-beam-measurement-association}
@@ -664,14 +665,15 @@ is obtained from
 subject to the feasible edges and the one-to-one constraint on real tracks.  It
 is solved by the Hungarian algorithm after augmentation with dummy columns.
 For a real assigned pair, let \(\Delta_{u,r,n}\) denote the gap between its cost
-and the best competing feasible cost.  The association is accepted only when
+and the best competing feasible cost.  Define the association-acceptance state as
 \begin{equation}
     A_{u,r,n}
     =
-    \mathbf{1}\!\left\{c^{\mathrm{assoc}}_{u,r,n}\leq\tau_{\mathrm{assoc}},\ \Delta_{u,r,n}\geq\tau_{\mathrm{margin}}\right\}=1.
+    \mathbf{1}\!\left\{c^{\mathrm{assoc}}_{u,r,n}\leq\tau_{\mathrm{assoc}},\
+    \Delta_{u,r,n}\geq\tau_{\mathrm{margin}}\right\}.
     \label{eq:method-association-acceptance}
 \end{equation}
-Accordingly, \(\pi_{b,n}(u)=r\) for an accepted pair and
+Accordingly, \(\pi_{b,n}(u)=r\) when \(A_{u,r,n}=1\), and
 \(\pi_{b,n}(u)=\varnothing\) otherwise.  The unmatched option is essential: it
 prevents an ambiguous multi-candidate scene from forcing a sensing target onto
 the wrong communication user.
@@ -684,32 +686,33 @@ VUE-indexed conventional measurement.  Once accepted, the UE--track association
 is maintained through the corresponding perception track and is reassessed when
 the supporting sensing or communication evidence changes.
 
-\subsection{Reliability-Aware Candidate Selection}
-\label{subsec:method-reliability-aware-selection}
+\subsection{Association-Gated Candidate Selection}
+\label{subsec:method-association-gated-selection}
 
-An accepted UE--track association is necessary but insufficient for reducing
-CSI-RS measurements.  Let \(G_{u,n}\in\{0,1\}\) denote the candidate-use
-decision for VUE \(u\).  It combines the accepted association with observable
-evidence available at the BS,
+An accepted UE--track association permits candidate reduction only while the
+corresponding track is present in the current observation.  Let
+\(G_{u,n}\in\{0,1\}\) denote the candidate-use indicator for VUE \(u\).  For
+the track selected by the partial mapping \(\pi_{b,n}\), it is defined directly
+from the association-acceptance state as
 \begin{equation}
     G_{u,n}
     =
     \begin{cases}
-        \Gamma\!\left(\boldsymbol{\xi}_{u,n}\right),&
-        \pi_{b,n}(u)=r\in\mathcal{R}^{\mathrm{obs}}_{b,n}\ \text{and}\ A_{u,r,n}=1,\\
-        0,& \text{otherwise},
+        A_{u,r,n}, & \pi_{b,n}(u)=r\in
+        \mathcal{R}^{\mathrm{obs}}_{b,n},\\
+        0, & \text{otherwise}.
     \end{cases}
-    \label{eq:method-reliability-gate}
+    \label{eq:method-association-gate}
 \end{equation}
-where \(\boldsymbol{\xi}_{u,n}\) includes association confidence, assignment
-margin, current detection and track confidence, the age of the beam information,
-SSB-parent consistency, observation history, and beam-score concentration.  The
-function \(\Gamma(\cdot)\) represents a calibrated threshold rule.  It separates
-association acceptance from the more conservative decision of whether the
-current sensing-derived beam information is sufficiently reliable for candidate
-reduction.
+Here, \(A_{u,r,n}\) is the acceptance decision in
+Equation~\eqref{eq:method-association-acceptance}.  Between association events,
+the accepted mapping is propagated with the corresponding perception track and
+is invalidated when that mapping no longer holds.  Association acceptance thus
+determines whether the mapping is admissible, while current observation ensures
+that candidate selection uses a fresh target-level beam posterior.
 
-When \(G_{u,n}=1\), the current observation refreshes the track-level posterior and supplies a sensing-assisted candidate set; otherwise conventional refinement remains active:
+When \(G_{u,n}=1\), the current observation supplies a sensing-assisted
+candidate set; otherwise, conventional refinement remains active:
 \begin{equation}
     \mathcal{C}_{b,u,n}
     =
@@ -732,15 +735,14 @@ Diffuse posteriors consequently retain more CSI-RS candidates, whereas
 concentrated posteriors permit a narrower scan.  In both cases, the posterior
 determines only which beams are measured.  The service beam is selected from the
 measured candidate set according to Equation~\eqref{eq:system-service-beam}.  If
-the sensing-derived beam information is rejected for candidate reduction, the
-framework reverts to conventional refinement and thereby retains a recovery
-path.
+the association-gated condition is not satisfied, the framework reverts to
+conventional refinement and thereby retains a recovery path.
 
-This association-to-candidate interface prevents association errors, missed
-detections, and stale target evidence from directly constraining a VUE's
-measurement set.  Its system consequences are evaluated jointly through
-association coverage, sensing-information use, fallback frequency, candidate
-recall, CSI-RS overhead, and post-RZF rate.
+This association-to-candidate interface prevents an unaccepted mapping or a
+prediction-only track from directly constraining a VUE's measurement set.  Its
+system consequences are evaluated jointly through association coverage,
+sensing-information use, fallback frequency, candidate recall, CSI-RS overhead,
+and post-RZF rate.
 
 \section{Algorithm Summary and Complexity}
 \label{sec:method-algorithm}
@@ -748,8 +750,8 @@ recall, CSI-RS overhead, and post-RZF rate.
 Algorithm~\ref{alg:method-framework} summarises the procedure at a target BS.
 It distinguishes association events from ordinary maintenance epochs.
 Association events use conventional measurements to establish or recover a
-VUE--track mapping; maintenance epochs retain that mapping only when current
-sensing evidence and the reliability gate support it.
+VUE--track mapping; maintenance epochs use that mapping for candidate reduction
+only while it remains accepted and its track is currently observed.
 
 \begin{algorithm}[t]
 \caption{Measurement-assisted sensing beam management at target BS \(b\)}
@@ -766,9 +768,8 @@ CSI-RS candidate sets \(\{\mathcal{C}_{b,u,n}\}_{u\in\mathcal{U}_b[n]}\)
 \(\{(d_{b,i,n},\mathbf{p}_{b,i,n})\}_i\).
     \STATE Mix CV and CT hypotheses, then predict existing tracks using the IMM.
     \STATE Gate and assign current detections to tracks, then update the matched
-    states, mode probabilities, confidence, observation history, age of the
-    beam information, and
-    current beam-class posteriors.
+    states, mode probabilities, confidence, observation history, and current
+    beam-class posteriors.
 \IF{an initial-access, serving-cell-change, or reassociation event occurs}
     \STATE Obtain conventional SSB/CSI-RS measurements for the affected VUEs.
     \STATE Form feasible UE--track pairs using SSB-parent consistency.
@@ -776,7 +777,7 @@ CSI-RS candidate sets \(\{\mathcal{C}_{b,u,n}\}_{u\in\mathcal{U}_b[n]}\)
     \STATE Apply association acceptance tests and update \(\pi_{b,n}\).
 \ENDIF
 \FOR{each \(u\in\mathcal{U}_b[n]\)}
-    \IF{\(\pi_{b,n}(u)\) is accepted, currently observed, and \(G_{u,n}=1\)}
+    \IF{\(G_{u,n}=1\)}
         \STATE Derive fixed or adaptive sensing candidates from the current
         target posterior.
     \ELSE

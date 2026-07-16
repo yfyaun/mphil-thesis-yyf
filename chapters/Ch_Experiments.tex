@@ -137,6 +137,13 @@ common radio configuration.  The service beam of every scheme is selected
 from measured CSI-RS candidates.  The tracker comparison applies IMM, KF-CV,
 and KF-CT to the same Top-1 CE detector and communication procedure.
 
+Bold entries in the result tables identify the best value within the
+corresponding comparison group.  Metrics with a monotonic preference are ranked
+in their favourable direction: detection, beam-prediction, and rate metrics are
+maximised, whereas measurement overhead is minimised.  Sensing-use ratios are
+reported as operational characteristics and are not ranked as intrinsically
+better or worse.
+
 \section{Perception and Beam-Prediction Performance}
 \label{sec:experiments-perception}
 
@@ -192,21 +199,21 @@ fusion rule dominates every condition.
         ISAC-only & 53.47 & 58.22 \\
         Local camera--ISAC fusion & 71.85 & 77.64 \\
         Distributed mean fusion & 69.61 & 74.46 \\
-        Distributed multimodal attention (proposed) & 81.92 & 83.86 \\
+        Distributed multimodal attention (proposed) & \textbf{81.92} & \textbf{83.86} \\
         \addlinespace
         \multicolumn{3}{l}{\textit{Rain/Fog}} \\
         Camera-only & 43.98 & 50.97 \\
         ISAC-only & 62.12 & 64.30 \\
-        Local camera--ISAC fusion & 77.42 & 79.08 \\
+        Local camera--ISAC fusion & \textbf{77.42} & 79.08 \\
         Distributed mean fusion & 68.66 & 71.40 \\
-        Distributed multimodal attention (proposed) & 77.26 & 79.56 \\
+        Distributed multimodal attention (proposed) & 77.26 & \textbf{79.56} \\
         \addlinespace
         \multicolumn{3}{l}{\textit{Night}} \\
         Camera-only & 57.47 & 63.61 \\
         ISAC-only & 44.40 & 49.40 \\
-        Local camera--ISAC fusion & 74.62 & 82.03 \\
+        Local camera--ISAC fusion & 74.62 & \textbf{82.03} \\
         Distributed mean fusion & 64.31 & 72.48 \\
-        Distributed multimodal attention (proposed) & 76.88 & 80.81 \\
+        Distributed multimodal attention (proposed) & \textbf{76.88} & 80.81 \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -225,23 +232,23 @@ fusion rule dominates every condition.
         \multicolumn{4}{l}{\textit{Clear}} \\
         Camera-only & 67.33 & 90.28 & 93.02 \\
         ISAC-only & 65.70 & 92.31 & 86.66 \\
-        Local camera--ISAC fusion & 73.06 & 95.96 & 96.02 \\
+        Local camera--ISAC fusion & 73.06 & \textbf{95.96} & 96.02 \\
         Distributed mean fusion & 68.30 & 92.99 & 94.83 \\
-        Distributed multimodal attention (proposed) & 75.00 & 94.90 & 96.55 \\
+        Distributed multimodal attention (proposed) & \textbf{75.00} & 94.90 & \textbf{96.55} \\
         \addlinespace
         \multicolumn{4}{l}{\textit{Rain/Fog}} \\
         Camera-only & 68.15 & 94.76 & 97.16 \\
-        ISAC-only & 63.79 & 95.36 & 89.92 \\
-        Local camera--ISAC fusion & 71.39 & 95.00 & 97.02 \\
+        ISAC-only & 63.79 & \textbf{95.36} & 89.92 \\
+        Local camera--ISAC fusion & \textbf{71.39} & 95.00 & 97.02 \\
         Distributed mean fusion & 68.67 & 93.87 & 91.92 \\
-        Distributed multimodal attention (proposed) & 67.27 & 93.96 & 97.86 \\
+        Distributed multimodal attention (proposed) & 67.27 & 93.96 & \textbf{97.86} \\
         \addlinespace
         \multicolumn{4}{l}{\textit{Night}} \\
         Camera-only & 60.50 & 90.71 & 95.95 \\
         ISAC-only & 65.62 & 91.76 & 83.38 \\
         Local camera--ISAC fusion & 69.89 & 93.06 & 96.05 \\
         Distributed mean fusion & 64.56 & 92.03 & 94.77 \\
-        Distributed multimodal attention (proposed) & 70.55 & 93.48 & 96.62 \\
+        Distributed multimodal attention (proposed) & \textbf{70.55} & \textbf{93.48} & \textbf{96.62} \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -334,19 +341,19 @@ a correct target-to-user association.
         \midrule
         Clear & SSB-guided refinement, \(K_{\mathrm{ref}}=4\) & 151.367 & 1.90 \\
         Clear & SSB-guided refinement, \(K_{\mathrm{ref}}=12\) & 127.033 & 5.71 \\
-        Clear & DMSA-BM & 155.453 & 1.39 \\
+        Clear & DMSA-BM & \textbf{155.453} & \textbf{1.39} \\
         \addlinespace
         Rain/Fog & SSB-guided refinement, \(K_{\mathrm{ref}}=4\) & 147.571 & 1.90 \\
         Rain/Fog & SSB-guided refinement, \(K_{\mathrm{ref}}=12\) & 115.342 & 5.71 \\
-        Rain/Fog & DMSA-BM & 150.801 & 1.57 \\
+        Rain/Fog & DMSA-BM & \textbf{150.801} & \textbf{1.57} \\
         \addlinespace
         Night & SSB-guided refinement, \(K_{\mathrm{ref}}=4\) & 127.807 & 1.90 \\
         Night & SSB-guided refinement, \(K_{\mathrm{ref}}=12\) & 105.294 & 5.71 \\
-        Night & DMSA-BM & 132.743 & 1.71 \\
+        Night & DMSA-BM & \textbf{132.743} & \textbf{1.71} \\
         \addlinespace
         Macro average & SSB-guided refinement, \(K_{\mathrm{ref}}=4\) & 142.248 & 1.90 \\
         Macro average & SSB-guided refinement, \(K_{\mathrm{ref}}=12\) & 115.890 & 5.71 \\
-        Macro average & DMSA-BM & 146.332 & 1.56 \\
+        Macro average & DMSA-BM & \textbf{146.332} & \textbf{1.56} \\
         \bottomrule
     \end{tabular}%
     }
@@ -378,7 +385,7 @@ same as those used for the preceding policy comparison.
         Camera-only & 138.868 & 1.86 & 47.93 \\
         ISAC-only & 142.522 & 1.81 & 49.03 \\
         Local camera--ISAC fusion & 143.701 & 1.80 & 58.28 \\
-        DMSA-BM & 146.332 & 1.56 & 54.35 \\
+        DMSA-BM & \textbf{146.332} & \textbf{1.56} & 54.35 \\
         \bottomrule
     \end{tabular}
 \end{table}

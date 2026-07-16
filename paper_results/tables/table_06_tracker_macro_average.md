@@ -1,5 +1,5 @@
 | Tracker | Mean effective user rate (Mbps) | Sensing use (%) |
 | --- | --- | --- |
 | IMM | 146.332 | 54.35 |
-| KF-CV | 146.373 | 53.80 |
+| KF-CV | **146.373** | 53.80 |
 | KF-CT | 145.880 | 52.26 |

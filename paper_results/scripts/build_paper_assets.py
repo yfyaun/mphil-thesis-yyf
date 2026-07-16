@@ -197,13 +197,27 @@ def _export_learning_tables(summary: dict[str, Any]) -> None:
     }
     headers = ["Method", "AP@2m (%)", "Recall@2m (%)", "Beam Top-1@2m (%)", "Beam Top-4@2m (%)", "Top-4 power ratio (%)"]
     overall_rows = [_learning_table_row(label, overall[experiment]) for label, experiment in LEARNING_METHODS]
-    _write_table("table_01_learning_modalities_overall", headers, overall_rows)
+    _write_table(
+        "table_01_learning_modalities_overall",
+        headers,
+        overall_rows,
+        bold_cells=_extreme_cells(overall_rows, {column: "max" for column in range(1, 6)}),
+    )
 
     weather_rows: list[list[str]] = []
     for weather_id in WEATHERS:
         for label, experiment in LEARNING_METHODS:
             weather_rows.append([WEATHER_LABELS[weather_id], *_learning_table_row(label, weather[(experiment, weather_id)])])
-    _write_table("table_02_learning_modalities_by_weather", ["Weather", *headers], weather_rows)
+    _write_table(
+        "table_02_learning_modalities_by_weather",
+        ["Weather", *headers],
+        weather_rows,
+        bold_cells=_grouped_extreme_cells(
+            weather_rows,
+            group_column=0,
+            directions={column: "max" for column in range(2, 7)},
+        ),
+    )
 
 
 def _row_weather(row: dict[str, Any]) -> str:
@@ -246,10 +260,19 @@ def _export_node_count_table_and_figures(summary: dict[str, Any]) -> None:
                 }
             )
     records.sort(key=lambda row: (row["label"], row["node_count"]))
+    node_rows = [
+        [row["label"], str(row["node_count"]), _pct(row["ap"]), _pct(row["recall"]), _pct(row["top1"]), _pct(row["top4"])]
+        for row in records
+    ]
     _write_table(
         "table_03_node_count_overall",
         ["Fusion method", "Nearby node count", "AP@2m (%)", "Recall@2m (%)", "Beam Top-1@2m (%)", "Beam Top-4@2m (%)"],
-        [[row["label"], str(row["node_count"]), _pct(row["ap"]), _pct(row["recall"]), _pct(row["top1"]), _pct(row["top4"])] for row in records],
+        node_rows,
+        bold_cells=_grouped_extreme_cells(
+            node_rows,
+            group_column=1,
+            directions={column: "max" for column in range(2, 6)},
+        ),
     )
     styles = (("#1f77b4", "o"), ("#ff7f0e", "s"), ("#2ca02c", "^"))
     labels = list(dict.fromkeys(row["label"] for row in records))
@@ -349,7 +372,16 @@ def _export_core_table(
         _core_table_row("Macro average", CONDITION_LABELS[condition], aggregate_by_condition[condition])
         for condition in CONDITION_LABELS
     )
-    _write_table("table_04_core_by_weather", headers, detail_rows)
+    _write_table(
+        "table_04_core_by_weather",
+        headers,
+        detail_rows,
+        bold_cells=_grouped_extreme_cells(
+            detail_rows,
+            group_column=0,
+            directions={2: "max", 3: "min"},
+        ),
+    )
 
 
 def _core_table_row(weather: str, scheme: str, row: dict[str, Any]) -> list[str]:
@@ -406,7 +438,12 @@ def _export_sensing_configuration_table(
             _pct(float(np.mean([float(core_rows[weather]["sensing_hint_usage_fraction"]) for weather in WEATHERS]))),
         ]
     )
-    _write_table("table_05_sensing_configuration_communication", headers, table_rows)
+    _write_table(
+        "table_05_sensing_configuration_communication",
+        headers,
+        table_rows,
+        bold_cells=_extreme_cells(table_rows, {1: "max", 2: "min"}),
+    )
 
 
 def _export_tracker_table(
@@ -433,7 +470,12 @@ def _export_tracker_table(
                 _pct(float(np.mean([row["sensing_hint_usage_fraction"] for row in values]))),
             ]
         )
-    _write_table("table_06_tracker_macro_average", headers, table_rows)
+    _write_table(
+        "table_06_tracker_macro_average",
+        headers,
+        table_rows,
+        bold_cells=_extreme_cells(table_rows, {1: "max"}),
+    )
 
 
 def _copy_tracker_visual() -> None:
@@ -465,17 +507,38 @@ def _write_manifest() -> None:
     path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
-def _write_table(stem: str, headers: list[str], rows: list[list[str]]) -> None:
+def _write_table(
+    stem: str,
+    headers: list[str],
+    rows: list[list[str]],
+    bold_cells: set[tuple[int, int]] | None = None,
+) -> None:
+    bold_cells = bold_cells or set()
     with (TABLE_ROOT / f"{stem}.csv").open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle)
         writer.writerow(headers)
         writer.writerows(rows)
     markdown_lines = ["| " + " | ".join(headers) + " |", "| " + " | ".join(["---"] * len(headers)) + " |"]
-    markdown_lines.extend("| " + " | ".join(_markdown_cell(cell) for cell in row) + " |" for row in rows)
+    markdown_lines.extend(
+        "| "
+        + " | ".join(
+            f"**{_markdown_cell(cell)}**" if (row_index, column_index) in bold_cells else _markdown_cell(cell)
+            for column_index, cell in enumerate(row)
+        )
+        + " |"
+        for row_index, row in enumerate(rows)
+    )
     (TABLE_ROOT / f"{stem}.md").write_text("\n".join(markdown_lines) + "\n", encoding="utf-8")
     alignment = "l" + "r" * (len(headers) - 1)
     latex = [f"\\begin{{tabular}}{{{alignment}}}", "\\toprule", " & ".join(_latex_cell(cell) for cell in headers) + " \\\\", "\\midrule"]
-    latex.extend(" & ".join(_latex_cell(cell) for cell in row) + " \\\\" for row in rows)
+    latex.extend(
+        " & ".join(
+            f"\\textbf{{{_latex_cell(cell)}}}" if (row_index, column_index) in bold_cells else _latex_cell(cell)
+            for column_index, cell in enumerate(row)
+        )
+        + " \\\\"
+        for row_index, row in enumerate(rows)
+    )
     latex.extend(["\\bottomrule", "\\end{tabular}"])
     (TABLE_ROOT / f"{stem}.tex").write_text("\n".join(latex) + "\n", encoding="utf-8")
 
@@ -496,6 +559,33 @@ def _pct_or_dash(value: Any) -> str:
 
 def _num(value: float) -> str:
     return f"{value:.3f}"
+
+
+def _extreme_cells(
+    rows: list[list[str]],
+    directions: dict[int, str],
+) -> set[tuple[int, int]]:
+    cells: set[tuple[int, int]] = set()
+    for column, direction in directions.items():
+        values = [float(row[column]) for row in rows]
+        extreme = max(values) if direction == "max" else min(values)
+        cells.update((row_index, column) for row_index, value in enumerate(values) if value == extreme)
+    return cells
+
+
+def _grouped_extreme_cells(
+    rows: list[list[str]],
+    group_column: int,
+    directions: dict[int, str],
+) -> set[tuple[int, int]]:
+    cells: set[tuple[int, int]] = set()
+    groups = dict.fromkeys(row[group_column] for row in rows)
+    for group in groups:
+        indices = [row_index for row_index, row in enumerate(rows) if row[group_column] == group]
+        group_rows = [rows[row_index] for row_index in indices]
+        for local_index, column in _extreme_cells(group_rows, directions):
+            cells.add((indices[local_index], column))
+    return cells
 
 
 def _markdown_cell(value: str) -> str:

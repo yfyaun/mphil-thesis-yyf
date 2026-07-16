@@ -2,16 +2,16 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | Clear | Camera-only | 68.44 | 71.10 | 67.33 | 90.28 | 93.02 |
 | Clear | ISAC-only | 53.47 | 58.22 | 65.70 | 92.31 | 86.66 |
-| Clear | Local camera--ISAC fusion | 71.85 | 77.64 | 73.06 | 95.96 | 96.02 |
+| Clear | Local camera--ISAC fusion | 71.85 | 77.64 | 73.06 | **95.96** | 96.02 |
 | Clear | Distributed mean fusion | 69.61 | 74.46 | 68.30 | 92.99 | 94.83 |
-| Clear | Distributed multimodal attention (proposed) | 81.92 | 83.86 | 75.00 | 94.90 | 96.55 |
+| Clear | Distributed multimodal attention (proposed) | **81.92** | **83.86** | **75.00** | 94.90 | **96.55** |
 | Rain/Fog | Camera-only | 43.98 | 50.97 | 68.15 | 94.76 | 97.16 |
-| Rain/Fog | ISAC-only | 62.12 | 64.30 | 63.79 | 95.36 | 89.92 |
-| Rain/Fog | Local camera--ISAC fusion | 77.42 | 79.08 | 71.39 | 95.00 | 97.02 |
+| Rain/Fog | ISAC-only | 62.12 | 64.30 | 63.79 | **95.36** | 89.92 |
+| Rain/Fog | Local camera--ISAC fusion | **77.42** | 79.08 | **71.39** | 95.00 | 97.02 |
 | Rain/Fog | Distributed mean fusion | 68.66 | 71.40 | 68.67 | 93.87 | 91.92 |
-| Rain/Fog | Distributed multimodal attention (proposed) | 77.26 | 79.56 | 67.27 | 93.96 | 97.86 |
+| Rain/Fog | Distributed multimodal attention (proposed) | 77.26 | **79.56** | 67.27 | 93.96 | **97.86** |
 | Night | Camera-only | 57.47 | 63.61 | 60.50 | 90.71 | 95.95 |
 | Night | ISAC-only | 44.40 | 49.40 | 65.62 | 91.76 | 83.38 |
-| Night | Local camera--ISAC fusion | 74.62 | 82.03 | 69.89 | 93.06 | 96.05 |
+| Night | Local camera--ISAC fusion | 74.62 | **82.03** | 69.89 | 93.06 | 96.05 |
 | Night | Distributed mean fusion | 64.31 | 72.48 | 64.56 | 92.03 | 94.77 |
-| Night | Distributed multimodal attention (proposed) | 76.88 | 80.81 | 70.55 | 93.48 | 96.62 |
+| Night | Distributed multimodal attention (proposed) | **76.88** | 80.81 | **70.55** | **93.48** | **96.62** |

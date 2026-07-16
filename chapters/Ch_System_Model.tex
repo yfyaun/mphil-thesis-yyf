@@ -67,9 +67,9 @@ Let \(\mathcal{V}_j\) be the set of cameras mounted at roadside node \(j\).  The
 camera observations of the target BS and its collaborating SNs are respectively
 written as
 \begin{align}
-    \mathcal{I}_{b,n} & = \{I_{b,v,n}: v\in\mathcal{V}_b\}, \\
+    \mathcal{I}_{b,n} & = \{I_{b,v,n}\mid v\in\mathcal{V}_b\}, \\
     \mathcal{I}_{\mathcal{N}_b,n} & =
-    \{I_{s,v,n}:s\in\mathcal{N}_b,\ v\in\mathcal{V}_s\}.
+    \{I_{s,v,n}\mid s\in\mathcal{N}_b,\ v\in\mathcal{V}_s\}.
     \label{eq:system-camera-observations}
 \end{align}
 Each image is accompanied by fixed camera intrinsics and an extrinsic transform
@@ -289,7 +289,7 @@ Accurate CSI is required to construct the downlink precoder.  In an NR-oriented
 procedure, the BS transmits known CSI-RS symbols through a beam codebook
 \begin{equation}
     \mathcal{F}^{\mathrm{CSI}}_b
-    =\left\{\mathbf{f}^{\mathrm{CSI}}_{b,k}:
+    =\left\{\mathbf{f}^{\mathrm{CSI}}_{b,k}\ \middle|\
     k=1,\ldots,M_{\mathrm{CSI}}\right\},
     \qquad \left\|\mathbf{f}^{\mathrm{CSI}}_{b,k}\right\|_2=1.
     \label{eq:system-csi-codebook}
@@ -341,7 +341,7 @@ CSI.  The report comprises \(k^{\star}_{b,u,n}\),
 \(\widehat{h}^{\mathrm{eq}}_{b,u,k^{\star}_{b,u,n},n}\), and the corresponding
 quality information.  For multi-user precoding, the required equivalent-channel
 coefficients over the selected RF beams are reported in the same beam-domain
-form.  This model separates CSI acquisition from beam prediction: sensing
+form.  This model separates CSI acquisition from beam prediction.  Sensing
 determines which beams merit measurement, whereas the service beam and CSI
 supplied to the precoder are obtained from transmitted CSI-RS resources.
 
@@ -443,7 +443,7 @@ rate is
     \label{eq:system-effective-rate}
 \end{equation}
 This definition captures the two communication consequences of the proposed
-framework: an incorrect or insufficient candidate set can reduce the
+framework.  An incorrect or insufficient candidate set can reduce the
 post-precoding SINR, whereas a smaller successful candidate set leaves more
 resources for data transmission.  The effective rate therefore provides the
 communication objective that couples sensing-assisted candidate selection to

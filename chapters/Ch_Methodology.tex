@@ -12,15 +12,15 @@ reduction is permitted only while the association is accepted and its track is
 supported by a current observation.  Sensing therefore ranks measurements; it
 does not replace CSI-RS-based service-beam selection.
 
-The proposed method comprises four coupled functions: distributed multimodal
-BEV perception and beam prediction, IMM-based multi-object tracking,
-measurement-assisted target-to-user association, and association-gated
-candidate selection.  The first two functions operate in the sensing domain and
-retain target-indexed evidence for physical vehicles.  The latter two use
-conventional beam measurements to connect that evidence to an NR-oriented
-beam-management procedure.  Chapter~\ref{ch:system-model} defines the associated
-resource and effective-rate models, and Chapter~\ref{ch:experiments} presents the
-system-level evaluation.
+The proposed method couples perception, tracking, association, and candidate
+selection.  Distributed multimodal BEV perception produces target detections
+and beam predictions, while IMM-based multi-object tracking retains temporally
+consistent evidence for physical vehicles.  Measurement-assisted target-to-user
+association and association-gated candidate selection then connect this evidence
+to an NR-oriented beam-management procedure through conventional beam
+measurements.  Chapter~\ref{ch:system-model} defines the associated resource and
+effective-rate models, and Chapter~\ref{ch:experiments} presents the system-level
+evaluation.
 
 \section{Framework Architecture}
 \label{sec:method-framework}
@@ -51,7 +51,7 @@ identified VUE.
     predicted tracks.  The resulting track set \(\mathcal{R}_{b,n}\) maintains
     target position, motion state, uncertainty, confidence, observation
     history, and the current beam-class posterior.  It establishes sensing
-    continuity only: a perception track remains distinct from a communication
+    continuity only.  A perception track remains distinct from a communication
     UE.
 
     \item \emph{Initial or renewed target-to-user association.}  At initial
@@ -127,7 +127,7 @@ The BEV representation provides a common spatial interface for distributed
 visual observations, BS-local ISAC sensing, vehicle detection, and beam
 prediction.  Let \(\mathcal{J}_b=\{b\}\cup\mathcal{N}_b\) denote the target BS
 and its neighbouring SNs.  For each node \(j\in\mathcal{J}_b\), calibrated
-multiview images are encoded and lifted into the BEV frame of BS \(b\):
+multiview images are encoded and lifted into the BEV frame of BS \(b\) as follows.
 \begin{equation}
     \mathbf{F}^{\mathrm{cam}}_{j\rightarrow b,n}
     =
@@ -159,7 +159,7 @@ where \(\mathbf{m}^{\mathrm{cam}}_{j,n}\) captures view availability or
 reliability.  The study compares node aggregation mechanisms, including uniform
 aggregation and learned cross-node attention, within the common operator
 \(\Phi_{\mathrm{node}}\).  Across these mechanisms, neighbouring nodes serve the
-same algorithmic purpose: they supplement the target-BS view when its coverage
+same algorithmic purpose.  They supplement the target-BS view when its coverage
 is incomplete or affected by occlusion.
 
 The BS-local ISAC point cloud is independently encoded on the same grid,
@@ -200,7 +200,7 @@ next.
 \label{subsec:method-target-prediction}
 
 The joint prediction head maps \(\mathbf{F}_{b,n}\) to a vehicle-centre
-heatmap, target attributes, and spatially dense CSI beam-class logits:
+heatmap, target attributes, and spatially dense CSI beam-class logits as follows.
 \begin{equation}
     \left(
     \mathbf{H}_{b,n},
@@ -245,7 +245,7 @@ Consequently, several simultaneously visible vehicles can receive distinct
 candidate rankings from a single shared BEV representation.
 
 During training, the BS--UE link coordinate identifies the BEV location at
-which beam supervision is sampled.  It acts solely as a supervision index: it
+which beam supervision is sampled.  It acts solely as a supervision index.  It
 is excluded from the forward model and is not inverted to obtain a beam index at
 inference time.  The prediction head also receives neither the VUE identity nor
 an oracle track identity.  Equation~\eqref{eq:method-target-output} therefore
@@ -540,7 +540,7 @@ recursion is
 \end{align}
 For the CV branch, \(\mathbf{F}_{\ell}\) and \(\mathbf{H}_{\ell}\) are the
 linear matrices in Equation~\eqref{eq:method-cv-matrices}; for the CT branch,
-they are the EKF Jacobians.  The innovation likelihood updates the model weight:
+they are the EKF Jacobians.  The innovation likelihood updates the model weight as follows.
 \begin{equation}
     \Lambda^{(\ell)}_{r,i,n}
     =
@@ -558,7 +558,7 @@ they are the EKF Jacobians.  The innovation likelihood updates the model weight:
     \label{eq:method-imm-mode-update}
 \end{equation}
 Let \(\mathcal{T}_{\ell\rightarrow\mathrm{c}}\) map a mode-conditioned estimate
-to a common output coordinate.  The IMM estimate is obtained by moment matching:
+to a common output coordinate.  The IMM estimate is obtained by moment matching as follows.
 \begin{align}
     \widehat{\mathbf{x}}_{r,n}
     &=
@@ -647,7 +647,8 @@ current-observation requirement, defines the feasible edge set
 \begin{equation}
     \mathcal{E}^{\mathrm{assoc}}_{b,n}
     =
-    \left\{(u,r):\varphi_b\bigl(\kappa_{b,u,n}\bigr)=s_{b,u,n},\ r\ \text{is currently observed}\right\}.
+    \left\{(u,r)\ \middle|\ \varphi_b\bigl(\kappa_{b,u,n}\bigr)=s_{b,u,n},\
+    \ r\ \text{is currently observed}\right\}.
     \label{eq:method-association-feasibility}
 \end{equation}
 Let \(\sigma\) assign each affected VUE either to one feasible track or to a
@@ -664,8 +665,27 @@ is obtained from
 \end{equation}
 subject to the feasible edges and the one-to-one constraint on real tracks.  It
 is solved by the Hungarian algorithm after augmentation with dummy columns.
-For a real assigned pair, let \(\Delta_{u,r,n}\) denote the gap between its cost
-and the best competing feasible cost.  Define the association-acceptance state as
+For a real assigned pair \((u,r)\), define the alternative set for VUE \(u\) as
+\begin{align}
+    \mathcal{R}^{\mathrm{alt}}_{u,r,n}
+    & =
+    \left\{r'\in\mathcal{R}^{\mathrm{obs}}_{b,n}\setminus\{r\}
+    \ \middle|\ (u,r')\in\mathcal{E}^{\mathrm{assoc}}_{b,n}\right\}
+    \cup\{\emptyset\},
+    \label{eq:method-association-alternatives}\\
+    \Delta_{u,r,n}
+    & =
+    \min_{r'\in\mathcal{R}^{\mathrm{alt}}_{u,r,n}}
+    c^{\mathrm{assoc}}_{u,r',n}
+    -c^{\mathrm{assoc}}_{u,r,n},
+    \qquad
+    c^{\mathrm{assoc}}_{u,\emptyset,n}=c_{\emptyset}.
+    \label{eq:method-association-margin}
+\end{align}
+The quantity \(\Delta_{u,r,n}\) is the cost separation between the assigned
+track and the best feasible alternative for the same VUE.  A larger value
+indicates a less ambiguous local association.  The association-acceptance state
+is then defined as
 \begin{equation}
     A_{u,r,n}
     =
@@ -674,7 +694,7 @@ and the best competing feasible cost.  Define the association-acceptance state a
     \label{eq:method-association-acceptance}
 \end{equation}
 Accordingly, \(\pi_{b,n}(u)=r\) when \(A_{u,r,n}=1\), and
-\(\pi_{b,n}(u)=\varnothing\) otherwise.  The unmatched option is essential: it
+\(\pi_{b,n}(u)=\varnothing\) otherwise.  The unmatched option is essential.  It
 prevents an ambiguous multi-candidate scene from forcing a sensing target onto
 the wrong communication user.
 
@@ -712,7 +732,7 @@ determines whether the mapping is admissible, while current observation ensures
 that candidate selection uses a fresh target-level beam posterior.
 
 When \(G_{u,n}=1\), the current observation supplies a sensing-assisted
-candidate set; otherwise, conventional refinement remains active:
+candidate set.  Otherwise, conventional refinement remains active.
 \begin{equation}
     \mathcal{C}_{b,u,n}
     =
@@ -728,7 +748,8 @@ The measurement width can adapt to the concentration of the current posterior.  
 \begin{equation}
     K^{\star}_{\mathrm{scan}}
     =
-    \min\left\{k:k\geq K_{\min},\ \frac{\sum_{j=1}^{k}s_j}{\sum_{j=1}^{K_{\max}}s_j}\geq\zeta\right\}.
+    \min\left\{k\ \middle|\ k\geq K_{\min},\
+    \frac{\sum_{j=1}^{k}s_j}{\sum_{j=1}^{K_{\max}}s_j}\geq\zeta\right\}.
     \label{eq:method-adaptive-scan}
 \end{equation}
 Diffuse posteriors consequently retain more CSI-RS candidates, whereas

@@ -2,8 +2,8 @@
 \label{ch:experiments}
 
 This chapter evaluates the proposed multimodal sensing-assisted beam-management
-framework.  The analysis follows the information flow of the
-framework: multimodal observations first support target-level detection and beam
+framework.  The analysis follows its information flow.  Multimodal observations
+first support target-level detection and beam
 prediction; target-to-user association and current-track observation then
 determine whether a sensing-derived candidate set is used; and the resulting measurement
 policy is assessed through average effective user rate and CSI-RS overhead.  The
@@ -51,8 +51,8 @@ the learning and system-level evaluations.  Target tracks and
 target-to-user associations are maintained locally at each target BS; the
 experiments do not assume a global identity that persists across serving cells.
 
-All system-level comparisons use a common radio configuration: a 100-ms SSB
-periodicity, a 20-ms CSI-RS periodicity, a four-beam conventional refinement
+All system-level comparisons use a common radio configuration comprising a
+100-ms SSB periodicity, a 20-ms CSI-RS periodicity, a four-beam conventional refinement
 within each SSB parent, and common ray-tracing segment, Doppler, power, noise,
 regularised zero-forcing (RZF), and resource-accounting assumptions.  The
 resource model is a 5G NR-oriented abstraction rather than a full PRB- and
@@ -77,8 +77,8 @@ ratio reports the fraction of reference link energy captured by the four
 highest-ranked CSI beams.  It measures candidate-set utility, not calibration of
 the beam-class posterior as a physical power distribution.
 
-The reported learning schemes differ in modality and fusion mechanism:
-Camera, ISAC, single-station multimodal, node-mean fusion, and cross-agent
+The reported learning schemes differ in modality and fusion mechanism.  They
+comprise Camera, ISAC, single-station multimodal, node-mean fusion, and cross-agent
 multimodal.  They are compared under the same
 target-level task and Top-1 cross-entropy beam supervision.  These
 comparisons identify how different observations affect detection and ranked beam
@@ -334,7 +334,7 @@ corresponding values are \(142.248\) Mbps and \(1.90\%\) for conventional
 four-beam refinement, and \(115.890\) Mbps and \(5.71\%\) for conventional
 twelve-beam refinement.
 
-The perception-assisted operation remains explicitly conditional: its
+The perception-assisted operation remains explicitly conditional.  Its
 macro-average sensing-use ratio is \(54.35\%\), while \(45.65\%\) of instances
 use conventional fallback.  Taken together, the rate and overhead values show
 the consequence of using sensing only when a current detection and a credible
@@ -356,29 +356,27 @@ from the actually measured CSI-RS candidates.
 \label{subsec:experiments-tracker-system}
 
 Table~\ref{tab:experiments-trackers} evaluates the three trackers with the same
-Top-1 CE detector and system configuration.  Their effective rates
-are close: \(146.332\) Mbps for IMM, \(146.373\) Mbps for KF-CV, and
+Top-1 CE detector and system configuration.  Their effective rates are close,
+with \(146.332\) Mbps for IMM, \(146.373\) Mbps for KF-CV, and
 \(145.880\) Mbps for KF-CT.  KF-CV is marginally higher than IMM in this
 metric.  The table therefore does not support an effective-rate claim of
 universal IMM superiority.
 
-Effective rate alone does not characterise the role of the tracker.  IMM uses
-sensing candidates in \(54.35\%\) of evaluated instances, with a mean of
-\(2.651\) candidates and the same macro-average handover count as the two
-reference filters.  IMM is retained in the proposed framework for its
-multi-model state-estimation role in association maintenance; the table shows
-that its end-to-end consequence must be interpreted jointly with candidate use,
-fallback, and the upstream detector, rather than through a single tracker-only
-metric.
+The sensing-use ratios are also close, at \(54.35\%\) for IMM, \(53.80\%\) for
+KF-CV, and \(52.26\%\) for KF-CT.  These values show that the three trackers
+operate at comparable frequencies of sensing-assisted candidate selection under
+the evaluated protocol.  IMM is retained in the proposed framework for its
+multi-model state-estimation role in association maintenance.  The table should
+therefore be interpreted as an end-to-end comparison rather than as a
+tracker-only proof of superiority.
 
 \begin{table}[H]
     \centering
     \caption{Macro-average end-to-end results for the tracker variants under
     the common detector and system configuration.}
     \label{tab:experiments-trackers}
-    \resizebox{\textwidth}{!}{%
-        \input{paper_results/tables/table_06_tracker_macro_average.tex}%
-    }
+    \small
+    \input{paper_results/tables/table_06_tracker_macro_average.tex}
 \end{table}
 
 \section{Discussion and Scope}

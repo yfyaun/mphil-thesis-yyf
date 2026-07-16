@@ -11,7 +11,7 @@
 2. **系统级 beam management：**
    - 表 4：三种天气下 Conventional 4-beam、Conventional 12-beam 与 Perception-assisted 的用户平均速率、CSI-RS 开销与 hint/fallback 结果。
    - 表 5、图 4–5：三天气等权宏平均、用户平均速率、CSI-RS overhead 与 hint/fallback 运行折中。
-3. **Tracker：** 图 6 使用 test / clear-day / BS-NE 的 GT+1.0 m 位置噪声输入，直观对比 KF-CV、KF-CT、IMM 轨迹。**表 IV**（`table_06_tracker_macro_average.*`）报告固定 Top-1 CE detector、CSI 5 ms、四小区与 weather-specific gate 下三种 tracker 的跨天气等权宏平均端到端结果：用户平均有效速率、CSI-RS 开销、hint/fallback、候选 beam 数和 handover 次数。
+3. **Tracker：** 图 6 使用 test / clear-day / BS-NE 的 GT+1.0 m 位置噪声输入，直观对比 KF-CV、KF-CT、IMM 轨迹。**表 IV**（`table_06_tracker_macro_average.*`）报告固定 Top-1 CE detector、CSI 5 ms、四小区与 weather-specific gate 下三种 tracker 的跨天气等权宏平均用户有效速率和 sensing-use ratio。
 
 Beam supervision 的 Power-KL + ranking、Power-KL only、Top-1 CE 对比是内部开发归档，不进入论文图表。论文主系统级 sensing 行固定使用 `v3_rt_anchor_beam_top1_ce_cross_agent` + IMM；其来源由 `metadata/manifest.json` 记录。
 

@@ -3,8 +3,8 @@
 
 Sensing-assisted beam management links a communication decision to an
 observation of the physical environment.  The relevant literature is therefore
-best understood through the sequence by which a BS acquires beam information:
-it first aligns or tracks a directional link, may use sensing to narrow the
+best understood through the sequence by which a BS acquires beam information.
+The BS first aligns or tracks a directional link, may use sensing to narrow the
 search, observes a road scene through one or more sensing nodes, and must then
 apply target-level evidence to the intended communication UE.  This chapter
 reviews the corresponding work in that order.  The final section identifies
@@ -159,7 +159,7 @@ addresses this limitation by combining observations from multiple vehicles or
 infrastructure nodes, but it must also account for calibration, synchronisation,
 and the cost of information exchange.
 
-V2X-ViT is a representative multi-agent approach: it uses a transformer-based
+V2X-ViT is a representative multi-agent approach that uses a transformer-based
 fusion mechanism for heterogeneous V2X observations and explicitly considers
 pose error and asynchronous data \cite{xu2022v2xvitvehicletoeverythingcooperativeperception}.
 Its objective is three-dimensional driving perception rather than beam
@@ -272,9 +272,9 @@ an achievable-rate objective \cite{Wang_2023}.  These rate-oriented studies
 are essential, but both assume the link to which the sensing or channel state
 belongs.
 
-An association-aware evaluation must retain the entire decision chain:
-target-indexed sensing evidence, target-to-user association, tracking or
-re-association, candidate measurement, and data transmission.  A 5G NR-oriented
+An association-aware evaluation must retain every stage of the decision chain.
+These stages include target-indexed sensing evidence, target-to-user association,
+tracking or re-association, candidate measurement, and data transmission.  A 5G NR-oriented
 measurement abstraction is appropriate because it distinguishes initial access, beam
 refinement, candidate measurement, and data resources without claiming to
 reproduce every protocol-level detail.  It can therefore reveal whether a
@@ -310,8 +310,8 @@ target-indexed beam information through distributed multimodal BEV
 perception, uses communication-side evidence and IMM-based tracking to establish
 and maintain target-to-user association, and evaluates the resulting candidate-
 measurement policy under a common resource model.  The framework does not
-equate a sensing prediction with an immediately usable service beam:
-sensing-derived beam information is used only when it has a credible
+equate a sensing prediction with an immediately usable service beam.  Sensing-derived
+beam information is used only when it has a credible
 target-to-user association, while conventional measurement remains available
 for confirmation and recovery.  Chapter~\ref{ch:system-model} formalises the
 corresponding sensing observations, communication measurements, and

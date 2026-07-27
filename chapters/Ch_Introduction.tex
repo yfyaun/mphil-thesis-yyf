@@ -87,7 +87,7 @@ conditions.
 The second challenge is \emph{sensing-to-communication identity ambiguity}.
 A perception system observes physical targets, whereas beam management is
 performed for communication UEs.  These two sets are neither identical nor
-naturally paired: a visible vehicle may not be an active UE, an active UE may
+naturally paired.  A visible vehicle may not be an active UE, an active UE may
 be temporarily unobserved, and nearby vehicles may exhibit similar spatial and
 beam characteristics.  Consequently, even an accurate target-level beam
 prediction is ineffective if it is applied to the wrong UE.  Communication
@@ -149,8 +149,8 @@ NR-oriented beam-management evaluation framework}.  The framework integrates
 multimodal roadside sensing, time-varying V2I channels, beam measurement, and
 resource accounting within a common system model.  It relates target detection,
 beam prediction, association-conditioned sensing use, and conventional fallback
-to the number of measured candidates, CSI-RS overhead, and average effective
-user rate.  This objective determines whether the first two methodological
+to CSI-RS overhead and average effective user rate.  This objective determines
+whether the first two methodological
 components yield a communication benefit after measurement cost has been
 accounted for.
 
@@ -195,8 +195,8 @@ contributions of this thesis are therefore summarised as follows.
     beam-management evaluation framework.  The framework combines multimodal
     sensing, time-varying V2I channels, beam measurements, downlink transmission,
     and resource accounting in a common evaluation chain.  By jointly reporting
-    sensing-use and fallback behaviour, the number of measured candidates,
-    CSI-RS overhead, and average effective user rate, it distinguishes
+    sensing-use and fallback behaviour, CSI-RS overhead, and average effective
+    user rate, it distinguishes
     target-level beam-prediction performance from a communication benefit under
     the stated beam-management procedure.
 \end{enumerate}
@@ -229,8 +229,8 @@ association-acceptance-gated CSI-RS candidate selection.
 
 Chapter~\ref{ch:experiments} describes the multimodal V2I dataset, experimental
 setup, evaluation methodology, and communication baselines.  It reports
-perception and beam-prediction performance, reliability-gated beam-management
-performance, and tracking performance, and relates DMSA-BM's sensing-use and
+perception and beam-prediction performance, communication performance, and
+tracking performance, and relates DMSA-BM's sensing-use and
 fallback behaviour to CSI-RS overhead and average effective user rate under a
 common radio configuration.  Finally, Chapter~\ref{ch:conclusion} summarises the findings
 supported by the evaluation, discusses the limitations of the local BS scope and

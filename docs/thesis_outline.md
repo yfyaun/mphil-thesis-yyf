@@ -34,7 +34,7 @@ sensing target 与 communication UE 的身份差异必须经由通信测量辅�
 - 说明车辆相对 BS 的几何、遮挡、散射路径和可见性会快速变化；天气、光照和道路交通同时
   改变通信状态与感知观测。强调“测量结果会老化”与“频繁扫描消耗资源”这两个并存事实。
 - 用 SSB 完成初始接入、以 CSI-RS 执行细化/校准的抽象解释传统流程；说明缩小候选集可节省
-  测量资源，但候选遗漏会传递为 CSI 失配、较低有效速率或更高 outage 风险。
+  测量资源，但候选遗漏会传递为 CSI 失配和较低有效速率。
 - 引入道路侧相机、ISAC 与邻近 SN 的环境感知潜力：视觉信息刻画语义与可见性，ISAC 提供
   几何/无线感知线索，邻近节点扩展服务 BS 的可观察范围。此处只建立动机，不在引言展开
   具体融合结构。
@@ -94,8 +94,8 @@ sensing target 与 communication UE 的身份差异必须经由通信测量辅�
   如何建立或恢复 UE--track binding，IMM-based tracking 如何维持感知目标连续性，以及 association
   acceptance 与 current observation 如何防止 target-level beam information 被用于错误 UE。
 - 贡献 3 采用“建立 multimodal V2I simulation and 5G NR-oriented beam-management evaluation framework”
-  的句式：说明统一的信道、测量和资源模型如何把 sensing-use/fallback、CSI-RS overhead、候选测量数与
-  average effective user rate 连接起来，从而区分 beam-prediction accuracy 与通信收益。
+  的句式：说明统一的信道、测量和资源模型如何把 sensing-use/fallback 与 CSI-RS overhead 连接到
+  average effective user rate，从而区分 beam-prediction accuracy 与通信收益。
 - 三项贡献在正文中不设置加粗小标题；分别以 `We propose`、`We develop` 和 `We establish` 开头，并按
   “做了什么--解决什么问题--产生什么意义”的顺序展开。不写入未经冻结 test 支撑的优越性主张。
 
@@ -114,7 +114,7 @@ sensing target 与 communication UE 的身份差异必须经由通信测量辅�
   tracking、measurement-assisted target-to-user association、association-acceptance-gated candidate selection
   与通信接口。
 - Chapter 5 说明多模态 V2I 数据如何构成评测样本，定义冻结协议和指标，并依次报告 perception and
-  beam-prediction performance、reliability-gated beam management 与 tracking performance；系统层结果以
+  beam-prediction performance、communication performance 与 tracking performance；系统层结果以
   DMSA-BM 的 sensing-use/fallback、CSI-RS overhead 和 average effective user rate 为核心。
 - Chapter 6 总结由冻结证据支持的发现，说明局部 BS 范围、RT segment/PHY abstraction 与感知
   可靠性等限制，并讨论跨 BS association、真实测量校准和更严格协议级评估等扩展。
@@ -227,7 +227,7 @@ measurement 与用户速率之间的物理联系，不把 perception、tracking�
 point cloud 的观测模型，并从 sensing symbol 出发将回波分解为 static clutter、moving-target direct
 reflection 与含额外 specular/diffuse reflection 的 secondary paths，再经 clutter suppression、range--angle--
 Doppler processing 和 CFAR 得到点云。通信部分先建立与 beam policy 无关的信道、发送信号、接收信号、
-SINR 和 gross achievable rate；再说明 CSI-RS beam 下的 equivalent-channel estimation、beam-quality
+SINR 和 gross achievable rate；再说明 CSI-RS beam 下的 equivalent-channel estimation、CSI-RS quality
 measurement 与 feedback；最后给出 RZF、SSB/CSI-RS measurement flow、归一化 overhead 与 effective
 rate。BEV fusion、network loss、Hungarian association、IMM recursion 和 association-gated candidate rule 留给
 Chapter 4。
@@ -343,8 +343,8 @@ prediction；接着以 track maintenance 维持 physical target 的时序连续�
   assignment 约束下匹配。测量所得候选中的最佳 CSI-RS beam 才成为 service beam。
 - 为 overview figure 配套叙述，突出 sensing evidence、track state、communication measurement 与
   association-gated candidate decision 的边界；GT/oracle 仅连接诊断和评估支路。可保留一行简洁流程
-  \(\mathcal O_{b,t}\rightarrow\{d_{i,t},\mathbf p_{i,t}\}\rightarrow\mathcal R_{b,t}
-  \rightarrow\pi_{b,t}\rightarrow\mathcal C_{b,u,t}\)，不在本节展开关联代价或优化公式。
+  \(\mathcal O_{b,n}\rightarrow\{d_{b,i,n},\mathbf p_{b,i,n}\}_i\rightarrow\mathcal R_{b,n}
+  \rightarrow\pi_{b,n}\rightarrow\mathcal C_{b,u,n}\)，不在本节展开关联代价或优化公式。
 
 ### 4.2 Distributed Multimodal BEV Perception and Beam Prediction
 
@@ -363,23 +363,23 @@ perception-and-learning pipeline 叙述：先说明何以形成共享空间表�
 - 将正式 camera--ISAC 融合写为 gated multimodal attention。先投影两类特征并拼接 camera、ISAC 与二者
   absolute difference，再由 local spatial gate 和 global scene gate 产生 logits，经 modality-availability-masked
   softmax 得到逐 cell 权重。local gate 响应遮挡和点云稀疏等空间差异，global gate 响应天气、照明和整体观测
-  条件；天气标签不作为输入，权重由 joint detection--beam objective 端到端学习。
+  条件，权重由 joint detection--beam objective 端到端学习。
 - 明确 node-validity mask 与 modality-availability mask 只是 binary observation masks，不是 confidence score
   或独立 reliability model。说明共享 BEV 的设计动机：SN 提供遮挡/视场互补，target BS 保持与 serving link
   的几何关系，ISAC 提供与视觉互补的局部几何证据。
 
 #### 4.2.2 Joint Detection and Beam Prediction
 
-- 定义 \(d_{i,t}=(\widehat{\mathbf r}_{i,t},\widehat{\mathbf a}_{i,t},\widehat c_{i,t})\) 与
-  \(\mathbf p_{i,t}=\operatorname{softmax}(\operatorname{Sample}(\mathbf P_{b,t},\widehat{\mathbf r}_{i,t}))\)；说明属性可包括
+- 定义 \(d_{b,i,n}=(\widehat{\mathbf r}_{b,i,n},\widehat{\mathbf a}_{b,i,n},\widehat c_{b,i,n})\) 与
+  \(\mathbf p_{b,i,n}=\operatorname{softmax}(\operatorname{Sample}(\mathbf P_{b,n},\widehat{\mathbf r}_{b,i,n}))\)；说明属性可包括
   size、heading 与 velocity，具体 head design 不影响本章的接口表述。
 - 从共享 BEV feature 同时产生 vehicle-centre heatmap、属性回归与 dense 192-way CSI beam-class logits；在
-  decoded detection centre 采样得到 \((d_{i,t},\mathbf p_{i,t})\)，从而使 detection 和 beam prediction
+  decoded detection centre 采样得到 \((d_{b,i,n},\mathbf p_{b,i,n})\)，从而使 detection 和 beam prediction
   在同一 target-level spatial interface 上对齐。
 - 以 heatmap/attribute terms 与 beam term 组成 joint loss，说明共用 BEV context 使物体可见性与 link
   quality 共同约束目标表示。
 - 明确 link coordinate 只在训练/评估中选择监督采样位置；UE identity、ground-truth beam 和 link
-  coordinate 不作为前向输入。因此 \(\mathbf p_{i,t}\) 是未绑定 physical target 的 beam-class posterior，
+  coordinate 不作为前向输入。因此 \(\mathbf p_{b,i,n}\) 是未绑定 physical target 的 beam-class posterior，
   而不是 service-beam declaration 或物理 CSI power distribution。
 
 #### 4.2.3 Top-1 Beam Classification
@@ -418,8 +418,8 @@ state fusion 递推说明两种运动假设如何协作；最后给出 detection
   的运动类别。
 - 对每个 `(split, weather, target BS)` 独立维护 tracks。以 predicted position/covariance 的 innovation gate
   先排除不可能 pair，再以 Hungarian assignment 处理 detection--track one-to-one correspondence。
-- 匹配检测更新运动状态、mode probability、track confidence、observation history、当前 beam-class posterior
-  与 hint age。未匹配轨迹可以暂时保留，但其纯预测状态不生成正式 beam candidate；该边界使 tracking 的角色
+- 匹配检测更新运动状态、mode probability、track confidence、observation history 与当前 beam-class posterior。
+  未匹配轨迹可以暂时保留，但其纯预测状态不生成正式 beam candidate；该边界使 tracking 的角色
   保持为 temporal continuity，而非替代通信测量。
 
 ### 4.4 Measurement-Assisted Target-to-User Association
@@ -430,7 +430,7 @@ requirement 直接控制 CSI-RS candidate reduction；不再设置独立的第�
 
 #### 4.4.1 Initial Association from Beam Measurements
 
-- 在 initial access、new serving cell、binding failure 或 sensing evidence 不可靠时执行 conventional
+- 在 initial access、new serving cell 或既有 binding 失去支持时执行 conventional
   SSB/CSI-RS measurement。重申 4.2 导出的 \(\mathbf p_{r,n}\) 是当前 observed physical track 对各 CSI beam
   的 classifier posterior score；将 UE \(u\) 的 conventional measured beam
   \(\kappa_{b,u,n}\) 代入 \(p_{r,n}(\cdot)\)，以 normalised negative log posterior score 建立
@@ -446,15 +446,15 @@ requirement 直接控制 CSI-RS candidate reduction；不再设置独立的第�
 
 写作要点：
 
-- 将 \(G_{u,t}\) 定义为 association-to-candidate interface 的简写：
-  \(G_{u,t}=A_{u,r,t}\mathbf 1\{\pi_{b,t}(u)=r\in\mathcal R_{b,t}^{\mathrm{obs}}\}\)。
+- 将 \(G_{u,n}\) 定义为 association-to-candidate interface 的简写：当
+  \(\pi_{b,n}(u)=r\in\mathcal R_{b,n}^{\mathrm{obs}}\) 时令 \(G_{u,n}=A_{u,r,n}\)，否则令 \(G_{u,n}=0\)。
   association acceptance 状态在两次 association events 之间保持，并在 binding 失效时置零；不引入
-  association confidence、detection/track confidence、hint age、observation count 或 beam-score mass 等第二层输入。
-- 只有 accepted binding 对应当前 observed track 且 \(G_{u,t}=1\) 时，才从
-  \(\mathbf p_{\pi_{b,t}(u),t}\) 导出 sensing candidates；否则采用 conventional refinement。纯 track
+  association confidence、detection/track confidence、observation count 或 beam-score mass 等第二层输入。
+- 只有 accepted binding 对应当前 observed track 且 \(G_{u,n}=1\) 时，才从
+  \(\mathbf p^{\mathrm{obs}}_{\pi_{b,n}(u),n}\) 导出 sensing candidates；否则采用 SSB-guided refinement。纯 track
   prediction 不可替代当前观测。
 - 给出 fixed-\(K_{\mathrm{scan}}\) 与 score-mass adaptive-\(K_{\mathrm{scan}}\) 规则；后者在
-  \(1\leq k\leq K_{\max}\) 内选择累计分数达到阈值 \(q\) 的最小 \(k\)，因此最小候选集为 Top-1 波束。
+  \(1\leq k\leq K_{\max}\) 内选择累计分数达到阈值 \(\zeta\) 的最小 \(k\)，因此最小候选集为 Top-1 波束。
 - 重申 beam-class posterior 只缩小实际 CSI-RS scan；UE 在 measured candidate set 内按 SNR 选择 service
   beam。该接口随后交由 Chapter 5 的 RZF/resource evaluation。
 
@@ -509,8 +509,8 @@ requirement 直接控制 CSI-RS candidate reduction；不再设置独立的第�
 - 给出 average effective user rate 的定义：先在每个 communication cycle 内对 \(\mathcal U_b[n]\) 中的 VUE
   速率求平均，再对 cycles 求平均；用户速率包含 SSB、control 和 CSI-RS 的资源影响，因此不同 candidate
   policies 在相同冻结 profile 下可直接比较。
-- 同时报出 CSI-RS overhead、sensing-use ratio、conventional-fallback ratio 和平均 measured candidate count。sensing use/fallback 是 association-to-policy 的运行证据，不替代未单独导出的 binding accuracy。
-- 对 tracker 比较，报告系统级 rate、overhead、sensing/fallback、candidate count 和 handover；不以单一 tracker 的定性运动图替代端到端比较。
+- 同时报出 CSI-RS overhead、sensing-use ratio 和 conventional-fallback ratio。sensing use/fallback 是 association-to-policy 的运行证据，不替代未单独导出的 binding accuracy。
+- 对 tracker 比较，报告 mean effective user rate 与 sensing use；不以单一 tracker 的定性运动图替代端到端比较。
 
 #### 5.2.3 Baselines and Ablation Variants
 
@@ -554,8 +554,8 @@ requirement 直接控制 CSI-RS candidate reduction；不再设置独立的第�
 
 #### 5.5.1 Comparison of Tracking Models
 
-- 以 Table 5.6 在同一 Top-1 CE detector 和冻结协议下报告三种 tracker 的宏平均系统指标。IMM 的 rate/overhead/use/fallback 为 146.332/1.56%/54.35%/45.65%，KF-CV 为 146.373/1.56%/53.80%/46.20%，KF-CT 为 145.880/1.57%/52.26%/47.74%。
-- 说明这组数值的差异较小，且 KF-CV 的 rate 略高于 IMM；因此不将 IMM 表述为由 effective rate 证明的普遍最优 tracker。IMM 的方法定位是为 association maintenance 提供多运动模型状态估计，系统结果应与候选数和 fallback 一并解读。
+- 以 Table 5.6 在同一 Top-1 CE detector 和冻结协议下报告三种 tracker 的宏平均系统指标。IMM、KF-CV 和 KF-CT 的 mean effective user rate 分别为 146.332、146.373 和 145.880 Mbps，sensing use 分别为 54.35%、53.80% 和 52.26%。
+- 说明 KF-CV 在该固定操作点的 rate 略高于 IMM，且三种数值的差异有限；因此不将当前结果扩展为跨运动条件或系统配置的普遍最优结论。IMM 的方法定位是为 association maintenance 提供多运动模型状态估计。
 
 ### 5.6 Discussion and Limitations
 
@@ -577,7 +577,11 @@ requirement 直接控制 CSI-RS candidate reduction；不再设置独立的第�
 - 概括 measurement-assisted target-to-user association 与 IMM-based tracking 如何使 target-level beam
   information 保持对正确 UE 的适用性。
 - 概括 multimodal V2I simulation 与 5G NR-oriented beam-management evaluation framework，以及其如何
-  将 sensing-use/fallback、CSI-RS overhead 和候选测量数连接到 average effective user rate。
+  将 sensing-use/fallback 和 CSI-RS overhead 连接到 average effective user rate。
+- 汇总冻结结果支持的主要发现。Distributed multimodal attention 在总体 AP@2m、Recall@2m 和 Top-4 power
+  ratio 上最高，但没有单一融合方案主导全部 beam metrics。DMSA-BM 的三条件宏平均 rate/CSI-RS overhead
+  为 146.332 Mbps/1.56%，对应的 SSB-guided refinement 在 \(K_{\mathrm{ref}}=4\) 和 12 时分别为
+  142.248 Mbps/1.90% 与 115.890 Mbps/5.71%。
 - 只总结 Chapter 5 在冻结协议下支持的发现，不引入正文未验证的比较性结论。
 
 ### 6.2 Limitations
@@ -596,4 +600,3 @@ requirement 直接控制 CSI-RS candidate reduction；不再设置独立的第�
 - 扩展到跨 BS target-to-user association、协同多 BS beam alignment 与 handover decision。
 - 引入更完善的 5G NR protocol-level simulation 和共享 CSI-RS measurement 模型。
 - 研究 online adaptation、domain adaptation、measurement calibration 和真实数据验证。
-- 研究更稳健的 association confidence、两阶段 fallback 和动态候选策略，以改善 rate--outage 边界。

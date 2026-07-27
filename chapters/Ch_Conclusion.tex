@@ -20,12 +20,12 @@ The first part of the work formulated the Distributed Multimodal
 Sensing-Assisted Beam Management framework, denoted by DMSA-BM. In this
 framework, multiview camera features and
 BS-local ISAC observations are fused in BEV space to detect vehicle targets and estimate
-per-target beam-class posteriors. The resulting ranked Top-K candidate beams
+per-target beam-class posteriors. The resulting ranked Top-$K$ candidate beams
 provide a sensing-driven interface between the perception model and the
 beam-management procedure. The objective of this design is not to replace
 communication measurements entirely, but to use sensing observations to reduce
-the frequency and scope of expensive beam measurements when the sensing output
-is sufficiently reliable.
+the frequency and scope of expensive beam measurements when the target-to-user
+association is accepted and its track is currently observed.
 
 The second part of the work addressed the identity mismatch between sensing
 targets and communication users. Since a detected vehicle target is not
@@ -43,6 +43,20 @@ prediction, target-to-user association, and tracking to CSI-RS resource
 consumption, RZF precoding, and effective downlink rate. It thereby exposes how
 sensing and association errors propagate to communication performance under a
 common set of system assumptions.
+
+Under the common experimental configuration, distributed multimodal attention
+achieved the highest overall AP@2m, Recall@2m, and Top-4 power ratio among the
+evaluated perception variants, while no single fusion method dominated every
+beam-prediction metric. At the communication level, DMSA-BM achieved a
+three-condition macro-average effective user rate of \(146.332\) Mbps with
+\(1.56\%\) CSI-RS overhead. The corresponding SSB-guided refinement results
+were \(142.248\) Mbps with \(1.90\%\) overhead for
+\(K_{\mathrm{ref}}=4\), and \(115.890\) Mbps with \(5.71\%\) overhead for
+\(K_{\mathrm{ref}}=12\). The tracker variants produced comparatively close
+end-to-end results. These findings support the use of distributed multimodal
+sensing for conditional candidate reduction under the stated operating point,
+without implying that sensing use alone or a particular tracker guarantees a
+communication gain.
 
 \section{Limitations}
 \label{sec:conclusion-limitations}

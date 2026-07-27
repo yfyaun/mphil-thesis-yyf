@@ -102,7 +102,7 @@ candidate-measurement policies after their communication overhead has been
 accounted for.
 
 The accompanying operational metrics are CSI-RS overhead, sensing-use ratio,
-fallback ratio, and the mean number of measured candidates.  A
+and fallback ratio.  A
 sensing-use event requires a currently observed target and an accepted
 target-to-user association.  Fallback therefore follows from association
 acceptance and current-track availability.  It does not replace a standalone
@@ -139,7 +139,7 @@ and KF-CT to the same Top-1 CE detector and communication procedure.
 
 Bold entries in the result tables identify the best value within the
 corresponding comparison group.  Metrics with a monotonic preference are ranked
-in their favourable direction: detection, beam-prediction, and rate metrics are
+in their favourable direction.  Detection, beam-prediction, and rate metrics are
 maximised, whereas measurement overhead is minimised.  Sensing-use ratios are
 reported as operational characteristics and are not ranked as intrinsically
 better or worse.
@@ -419,10 +419,11 @@ module.
 
 Table~\ref{tab:experiments-trackers} evaluates the three trackers with the same
 Top-1 CE detector and system configuration.  Their effective rates are close,
-with \(146.332\) Mbps for IMM, \(144.373\) Mbps for KF-CV, and
-\(143.880\) Mbps for KF-CT.  KF-CV is marginally higher than IMM in this
-metric.  The table therefore does not support an effective-rate claim of
-universal IMM superiority.
+with \(146.332\) Mbps for IMM, \(146.373\) Mbps for KF-CV, and
+\(145.880\) Mbps for KF-CT.  KF-CV is marginally higher than IMM at this
+operating point, but the limited separation among the three variants does not
+establish universal superiority across motion conditions or system
+configurations.
 
 The sensing-use ratios are also close, at \(54.35\%\) for IMM, \(53.80\%\) for
 KF-CV, and \(52.26\%\) for KF-CT.  These values show that the three trackers

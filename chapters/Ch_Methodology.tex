@@ -228,10 +228,10 @@ Residual aggregation and feed-forward refinement produce
 \begin{align}
     \mathbf{F}^{\mathrm{node},0}_{b,n}
     &=\overline{\mathbf{F}}^{\mathrm{cam}}_{b,n}
-    +\rho_{mathrm{att}}\mathbf{F}^{\mathrm{att}}_{b,n},\\
+    +\rho_{\mathrm{att}}\mathbf{F}^{\mathrm{att}}_{b,n},\\
     \mathbf{F}^{\mathrm{cam}}_{b,n}
     &=\mathbf{F}^{\mathrm{node},0}_{b,n}
-    +\rho_{mathrm{ffn}}
+    +\rho_{\mathrm{ffn}}
     \Phi_{\mathrm{ffn}}\!\left(\mathbf{F}^{\mathrm{node},0}_{b,n}\right).
     \label{eq:method-node-aggregation}
 \end{align}
@@ -881,7 +881,7 @@ candidate set.  Otherwise, SSB-guided CSI-RS refinement remains active.
     =
     \begin{cases}
         \operatorname{TopK}_{K_{\mathrm{scan}}}\left(\mathbf{p}^{\mathrm{obs}}_{\pi_{b,n}(u),n}\right),& G_{u,n}=1,\\
-        \mathcal{C}^{\mathrm{conv}}_{b,u,n},& G_{u,n}=0.
+        \mathcal{C}^{\mathrm{ref}}_{b,u,n}(K_{\mathrm{ref}}),& G_{u,n}=0.
     \end{cases}
     \label{eq:method-candidate-policy}
 \end{equation}
@@ -905,9 +905,8 @@ SSB-guided CSI-RS refinement and thereby retains a recovery path.
 
 This association-to-candidate interface prevents an unaccepted mapping or a
 prediction-only track from directly constraining a VUE's measurement set.  Its
-system consequences are evaluated jointly through association coverage,
-sensing-information use, fallback frequency, candidate recall, CSI-RS overhead,
-and post-RZF rate.
+system consequences are evaluated through sensing-information use, fallback
+frequency, CSI-RS overhead, and post-RZF effective rate.
 
 \section{Algorithm Summary and Complexity}
 \label{sec:method-algorithm}

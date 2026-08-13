@@ -59,9 +59,10 @@ All system-level comparisons use a common radio configuration with a 100-ms
 SSB periodicity, a 20-ms CSI-RS periodicity, and the 48-beam SSB and 192-beam
 CSI-RS codebooks defined in Chapter~\ref{ch:system-model}.  The compared
 policies also share the same ray-tracing segments, Doppler evolution, transmit
-power, noise model, regularised zero-forcing processing, and resource
+power, noise model, RZF processing, and resource
 accounting.  The resulting communication model is a 5G NR-oriented abstraction
-at the beam-measurement level rather than a PRB- and RE-level protocol model.
+at the beam-measurement level rather than a physical resource block (PRB)- and
+resource element (RE)-level protocol model.
 
 In the Rain/Fog condition, the association-margin threshold is fixed at
 \(\tau_{\mathrm{margin}}=0.10\).  Because this operating point was selected
@@ -74,7 +75,7 @@ operating point rather than independent out-of-sample generalisation.
 \subsection{Detection and Beam-Prediction Metrics}
 \label{subsec:experiments-learning-metrics}
 
-Target detection is evaluated by AP@2m and Recall@2m.  The distance qualifier
+Target detection is evaluated by average precision (AP)@2m and Recall@2m.  The distance qualifier
 requires a predicted target to lie within 2~m of its reference target, thereby
 making the availability of a useful target-level observation explicit.  For
 matched detections, Beam Top-1@2m and Beam Top-4@2m quantify whether the
@@ -134,8 +135,9 @@ algorithms.  DMSA-BM instead constructs a sensing-derived candidate set when
 the target-to-user association is accepted and the associated track is
 currently observed.  Otherwise, it returns to SSB-guided refinement under the
 common radio configuration.  The service beam of every scheme is selected
-from measured CSI-RS candidates.  The tracker comparison applies IMM, KF-CV,
-and KF-CT to the same Top-1 CE detector and communication procedure.
+from measured CSI-RS candidates.  The tracker comparison applies IMM, a
+CV Kalman-filter baseline (KF-CV), and a CT Kalman-filter baseline (KF-CT) to
+the same Top-1 CE detector and communication procedure.
 
 Bold entries in the result tables identify the best value within the
 corresponding comparison group.  Metrics with a monotonic preference are ranked

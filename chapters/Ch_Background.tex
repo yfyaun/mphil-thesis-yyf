@@ -48,20 +48,21 @@ Yuan \emph{et al.} estimate and predict vehicle state from dual-functional
 radar--communication echoes, and use a Bayesian message-passing formulation to
 obtain low-overhead predictive beamforming \cite{yuan2020bayesianpredictivebeamformingvehicular}.
 Du \emph{et al.} model the vehicle as an extended target; their two-stage ISAC
-scheme combines EKF state tracking with dynamic beamwidth control
+scheme combines extended Kalman filter (EKF) state tracking with dynamic beamwidth control
 \cite{du2021integratedsensingcommunicationsv2i}.
 
 Other studies learn the temporal relation directly from communication-side
 observations.  Liu \emph{et al.} use historical channel information in an
 ISAC V2I setting to predict the next-slot beamforming matrix while incorporating
 a sensing constraint \cite{liu2022learningbasedpredictivebeamformingintegrated}.
-The Deep CLSTM model uses convolutional LSTM layers to capture the spatio-
+The Deep convolutional long short-term memory (CLSTM) model uses CLSTM layers to capture the spatio-
 temporal dependence needed for predictive beamforming
 \cite{liu2022deepclstmpredictivebeamforming}.  Wang and Wong map reflected
 signal samples directly to a beamforming vector and train the model with an
 achievable-rate objective, thereby avoiding an explicit state-estimation stage
 \cite{Wang_2023}.  Ma \emph{et al.} use historical camera and radar observations
-in a CNN--GRU teacher to predict current and future beams, then distil that
+in a teacher comprising a convolutional neural network (CNN) and a gated recurrent
+unit (GRU) to predict current and future beams, then distil that
 knowledge into a lightweight student for beam tracking
 \cite{ma2026knowledgedistillationlightweightmultimodal}.
 
@@ -103,8 +104,8 @@ Multimodal models seek to combine the complementary information retained by
 these individual sensors.  Charan \emph{et al.} use camera observations and
 position information from a real mmWave V2I dataset to predict beams, providing
 an early vision--position fusion baseline \cite{charan2021visionpositionmultimodalbeamprediction}.
-DeepSense 6G subsequently provided synchronised communication, camera, GPS,
-LiDAR, and radar records for studying such mappings under common data
+DeepSense 6G subsequently provided synchronised communication, camera, global
+positioning system (GPS), LiDAR, and radar records for studying such mappings under common data
 conditions \cite{alkhateeb2023deepsense6glargescalerealworld}.  The associated
 multi-modal beam-prediction challenge placed particular emphasis on
 generalisation across locations, times, and scenes rather than a single
@@ -117,7 +118,8 @@ among image, point-cloud, radar, and GPS inputs for beam prediction
 project camera, LiDAR, radar, and GPS information into a shared BEV
 representation and apply a temporal transformer for sequential beam prediction
 \cite{zeng2026bevfusionbasedframeworksequential}.  Orimogunje \emph{et al.}
-combine RGB, LiDAR, radar range--angle information, GNSS, and short-term mmWave
+combine red-green-blue (RGB) images, LiDAR, radar range--angle information,
+global navigation satellite system (GNSS) data, and short-term mmWave
 power history in a multi-task model that estimates beams, blockage probability,
 and two-dimensional pose \cite{orimogunje2026occlusionawaremultimodalbeamprediction}.
 Wen \emph{et al.} introduce a mask-transformer architecture that explicitly

@@ -45,7 +45,8 @@ identified VUE.
     entries provide candidate scores for that physical target; they are neither
     a VUE identifier nor a service-beam decision.
 
-    \item \emph{IMM-based multi-object tracking.}  The CV and CT branches of
+    \item \emph{IMM-based multi-object tracking.}  The constant-velocity (CV)
+    and coordinated-turn (CT) branches of
     the IMM predict the motion of each physical target and update their model
     probabilities from the current BEV detection.  Innovation gating and
     one-to-one detection--track assignment associate current observations with
@@ -102,7 +103,7 @@ coordinates, VUE identities, and oracle beam labels are excluded from its
 forward input.  Second, the IMM propagates BEV target states and uncertainty,
 not communication identities.  Third, initial or renewed association uses
 conventional SSB/CSI-RS evidence together with predicted beam-class posterior
-scores, without ground-truth IDs or a geometric inversion from position to beam
+scores, without ground-truth identities or a geometric inversion from position to beam
 index.
 Finally, a sensing prediction may reduce CSI-RS measurements only for an
 accepted association whose track is currently observed; the measured CSI-RS quality, rather
@@ -276,7 +277,7 @@ Their agreement and discrepancy are represented jointly by
 \end{equation}
 For modality \(q\), the local gate produces a spatial logit from
 \(\mathbf{U}_{b,n}\), whereas the global gate extracts a scene-level logit from
-global average pooling.  The two components and their sum are
+global average pooling (GAP).  The two components and their sum are
 \begin{equation}
     \ell^{\mathrm{loc}}_{q,b,n}(\mathbf{x})
     =
@@ -412,7 +413,7 @@ At the corresponding supervised BEV location, let \(\mathbf{z}_{b,i,n}\) be
 the predicted logits and
 \(\mathbf{p}_{b,i,n}=\operatorname{softmax}(\mathbf{z}_{b,i,n})\) the
 beam-class posterior.  The beam-prediction loss is the standard Top-1
-cross-entropy objective,
+cross-entropy (CE) objective,
 \begin{equation}
     \mathcal{L}_{\mathrm{beam}}
     =
@@ -454,9 +455,8 @@ over time only if the physical target is maintained consistently as vehicles
 move, turn, or are intermittently observed.  This section therefore estimates
 the state of physical targets only.  Each target BS maintains an independent
 local track set; a track is neither a recognised VUE nor a cross-cell identity.
-The interacting multiple model (IMM) filter
-combines a constant-velocity (CV) hypothesis with a coordinated-turn (CT)
-hypothesis, allowing the motion estimate to adapt to the local vehicle
+The IMM filter combines its CV and CT hypotheses, allowing the motion estimate
+to adapt to the local vehicle
 trajectory.
 
 \subsection{Motion Models}

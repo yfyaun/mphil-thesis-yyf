@@ -10,9 +10,9 @@ vehicle users in roadside communication scenarios experience rapidly changing
 geometry, blockage, and beam quality, while repeated beam sweeping and channel
 measurement can consume non-negligible radio resources. To address this
 setting, the thesis considered a BS-centric sensing infrastructure in which the
-serving base station (BS) and nearby sensing nodes (SNs) provide multiview
+serving BS and nearby SNs provide multiview
 camera observations, and the BS also provides an ISAC point cloud. These
-observations are organised through a bird's-eye-view (BEV) representation so
+observations are organised through a BEV representation so
 that vehicle detection and per-target beam prediction share a common spatial
 frame.
 
@@ -30,8 +30,8 @@ association is accepted and its track is currently observed.
 The second part of the work addressed the identity mismatch between sensing
 targets and communication users. Since a detected vehicle target is not
 automatically associated with a communication user identity, SSB and CSI-RS
-measurements establish an initial target-to-user association. An interacting
-multiple-model (IMM) tracker subsequently maintains the temporal continuity of
+measurements establish an initial target-to-user association. An IMM tracker
+subsequently maintains the temporal continuity of
 physical target states and supports the validity of that association as the
 scene evolves. This association and tracking layer connects per-frame sensing
 predictions to user-specific beam-management decisions.
@@ -74,7 +74,8 @@ abstraction rather than a complete 5G NR protocol stack. The thesis models
 beam management, beam mismatch, RZF precoding SINR, spectral efficiency, and
 overhead-adjusted throughput at a system level, but it does not fully model
 protocol-level details such as physical-resource mapping, feedback latency,
-control signalling, HARQ behaviour, or mobility-management procedures. As a
+control signalling, hybrid automatic repeat request (HARQ) behaviour, or
+mobility-management procedures. As a
 result, throughput-related quantities should be interpreted as
 model-based performance measures under the stated abstraction, not as direct
 predictions of deployment-level 5G NR performance.

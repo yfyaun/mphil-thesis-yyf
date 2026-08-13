@@ -14,11 +14,11 @@ developed in Chapter~\ref{ch:methodology}.
 \section{Network Architecture}
 \label{sec:system-network}
 
-Consider a roadside vehicular network with a set of base stations (BSs)
-\(\mathcal{B}\).  The formulation is centred on a target BS \(b\in\mathcal{B}\),
+Consider a roadside vehicular network with a set of BSs \(\mathcal{B}\).  The
+formulation is centred on a target BS \(b\in\mathcal{B}\),
 which serves the VUEs in its local service region and executes the corresponding
 beam-management decisions.  A set \(\mathcal{N}_b\) of neighbouring distributed
-sensing nodes (SNs) provides additional camera views of the same road region.
+SNs provides additional camera views of the same road region.
 The SNs are sensing-only collaborators and do not establish independent service
 cells in the model.  Thus, all communication measurements,
 beam decisions, and association states discussed below are local to the target
@@ -35,7 +35,7 @@ an explicit part of the system model rather than an implicit consequence of
 detection.
 
 The index \(n\) refers to a sensing epoch, at which observations from the BS and
-its SNs are aligned to a common local bird's-eye-view (BEV) frame.  The frame is
+its SNs are aligned to a common local BEV frame.  The frame is
 anchored at the target BS and covers its local service region.  A VUE entering a
 new serving cell establishes a new local association there; no global identity
 is assumed to persist across BSs.  The relation between sensing epochs and the
@@ -205,7 +205,8 @@ BS-local radio-sensing observation supplied to the multimodal perception model.
 The communication model specifies the multi-user downlink, beam-domain CSI
 acquisition, hybrid precoding, and the radio resources consumed by beam
 management.  It thereby relates the selected CSI-RS candidate set to both the
-resulting downlink SINR and the fraction of resources available for data
+resulting downlink signal-to-interference-plus-noise ratio (SINR) and the
+fraction of resources available for data
 transmission.
 
 \subsection{Downlink Signal and Channel Model}
@@ -255,8 +256,9 @@ unit-norm precoding vector.  The received signal at VUE \(u\) is
     +z_{b,u,n},
     \label{eq:system-downlink-signal}
 \end{equation}
-where \(z_{b,u,n}\sim\mathcal{CN}(0,\sigma^2_{b,u,n})\).  The corresponding
-instantaneous downlink SINR is
+where \(z_{b,u,n}\sim\mathcal{CN}(0,\sigma^2_{b,u,n})\) follows a circularly
+symmetric complex Gaussian distribution.  The corresponding instantaneous
+downlink SINR is
 \begin{equation}
     \gamma_{b,u,n}
     =
@@ -340,7 +342,7 @@ and reports the selected beam index together with the associated beam-domain
 CSI.  The report comprises \(k^{\star}_{b,u,n}\),
 \(\widehat{h}^{\mathrm{eq}}_{b,u,k^{\star}_{b,u,n},n}\), and the corresponding
 quality information.  For multi-user precoding, the required equivalent-channel
-coefficients over the selected RF beams are reported in the same beam-domain
+coefficients over the selected radio-frequency (RF) beams are reported in the same beam-domain
 form.  This model separates CSI acquisition from beam prediction.  Sensing
 determines which beams merit measurement, whereas the service beam and CSI
 supplied to the precoder are obtained from transmitted CSI-RS resources.
@@ -349,8 +351,7 @@ supplied to the precoder are obtained from transmitted CSI-RS resources.
 \label{subsec:system-beam-management}
 
 Let \(U_b[n]=|\mathcal{U}_b[n]|\), and order the VUEs as
-\(u_1,\ldots,u_{U_b[n]}\).  Their selected CSI-RS beams form the radio-
-frequency precoder
+\(u_1,\ldots,u_{U_b[n]}\).  Their selected CSI-RS beams form the RF precoder
 \begin{equation}
     \mathbf{F}^{\mathrm{RF}}_b[n]
     =\left[\mathbf{f}^{\mathrm{CSI}}_{b,k^{\star}_{b,u_1,n}},
@@ -363,8 +364,7 @@ The beam-domain channel seen by VUE \(u\) is then
 \mathbf{F}^{\mathrm{RF}}_b[n]\).  Let
 \(\widehat{\mathbf{H}}^{\mathrm{eff}}_b[n]\in
 \mathbb{C}^{U_b[n]\times U_b[n]}\) stack the corresponding feedback-based
-estimates for all VUEs.  The digital regularised zero-forcing (RZF)
-precoder is
+estimates for all VUEs.  The digital regularised zero-forcing (RZF) precoder is
 \begin{equation}
     \mathbf{V}^{\mathrm{RZF}}_b[n]
     =

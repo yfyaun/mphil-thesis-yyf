@@ -6,20 +6,20 @@
 
 Vehicular networks are expected to support connected mobility and intelligent
 transportation services whose data-rate and latency requirements are difficult
-to meet with conventional wide-beam links.  Millimetre-wave and other
+to meet with conventional wide-beam links.  Millimetre-wave (mmWave) and other
 high-frequency bands offer the required bandwidth, but their gains rely on
 narrow directional beams.  In vehicle-to-infrastructure (V2I) communication, a
 base station (BS) must therefore maintain beam alignment while the relative
 geometry and propagation conditions of a vehicle change rapidly.  Vision-aided
-V2X beam alignment has, for example, used visual vehicle information to infer a
+vehicle-to-everything (V2X) beam alignment has, for example, used visual vehicle information to infer a
 beam pair and predict its coherence time \cite{xu2022computervisionaidedmmwave}.
 Beam alignment is consequently a recurrent decision problem rather than a
 one-off access operation.
 
 Current high-frequency systems obtain direct communication evidence through
-synchronisation signal block (SSB) sweeps, channel-state-information
-reference-signal (CSI-RS) measurements, and subsequent channel-state-information
-acquisition and refinement.  These procedures are indispensable at initial
+synchronisation signal block (SSB) sweeps and channel state information (CSI)
+acquisition, including CSI reference signal (CSI-RS) measurements and
+refinement.  These procedures are indispensable at initial
 access and whenever the existing link is uncertain.  Their cost, however,
 increases with the beam-search space and the frequency of remeasurement.  In a
 dynamic road scene, a measurement can become stale before data transmission;
@@ -34,14 +34,15 @@ information to predict mmWave beams and blockage events
 \cite{alrabeiah2019millimeterwavebasestations}.  Demirhan and Alkhateeb use
 radar observations to infer mmWave beams and examine the potential reduction in
 beam-training overhead \cite{demirhan2021radaraided6gbeam}.  Jiang \emph{et al.}
-use LiDAR observations to predict current and future beams in real-world V2I
+use light detection and ranging (LiDAR) observations to predict current and future beams in real-world V2I
 links \cite{jiang2022lidaraidedfuturebeam}.  These studies demonstrate that
 physical-scene observations can guide which communication measurements deserve
 priority.
 
 For roadside V2I systems, the sensing opportunity is inherently spatially
 distributed.  The serving BS may observe the local road region through multiview
-cameras and a BS-local ISAC point cloud, while neighbouring sensing nodes (SNs)
+cameras and a BS-local integrated sensing and communication (ISAC) point cloud,
+while neighbouring sensing nodes (SNs)
 can reveal road segments that are distant, weakly visible, or occluded from the
 serving BS.  A target-BS-centered bird's-eye-view (BEV) representation provides
 a common local frame in which these observations can be aligned.
@@ -116,8 +117,8 @@ This thesis addresses the two methodological challenges through the proposed
 Distributed Multimodal Sensing-Assisted Beam Management framework, denoted by
 DMSA-BM.  The overall objective is to transform distributed multimodal
 observations into target-level beam information, establish its correspondence
-to the intended communication UE, and determine its value within an
-NR-oriented beam-management procedure.  The first two research objectives
+to the intended communication UE, and determine its value within a 5G New Radio
+(NR)-oriented beam-management procedure.  The first two research objectives
 respond directly to target observability and identity ambiguity, respectively;
 the third establishes the system-level evidence needed to evaluate their
 communication consequence.
@@ -219,9 +220,10 @@ alignment.
 
 Chapter~\ref{ch:system-model} establishes the local V2I network architecture,
 the distributed multimodal sensing model, and the multi-user downlink model.  It
-then relates CSI-RS acquisition and feedback, RZF precoding, beam-management
+then relates CSI-RS acquisition and feedback, regularised zero-forcing
+precoding, beam-management
 overhead, and effective rate, establishing the communication interface through
-which target-level evidence affects VUE-level performance.
+which target-level evidence affects vehicle user equipment performance.
 Chapter~\ref{ch:methodology} presents DMSA-BM, including distributed multimodal
 BEV perception, joint vehicle detection and beam prediction, IMM-based
 multi-object tracking, measurement-assisted target-to-user association, and
